@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getUser } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
 import { Plus, BookMarked, CheckCircle2, Users, User } from "lucide-react";
@@ -8,9 +9,9 @@ import EmptyState from "@/components/ui/EmptyState";
 import { calcProgress, calcDailyPages, daysUntil, formatDateKz } from "@/lib/utils";
 
 export default async function TrackerPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
   const { data: trackers } = await supabase
     .from("book_trackers")

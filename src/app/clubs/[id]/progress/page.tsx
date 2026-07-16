@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
+import { getUser } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
 import { ArrowLeft, Calendar, BookOpen, TrendingUp } from "lucide-react";
@@ -13,9 +14,9 @@ export default async function ClubProgressPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
   // Клуб ақпараты
   const { data: club } = await supabase

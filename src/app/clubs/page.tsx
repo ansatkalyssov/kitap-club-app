@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getUser } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
 import { Users, MapPin, Plus, Search } from "lucide-react";
@@ -12,15 +13,9 @@ export default async function ClubsPage({
   searchParams: Promise<{ q?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const supabase = await createClient();
 
   const tab = sp.tab || "all";
   const q = sp.q || "";

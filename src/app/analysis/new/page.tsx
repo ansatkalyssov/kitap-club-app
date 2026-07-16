@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getUser, getProfile } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import CreateAnalysisForm from "@/components/analysis/CreateAnalysisForm";
 import Link from "next/link";
@@ -11,18 +12,11 @@ export default async function NewAnalysisPage({
   searchParams: Promise<{ club?: string; plan?: string }>;
 }) {
   const sp = await searchParams;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  // Only facilitators can open discussion threads
+  const profile = await getProfile();
   if (!profile || profile.role === "reader") redirect("/analysis");
+  const supabase = await createClient();
 
   // Get clubs managed by this facilitator
   const { data: clubs } = await supabase

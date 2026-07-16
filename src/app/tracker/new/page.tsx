@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getUser } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import CreateTrackerForm from "@/components/tracker/CreateTrackerForm";
 import Link from "next/link";
@@ -18,8 +18,7 @@ export default async function NewTrackerPage({
   }>;
 }) {
   const sp = await searchParams;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
   return (

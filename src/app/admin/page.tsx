@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { getUser, getProfile } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import { Users, BookOpen, BarChart3, Shield, BookMarked } from "lucide-react";
 import UserManagement from "@/components/admin/UserManagement";
@@ -8,16 +9,9 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz } from "@/lib/utils";
 
 export default async function AdminPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getProfile();
   if (!profile || profile.role !== "admin") redirect("/dashboard");
 
   // Admin client — RLS айналып өтеді

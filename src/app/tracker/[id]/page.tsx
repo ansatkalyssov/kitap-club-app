@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import { getUser } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Calendar, BookOpen, Trash2 } from "lucide-react";
@@ -14,9 +15,9 @@ export default async function TrackerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
   const { data: tracker } = await supabase
     .from("book_trackers")

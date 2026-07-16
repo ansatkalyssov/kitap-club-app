@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getUser } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
 import { MessageSquare, Calendar, BookOpen, ChevronRight, Plus } from "lucide-react";
@@ -7,20 +8,15 @@ import EmptyState from "@/components/ui/EmptyState";
 import { formatDateKz } from "@/lib/utils";
 
 export default async function AnalysisPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
-  // All clubs the user belongs to
-  const { data: memberships } = await supabase
-    .from("club_members")
-    .select("club_id")
-    .eq("user_id", user.id);
-
-  const { data: managedClubs } = await supabase
-    .from("clubs")
-    .select("id")
-    .eq("facilitator_id", user.id);
+  // Parallel: memberships + managedClubs
+  const [{ data: memberships }, { data: managedClubs }] = await Promise.all([
+    supabase.from("club_members").select("club_id").eq("user_id", user.id),
+    supabase.from("clubs").select("id").eq("facilitator_id", user.id),
+  ]);
 
   const allClubIds = Array.from(
     new Set([

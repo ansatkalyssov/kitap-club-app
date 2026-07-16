@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
+import { getUser } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
 import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare } from "lucide-react";
@@ -16,61 +17,34 @@ export default async function ClubDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("*, cities(name), profiles(name, email)")
-    .eq("id", id)
-    .single();
+  // Parallel: club + plans + membership + memberCount + userClubCount
+  const [
+    { data: club },
+    { data: plans },
+    { data: membership },
+    { count: memberCount },
+    { count: userClubCount },
+  ] = await Promise.all([
+    supabase.from("clubs").select("*, cities(name), profiles(name, email)").eq("id", id).single(),
+    supabase.from("club_plans").select("*, books(*)").eq("club_id", id).order("year", { ascending: false }).order("month", { ascending: false }),
+    supabase.from("club_members").select("id").eq("club_id", id).eq("user_id", user.id).single(),
+    supabase.from("club_members").select("id", { count: "exact" }).eq("club_id", id),
+    supabase.from("club_members").select("id", { count: "exact" }).eq("user_id", user.id),
+  ]);
 
   if (!club) notFound();
 
   const isFacilitator = club.facilitator_id === user.id;
-
-  // Club plans
-  const { data: plans } = await supabase
-    .from("club_plans")
-    .select("*, books(*)")
-    .eq("club_id", id)
-    .order("year", { ascending: false })
-    .order("month", { ascending: false });
-
-  const today = new Date().toISOString().split("T")[0];
-  const activePlans = (plans || []).filter(
-    (p) => !p.end_date || p.end_date >= today
-  );
-  const pastPlans = (plans || []).filter(
-    (p) => p.end_date && p.end_date < today
-  );
-  // Дедлайны ең жақын белсенді жоспар
-  const nearestPlan = activePlans
-    .filter((p) => p.end_date)
-    .sort((a, b) => a.end_date.localeCompare(b.end_date))[0] || activePlans[0] || null;
-
-  // Membership check
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("id")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .single();
-
   const isMember = !!membership;
 
-  // Members count
-  const { count: memberCount } = await supabase
-    .from("club_members")
-    .select("id", { count: "exact" })
-    .eq("club_id", id);
+  const today = new Date().toISOString().split("T")[0];
+  const activePlans = (plans || []).filter((p) => !p.end_date || p.end_date >= today);
+  const pastPlans = (plans || []).filter((p) => p.end_date && p.end_date < today);
+  const nearestPlan = activePlans.filter((p) => p.end_date).sort((a, b) => a.end_date.localeCompare(b.end_date))[0] || activePlans[0] || null;
 
   // If facilitator: get members with their progress (adminDb — RLS айналып өтеді)
   let membersWithProgress: any[] = [];
@@ -89,26 +63,23 @@ export default async function ClubDetailPage({
         .filter((p) => p.end_date && p.end_date >= todayStr)
         .sort((a, b) => a.end_date.localeCompare(b.end_date))[0];
 
-      for (const m of members) {
-        let progress = null;
-        let currentPage = 0;
-        let totalPages = 0;
-
-        if (nearestPlan) {
+      membersWithProgress = await Promise.all(
+        members.map(async (m) => {
+          if (!nearestPlan) return { ...m, progress: null, currentPage: 0, totalPages: 0 };
           const { data: tracker } = await adminDb
             .from("book_trackers")
             .select("current_page, total_pages, is_completed")
             .eq("user_id", m.user_id)
             .eq("club_plan_id", nearestPlan.id)
             .single();
-          if (tracker) {
-            progress = calcProgress(tracker.current_page, tracker.total_pages);
-            currentPage = tracker.current_page;
-            totalPages = tracker.total_pages;
-          }
-        }
-        membersWithProgress.push({ ...m, progress, currentPage, totalPages });
-      }
+          return {
+            ...m,
+            progress: tracker ? calcProgress(tracker.current_page, tracker.total_pages) : null,
+            currentPage: tracker?.current_page ?? 0,
+            totalPages: tracker?.total_pages ?? 0,
+          };
+        })
+      );
       // Үздіктерді жоғары шығару
       membersWithProgress.sort((a, b) => (b.progress ?? -1) - (a.progress ?? -1));
     }
@@ -135,12 +106,6 @@ export default async function ClubDetailPage({
       if (r.parent_id) replyCountMap[r.parent_id] = (replyCountMap[r.parent_id] || 0) + 1;
     });
   }
-
-  // Check how many clubs user has joined
-  const { count: userClubCount } = await supabase
-    .from("club_members")
-    .select("id", { count: "exact" })
-    .eq("user_id", user.id);
 
   return (
     <AppShell>

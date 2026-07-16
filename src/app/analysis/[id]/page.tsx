@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import { getUser, getProfile } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
 import { ArrowLeft, Calendar, BookOpen, MessageSquare } from "lucide-react";
@@ -12,9 +13,9 @@ export default async function AnalysisDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
   const { data: thread } = await supabase
     .from("book_analyses")
@@ -24,31 +25,19 @@ export default async function AnalysisDetailPage({
 
   if (!thread) notFound();
 
-  const { data: repliesRaw } = await supabase
-    .from("book_analyses")
-    .select("*, profiles(name)")
-    .eq("parent_id", id)
-    .order("created_at", { ascending: true });
+  // Parallel: replies + profile + membership
+  const [{ data: repliesRaw }, profile, { data: membership }] = await Promise.all([
+    supabase.from("book_analyses").select("*, profiles(name)").eq("parent_id", id).order("created_at", { ascending: true }),
+    getProfile(),
+    supabase.from("club_members").select("id").eq("club_id", thread.club_id).eq("user_id", user.id).single(),
+  ]);
   const replies = repliesRaw || [];
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name")
-    .eq("id", user.id)
-    .single();
 
   const clubs = thread.clubs as any;
   const clubPlan = thread.club_plans as any;
   const book = clubPlan?.books;
 
   const isFacilitator = clubs?.facilitator_id === user.id;
-
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("id")
-    .eq("club_id", thread.club_id)
-    .eq("user_id", user.id)
-    .single();
 
   const canReply = isFacilitator || !!membership;
   const userReply = (replies || []).find((r) => r.author_id === user.id);

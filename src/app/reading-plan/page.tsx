@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getUser } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import { Target, Flame } from "lucide-react";
 import GoalForm from "@/components/reading-plan/GoalForm";
@@ -8,9 +9,9 @@ import LogPagesForm from "@/components/reading-plan/LogPagesForm";
 import { calcReadingStreak, formatDateKz } from "@/lib/utils";
 
 export default async function ReadingPlanPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
   const { data: goal } = await supabase
     .from("reading_goals")

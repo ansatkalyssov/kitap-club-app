@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getUser, getProfile } from "@/lib/queries";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
 import { Users, BookMarked, BarChart3, Plus, TrendingUp, Calendar } from "lucide-react";
@@ -8,46 +9,39 @@ import { calcProgress, daysUntil, formatDateKz } from "@/lib/utils";
 import { BookTracker, ClubPlan } from "@/lib/types";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getProfile();
   if (!profile) redirect("/login");
 
-  // Get active trackers (дедлайн өтпеген, аяқталмаған)
-  const { data: trackers } = await supabase
-    .from("book_trackers")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("is_completed", false)
-    .gte("deadline", new Date().toISOString().split("T")[0])
-    .order("deadline", { ascending: true })
-    .limit(3);
-
-  // Get member clubs
-  const { data: memberships } = await supabase
-    .from("club_members")
-    .select("club_id, clubs(id, name, club_plans(*, books(*)))")
-    .eq("user_id", user.id);
-
-  // For facilitator: get managed clubs
-  const { data: managedClubs } = profile.role !== "reader"
-    ? await supabase
-        .from("clubs")
-        .select("id, name, club_members(count)")
-        .eq("facilitator_id", user.id)
-        .eq("is_active", true)
-    : { data: null };
-
+  const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
 
-  // Алдағы талқылар (meeting_date бүгіннен кейін)
+  // Parallel: trackers + memberships + managedClubs
+  const [{ data: trackers }, { data: memberships }, { data: managedClubs }] = await Promise.all([
+    supabase
+      .from("book_trackers")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("is_completed", false)
+      .gte("deadline", today)
+      .order("deadline", { ascending: true })
+      .limit(3),
+    supabase
+      .from("club_members")
+      .select("club_id, clubs(id, name, club_plans(*, books(*)))")
+      .eq("user_id", user.id),
+    profile.role !== "reader"
+      ? supabase
+          .from("clubs")
+          .select("id, name, club_members(count)")
+          .eq("facilitator_id", user.id)
+          .eq("is_active", true)
+      : Promise.resolve({ data: null }),
+  ]);
+
+  // Алдағы талқылар (depends on memberships)
   const clubIds = memberships?.map((m) => m.club_id) || [];
   const { data: upcomingMeetings } = clubIds.length
     ? await supabase
