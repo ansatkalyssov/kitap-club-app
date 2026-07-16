@@ -18,7 +18,7 @@ function GoogleIcon() {
 }
 
 type Mode = "login" | "register";
-type Step = "auth" | "name";
+type Step = "auth" | "verify-email" | "name";
 
 function LoginForm() {
   const router = useRouter();
@@ -37,6 +37,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   // Google арқылы кіру
   async function handleGoogle() {
@@ -79,7 +80,11 @@ function LoginForm() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
     setLoading(false);
     if (error) {
       if (error.message.includes("already registered")) {
@@ -91,12 +96,40 @@ function LoginForm() {
       return;
     }
     if (data.user) {
-      // Email растауы өшірілген болса — сессия бірден ашылады
       if (data.session) {
+        // Email растауы өшірілген — сессия бірден ашылады
         setStep("name");
       } else {
-        toast.success("Поштаңызға растау хаты жіберілді");
+        // Email растауы қосылған — поштаны күтеміз
+        setStep("verify-email");
+        startResendCooldown();
       }
+    }
+  }
+
+  function startResendCooldown() {
+    setResendCooldown(60);
+    const timer = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) { clearInterval(timer); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  }
+
+  async function handleResendEmail() {
+    setLoading(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Хат қайта жіберілді");
+      startResendCooldown();
     }
   }
 
@@ -157,7 +190,7 @@ function LoginForm() {
           </div>
           <h1 className="text-2xl font-bold text-primary-900">Кітап Клубы</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {step === "name" ? "Атыңызды енгізіңіз" : mode === "login" ? "Қош келдіңіз" : "Жаңа аккаунт"}
+            {step === "name" ? "Атыңызды енгізіңіз" : step === "verify-email" ? "Дайын болды!" : mode === "login" ? "Қош келдіңіз" : "Жаңа аккаунт"}
           </p>
         </div>
 
@@ -278,6 +311,60 @@ function LoginForm() {
                   </div>
                 )}
               </form>
+            </div>
+          )}
+
+          {/* Verify email step */}
+          {step === "verify-email" && (
+            <div className="space-y-5 text-center">
+              <div className="flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50">
+                  <Mail size={32} className="text-primary-600" />
+                </div>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Поштаңызды тексеріңіз</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Растау хаты жіберілді:
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-primary-700">{email}</p>
+              </div>
+              <div className="rounded-xl bg-primary-50 p-4 text-left space-y-2">
+                <p className="text-xs font-semibold text-primary-800">Не жасау керек:</p>
+                <div className="flex items-start gap-2 text-xs text-gray-600">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary-200 text-[10px] font-bold text-primary-800">1</span>
+                  <span>Поштаңызды ашыңыз (Spam/Жарнама қалтасын да тексеріңіз)</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-gray-600">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary-200 text-[10px] font-bold text-primary-800">2</span>
+                  <span>«Электрондық поштаны растау» сілтемесін басыңыз</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-gray-600">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary-200 text-[10px] font-bold text-primary-800">3</span>
+                  <span>Атыңызды енгізіп, қолданбаны пайдалана бастаңыз</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <button
+                  onClick={handleResendEmail}
+                  disabled={loading || resendCooldown > 0}
+                  className="w-full rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {loading
+                    ? <RefreshCw size={14} className="inline animate-spin mr-1" />
+                    : null}
+                  {resendCooldown > 0
+                    ? `Қайта жіберу (${resendCooldown}с)`
+                    : "Хат келмеді ме? Қайта жіберу"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStep("auth"); setMode("register"); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition"
+                >
+                  ← Басқа email-мен тіркелу
+                </button>
+              </div>
             </div>
           )}
 
