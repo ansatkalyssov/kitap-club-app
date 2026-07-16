@@ -6,7 +6,9 @@
       "PowerShell(Get-Command npm -ErrorAction SilentlyContinue)",
       "PowerShell($env:PATH -split \";\")",
       "WebSearch",
-      "Bash(npx expo *)"
+      "Bash(npx expo *)",
+      "PowerShell(npx tsc --noEmit 2>&1)",
+      "PowerShell(git add -A)"
     ]
   }
 }
