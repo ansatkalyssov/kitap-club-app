@@ -13,11 +13,11 @@ interface NavbarProps {
 }
 
 const navItems = [
-  { href: "/dashboard", label: "Басты бет", icon: LayoutDashboard },
-  { href: "/clubs", label: "Клубтар", icon: Users },
-  { href: "/tracker", label: "Трекер", icon: BookMarked },
-  { href: "/reading-plan", label: "Күнделікті оқу", icon: Target },
-  { href: "/analysis", label: "Пікір алмасу", icon: BarChart3 },
+  { href: "/dashboard", label: "Басты бет", mobileLabel: "Басты", icon: LayoutDashboard },
+  { href: "/clubs", label: "Клубтар", mobileLabel: "Клубтар", icon: Users },
+  { href: "/tracker", label: "Трекер", mobileLabel: "Трекер", icon: BookMarked },
+  { href: "/reading-plan", label: "Күнделікті оқу", mobileLabel: "Оқу", icon: Target },
+  { href: "/analysis", label: "Пікір алмасу", mobileLabel: "Пікір", icon: BarChart3 },
 ];
 
 export default function Navbar({ profile }: NavbarProps) {
@@ -124,35 +124,38 @@ export default function Navbar({ profile }: NavbarProps) {
       </header>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-gray-100 bg-white lg:hidden">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
-          return (
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex flex-col border-t border-gray-100 bg-white lg:hidden">
+        <div className="flex">
+          {navItems.map(({ href, mobileLabel, icon: Icon }) => {
+            const active = pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium transition",
+                  active ? "text-primary-600" : "text-gray-500"
+                )}
+              >
+                <Icon size={20} />
+                <span className="text-[10px]">{mobileLabel}</span>
+              </Link>
+            );
+          })}
+          {profile.role === "admin" && (
             <Link
-              key={href}
-              href={href}
+              href="/admin"
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium transition",
-                active ? "text-primary-600" : "text-gray-500"
+                pathname.startsWith("/admin") ? "text-primary-600" : "text-gray-500"
               )}
             >
-              <Icon size={20} />
-              <span className="text-[10px]">{label}</span>
+              <Shield size={20} />
+              <span className="text-[10px]">Админ</span>
             </Link>
-          );
-        })}
-        {profile.role === "admin" && (
-          <Link
-            href="/admin"
-            className={cn(
-              "flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium transition",
-              pathname.startsWith("/admin") ? "text-primary-600" : "text-gray-500"
-            )}
-          >
-            <Shield size={20} />
-            <span className="text-[10px]">Админ</span>
-          </Link>
-        )}
+          )}
+        </div>
+        <div className="safe-bottom" />
       </nav>
     </>
   );

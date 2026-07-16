@@ -1,11 +1,22 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Кітап Клубы",
   description: "Кітап оқудың дағдысын қалыптастырыңыз",
-  icons: { icon: "/favicon.svg" },
+  icons: { icon: "/favicon.svg", apple: "/favicon.svg" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Кітап Клубы",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

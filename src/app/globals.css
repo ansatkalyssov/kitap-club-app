@@ -66,6 +66,9 @@
   }
 }
 
+/* iOS safe area */
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
