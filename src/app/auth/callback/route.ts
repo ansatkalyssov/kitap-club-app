@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type");
+  const next = searchParams.get("next");
 
   const cookieStore = await cookies();
 
@@ -38,6 +39,11 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     return NextResponse.redirect(`${origin}/login`);
+  }
+
+  // Пароль ауыстыру flow — reset-password бетіне жібереміз
+  if (type === "recovery" || next === "/auth/reset-password") {
+    return NextResponse.redirect(`${origin}/auth/reset-password`);
   }
 
   // Профильді тексеру

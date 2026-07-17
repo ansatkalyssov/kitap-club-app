@@ -139,10 +139,9 @@ function LoginForm() {
       toast.error("Алдымен email-іңізді енгізіңіз");
       return;
     }
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl}/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
     });
     setLoading(false);
     if (error) {
