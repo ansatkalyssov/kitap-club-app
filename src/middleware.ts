@@ -1,8 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isValidAdminCookie } from "@/lib/adminAuth";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Admin маршруттары — cookie арқылы тексеріледі, Supabase талап етілмейді
+  if (pathname.startsWith("/admin")) {
+    if (pathname === "/admin-login") {
+      return NextResponse.next({ request });
+    }
+    const adminCookie = request.cookies.get("admin_session")?.value;
+    if (!isValidAdminCookie(adminCookie)) {
+      return NextResponse.redirect(new URL("/admin-login", request.url));
+    }
+    return NextResponse.next({ request });
+  }
 
   // Auth callback & public routes — middleware-ді өткізіп жіберу
   if (
@@ -13,6 +26,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  // Басқа маршруттар — Supabase auth тексеру
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -38,22 +52,8 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Кірмеген пайдаланушыны login-ге жіберу
   if (!user) {
     return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // Admin-only route
-  if (pathname.startsWith("/admin")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
   }
 
   return supabaseResponse;
