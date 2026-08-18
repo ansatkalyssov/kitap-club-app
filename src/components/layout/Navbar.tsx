@@ -41,7 +41,7 @@ export default function Navbar({ profile }: NavbarProps) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
             <BookOpen size={16} className="text-white" />
           </div>
-          <span className="font-bold text-primary-900 text-sm">Кітап Клубы</span>
+          <span className="font-bold text-primary-900 text-sm">Oqyrman</span>
         </div>
 
         {/* Nav links */}
@@ -112,7 +112,7 @@ export default function Navbar({ profile }: NavbarProps) {
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-600">
             <BookOpen size={14} className="text-white" />
           </div>
-          <span className="font-bold text-primary-900 text-sm">Кітап Клубы</span>
+          <span className="font-bold text-primary-900 text-sm">Oqyrman</span>
         </div>
         <button
           onClick={handleLogout}

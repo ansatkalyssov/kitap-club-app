@@ -194,7 +194,7 @@ function LoginForm() {
               <BookOpen size={28} className="text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-primary-900">Кітап Клубы</h1>
+          <h1 className="text-2xl font-bold text-primary-900">Oqyrman</h1>
           <p className="mt-1 text-sm text-gray-500">
             {step === "name" ? "Атыңызды енгізіңіз" : step === "verify-email" ? "Дайын болды!" : mode === "login" ? "Қош келдіңіз" : "Жаңа аккаунт"}
           </p>

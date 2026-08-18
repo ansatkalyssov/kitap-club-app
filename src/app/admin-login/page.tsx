@@ -43,7 +43,7 @@ export default async function AdminLoginPage({
               <BookOpen size={28} className="text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white">Кітап Клубы</h1>
+          <h1 className="text-2xl font-bold text-white">Oqyrman</h1>
           <p className="mt-1 text-sm text-gray-400">Админ панелі</p>
         </div>
 

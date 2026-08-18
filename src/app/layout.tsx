@@ -3,13 +3,13 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Кітап Клубы",
+  title: "Oqyrman",
   description: "Кітап оқудың дағдысын қалыптастырыңыз",
   icons: { icon: "/favicon.svg", apple: "/favicon.svg" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Кітап Клубы",
+    title: "Oqyrman",
   },
 };
 

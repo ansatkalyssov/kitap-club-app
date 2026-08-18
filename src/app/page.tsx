@@ -45,7 +45,7 @@ export default async function LandingPage({
             </div>
           </div>
           <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl">
-            Кітап Клубы
+            Oqyrman
           </h1>
           <p className="mt-4 text-lg text-primary-100">
             Кітап оқудың дағдысын қалыптастырыңыз.
@@ -93,7 +93,7 @@ export default async function LandingPage({
       </section>
 
       <footer className="border-t border-gray-100 py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Кітап Клубы
+        © {new Date().getFullYear()} Oqyrman
       </footer>
     </main>
   );

@@ -72,7 +72,7 @@ export default function CreateClubForm({ userId, cities }: Props) {
         <input
           value={form.name}
           onChange={(e) => set("name", e.target.value)}
-          placeholder="Мысалы: Алматы Кітап Клубы"
+          placeholder="Мысалы: Алматы Oqyrman"
           className="input"
           required
           maxLength={100}

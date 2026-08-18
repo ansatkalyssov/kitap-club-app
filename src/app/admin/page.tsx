@@ -64,7 +64,7 @@ export default async function AdminPage() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
             <BookOpen size={16} className="text-white" />
           </div>
-          <span className="font-bold text-primary-900 text-sm">Кітап Клубы</span>
+          <span className="font-bold text-primary-900 text-sm">Oqyrman</span>
           <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-semibold text-primary-700">Админ</span>
         </div>
         <form action={logoutAction}>
