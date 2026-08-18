@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Link from "next/link";
-import { Users, BookMarked, BarChart3, Plus, TrendingUp, Calendar } from "lucide-react";
+import { Users, BookMarked, Plus, TrendingUp, Calendar } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz } from "@/lib/utils";
 import { BookTracker, ClubPlan } from "@/lib/types";

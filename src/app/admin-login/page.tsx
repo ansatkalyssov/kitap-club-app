@@ -3,13 +3,14 @@ import { redirect } from "next/navigation";
 import { getAdminToken } from "@/lib/adminAuth";
 import { BookOpen, Lock, User } from "lucide-react";
 
-async function loginAction(_prev: unknown, formData: FormData) {
+async function loginAction(formData: FormData) {
   "use server";
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
 
-  const expectedU = process.env.ADMIN_USERNAME || "ansat";
-  const expectedP = process.env.ADMIN_PASSWORD || "admin123";
+  const expectedU = process.env.ADMIN_USERNAME;
+  const expectedP = process.env.ADMIN_PASSWORD;
+  if (!expectedU || !expectedP) redirect("/admin-login?error=1");
 
   if (username === expectedU && password === expectedP) {
     const cookieStore = await cookies();

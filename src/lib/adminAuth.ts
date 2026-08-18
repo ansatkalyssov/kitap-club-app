@@ -1,8 +1,12 @@
 export function getAdminToken(): string {
-  return process.env.ADMIN_SESSION_TOKEN || "change-this-in-env";
+  const token = process.env.ADMIN_SESSION_TOKEN;
+  if (!token) throw new Error("ADMIN_SESSION_TOKEN env var is not set");
+  return token;
 }
 
 export function isValidAdminCookie(value: string | undefined): boolean {
   if (!value) return false;
-  return value === getAdminToken();
+  const token = process.env.ADMIN_SESSION_TOKEN;
+  if (!token) return false;
+  return value === token;
 }
