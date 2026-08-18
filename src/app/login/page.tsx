@@ -57,14 +57,21 @@ function LoginForm() {
     e.preventDefault();
     if (!email || !password) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       if (error.message.includes("Invalid login credentials")) {
         toast.error("Email немесе пароль қате");
+      } else if (error.message.toLowerCase().includes("email not confirmed")) {
+        setStep("verify-email");
       } else {
         toast.error(error.message);
       }
+      return;
+    }
+    if (!data.user?.email_confirmed_at) {
+      await supabase.auth.signOut();
+      setStep("verify-email");
       return;
     }
     router.push("/dashboard");
