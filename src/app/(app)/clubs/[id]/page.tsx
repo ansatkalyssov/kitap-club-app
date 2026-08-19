@@ -41,9 +41,15 @@ export default async function ClubDetailPage({
   const isMember = !!membership;
 
   const today = new Date().toISOString().split("T")[0];
-  const activePlans = (plans || []).filter((p) => !p.end_date || p.end_date >= today);
-  const pastPlans = (plans || []).filter((p) => p.end_date && p.end_date < today);
-  const nearestPlan = activePlans.filter((p) => p.end_date).sort((a, b) => a.end_date.localeCompare(b.end_date))[0] || activePlans[0] || null;
+  const planSortKey = (p: any) =>
+    p.meeting_date || p.end_date || `${p.year}-${String(p.month).padStart(2, "0")}-99`;
+  const activePlans = (plans || [])
+    .filter((p) => !p.meeting_date || p.meeting_date >= today)
+    .sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
+  const pastPlans = (plans || [])
+    .filter((p) => p.meeting_date && p.meeting_date < today)
+    .sort((a, b) => planSortKey(b).localeCompare(planSortKey(a)));
+  const nearestPlan = activePlans[0] ?? null;
 
   // If facilitator: get members with their progress (adminDb — RLS айналып өтеді)
   let membersWithProgress: any[] = [];
@@ -55,12 +61,6 @@ export default async function ClubDetailPage({
       .eq("club_id", id);
 
     if (members) {
-      const todayStr = new Date().toISOString().split("T")[0];
-
-      // Дедлайн бойынша ең жақын белсенді жоспар
-      const nearestPlan = (plans || [])
-        .filter((p) => p.end_date && p.end_date >= todayStr)
-        .sort((a, b) => a.end_date.localeCompare(b.end_date))[0];
 
       membersWithProgress = await Promise.all(
         members.map(async (m) => {
