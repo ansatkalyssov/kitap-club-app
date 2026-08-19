@@ -33,6 +33,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="kk" className={nunito.variable}>
+      <head>
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon.png" />
+      </head>
       <body>
         {children}
         <Toaster
