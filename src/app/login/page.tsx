@@ -3,7 +3,8 @@
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { BookOpen, Mail, Lock, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, RefreshCw } from "lucide-react";
+import Image from "next/image";
 import toast from "react-hot-toast";
 
 function GoogleIcon() {
@@ -190,8 +191,8 @@ function LoginForm() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <div className="mb-3 flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600 shadow-lg shadow-primary-200">
-              <BookOpen size={28} className="text-white" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-primary-200">
+              <Image src="/favicon.svg" alt="Oqyrman" width={56} height={56} />
             </div>
           </div>
           <h1 className="text-2xl font-bold text-primary-900">Oqyrman</h1>
