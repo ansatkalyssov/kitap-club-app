@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Link from "next/link";
 import { Users, BookMarked, Plus, TrendingUp, Calendar } from "lucide-react";
+import PushSubscribe from "@/components/PushSubscribe";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz } from "@/lib/utils";
 import { BookTracker, ClubPlan } from "@/lib/types";
@@ -55,13 +56,16 @@ export default async function DashboardPage() {
   return (
       <div className="page-container">
         {/* Greeting */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-primary-900">
-            Сәлем, {profile.name || "Оқырман"} 👋
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {new Date().toLocaleDateString("kk-KZ", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-primary-900">
+              Сәлем, {profile.name || "Оқырман"} 👋
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              {new Date().toLocaleDateString("kk-KZ", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </p>
+          </div>
+          <PushSubscribe />
         </div>
 
         {/* Quick stats */}
