@@ -111,7 +111,7 @@ export default function CreateClubForm({ userId, cities }: Props) {
               alt="Эмблема"
               width={96}
               height={96}
-              className="h-24 w-24 rounded-2xl object-cover border-2 border-primary-100 shadow-sm ring-2 ring-white"
+              className="h-24 w-24 rounded-2xl object-cover border-2 border-gray-200 shadow-md"
             />
             <button
               type="button"
