@@ -29,7 +29,7 @@ export default async function ClubDetailPage({
     { count: userClubCount },
   ] = await Promise.all([
     supabase.from("clubs").select("*, cities(name), profiles(name, email)").eq("id", id).single(),
-    supabase.from("club_plans").select("*, books(*)").eq("club_id", id).order("year", { ascending: true }).order("month", { ascending: true }),
+    supabase.from("club_plans").select("*, books(*)").eq("club_id", id).order("meeting_date", { ascending: true, nullsFirst: false }).order("year", { ascending: true }).order("month", { ascending: true }),
     supabase.from("club_members").select("id").eq("club_id", id).eq("user_id", user.id).single(),
     supabase.from("club_members").select("id", { count: "exact" }).eq("club_id", id),
     supabase.from("club_members").select("id", { count: "exact" }).eq("user_id", user.id),
@@ -41,14 +41,8 @@ export default async function ClubDetailPage({
   const isMember = !!membership;
 
   const today = new Date().toISOString().split("T")[0];
-  const planSortKey = (p: any) =>
-    p.meeting_date || p.end_date || `${p.year}-${String(p.month).padStart(2, "0")}-99`;
-  const activePlans = (plans || [])
-    .filter((p) => !p.meeting_date || p.meeting_date >= today)
-    .sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
-  const pastPlans = (plans || [])
-    .filter((p) => p.meeting_date && p.meeting_date < today)
-    .sort((a, b) => planSortKey(b).localeCompare(planSortKey(a)));
+  const activePlans = (plans || []).filter((p) => !p.meeting_date || p.meeting_date >= today);
+  const pastPlans = (plans || []).filter((p) => p.meeting_date && p.meeting_date < today).reverse();
   const nearestPlan = activePlans[0] ?? null;
 
   // If facilitator: get members with their progress (adminDb — RLS айналып өтеді)
