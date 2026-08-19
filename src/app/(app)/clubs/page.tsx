@@ -117,7 +117,7 @@ export default async function ClubsPage({
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700 font-bold text-lg">
                       {club.emblem_url ? (
-                        <img src={club.emblem_url} alt={club.name} className="h-12 w-12 rounded-xl object-cover border-2 border-gray-200 shadow-md" />
+                        <img src={club.emblem_url} alt={club.name} className="h-12 w-12 rounded-xl object-cover border border-gray-800" />
                       ) : (
                         club.name.charAt(0)
                       )}
