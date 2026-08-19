@@ -1,6 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#16a34a"/>
-  <path d="M8 8h10a6 6 0 0 1 0 12H8V8z" fill="white"/>
-  <path d="M8 22h12" stroke="white" stroke-width="2" stroke-linecap="round"/>
-  <path d="M8 20v4" stroke="white" stroke-width="2" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="url(#grad)"/>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#16a34a"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+  </defs>
+  <!-- Open book -->
+  <path d="M256 160 C220 145 170 140 128 148 L128 360 C170 352 220 357 256 372 C292 357 342 352 384 360 L384 148 C342 140 292 145 256 160Z" fill="white" fill-opacity="0.15"/>
+  <!-- Left page -->
+  <path d="M256 172 C224 158 178 154 140 161 L140 352 C178 345 224 349 256 363Z" fill="white"/>
+  <!-- Right page -->
+  <path d="M256 172 C288 158 334 154 372 161 L372 352 C334 345 288 349 256 363Z" fill="white" fill-opacity="0.85"/>
+  <!-- Spine -->
+  <rect x="250" y="160" width="12" height="210" rx="6" fill="white" fill-opacity="0.4"/>
+  <!-- Lines on left page -->
+  <line x1="162" y1="205" x2="238" y2="200" stroke="#16a34a" stroke-width="8" stroke-linecap="round" stroke-opacity="0.5"/>
+  <line x1="162" y1="228" x2="238" y2="224" stroke="#16a34a" stroke-width="8" stroke-linecap="round" stroke-opacity="0.5"/>
+  <line x1="162" y1="251" x2="238" y2="248" stroke="#16a34a" stroke-width="8" stroke-linecap="round" stroke-opacity="0.5"/>
+  <line x1="162" y1="274" x2="220" y2="271" stroke="#16a34a" stroke-width="8" stroke-linecap="round" stroke-opacity="0.5"/>
 </svg>

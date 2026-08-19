@@ -13,7 +13,11 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "Oqyrman",
   description: "Кітап оқудың дағдысын қалыптастырыңыз",
-  icons: { icon: "/favicon.svg", apple: "/favicon.svg" },
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/apple-icon.png",
+  },
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
