@@ -15,7 +15,6 @@ export const metadata: Metadata = {
   description: "Кітап оқудың дағдысын қалыптастырыңыз",
   icons: {
     icon: "/favicon.svg",
-    apple: "/apple-icon.png",
   },
   manifest: "/manifest.json",
   appleWebApp: {
