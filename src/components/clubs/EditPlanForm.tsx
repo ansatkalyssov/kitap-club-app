@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { MONTHS_KZ } from "@/lib/constants";
 import { RefreshCw, Trash2, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { updateBook } from "@/app/actions/books";
 
 interface Props {
   clubId: string;
@@ -90,17 +91,14 @@ export default function EditPlanForm({ clubId, plan }: Props) {
       coverUrl = null;
     }
 
-    const { error: bookError } = await supabase
-      .from("books")
-      .update({
+    try {
+      await updateBook(plan.book_id, {
         title: form.book_title.trim(),
         author: form.book_author.trim() || null,
         page_count: form.book_pages ? parseInt(form.book_pages) : null,
         cover_url: coverUrl,
-      })
-      .eq("id", plan.book_id);
-
-    if (bookError) {
+      });
+    } catch {
       toast.error("Кітап жаңартылмады");
       setLoading(false);
       return;

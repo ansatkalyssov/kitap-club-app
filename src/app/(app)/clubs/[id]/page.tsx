@@ -315,6 +315,9 @@ export default async function ClubDetailPage({
                       </p>
                       {pastPlans.map((plan: any) => (
                         <div key={plan.id} className="mb-2 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 opacity-60">
+                          {plan.books?.cover_url && (
+                            <img src={plan.books.cover_url} alt={plan.books.title} className="h-12 w-8 shrink-0 rounded-md object-cover border border-gray-200" />
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-700 text-sm line-clamp-1">
                               {plan.books?.title ?? "—"}
