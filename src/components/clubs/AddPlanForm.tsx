@@ -75,10 +75,13 @@ export default function AddPlanForm({ clubId }: Props) {
       const ext = coverFile.name.split(".").pop();
       const path = `${user?.id}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from("books").upload(path, coverFile);
-      if (!uploadError) {
-        const { data: { publicUrl } } = supabase.storage.from("books").getPublicUrl(path);
-        coverUrl = publicUrl;
+      if (uploadError) {
+        toast.error("Мұқаба жүктелмеді: " + uploadError.message);
+        setLoading(false);
+        return;
       }
+      const { data: { publicUrl } } = supabase.storage.from("books").getPublicUrl(path);
+      coverUrl = publicUrl;
     }
 
     // Create book first
