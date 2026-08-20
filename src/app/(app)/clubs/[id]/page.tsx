@@ -242,7 +242,14 @@ export default async function ClubDetailPage({
                 </summary>
 
                 <div className="mt-2 space-y-2">
-                  {activePlans.filter((p: any) => p.id !== nearestPlan?.id).map((plan: any) => (
+                  {[...activePlans]
+                  .filter((p: any) => p.id !== nearestPlan?.id)
+                  .sort((a: any, b: any) => {
+                    const ak = a.meeting_date ?? `${a.year}-${String(a.month).padStart(2,"0")}-99`;
+                    const bk = b.meeting_date ?? `${b.year}-${String(b.month).padStart(2,"0")}-99`;
+                    return ak.localeCompare(bk);
+                  })
+                  .map((plan: any) => (
                     <div key={plan.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
