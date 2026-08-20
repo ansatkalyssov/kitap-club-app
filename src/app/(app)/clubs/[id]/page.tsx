@@ -204,6 +204,10 @@ export default async function ClubDetailPage({
                     <span className="mt-0.5 text-[10px] font-semibold tracking-wide uppercase">{month}</span>
                     <span className={`text-[9px] mt-0.5 ${isClose ? "text-primary-200" : "text-primary-400"}`}>{weekday}</span>
                   </div>
+                  {/* Cover */}
+                  {nearestPlan.books?.cover_url && (
+                    <img src={nearestPlan.books.cover_url} alt={nearestPlan.books.title} className="h-16 w-11 shrink-0 rounded-lg object-cover border border-gray-200 shadow-sm" />
+                  )}
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Ең жақын талқы</p>
@@ -263,6 +267,9 @@ export default async function ClubDetailPage({
                   })
                   .map((plan: any) => (
                     <div key={plan.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
+                      {plan.books?.cover_url && (
+                        <img src={plan.books.cover_url} alt={plan.books.title} className="h-16 w-11 shrink-0 rounded-lg object-cover border border-gray-200 shadow-sm" />
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-semibold text-primary-600">

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MONTHS_KZ } from "@/lib/constants";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { createTrackersForMembers } from "@/app/actions/trackers";
 
@@ -16,9 +16,18 @@ export default function AddPlanForm({ clubId }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
+
+  function handleCoverFile(file: File) {
+    if (file.size > 3 * 1024 * 1024) { toast.error("Сурет 3MB-тан аспауы керек"); return; }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
 
   const [form, setForm] = useState({
     month: String(currentMonth),
@@ -59,6 +68,19 @@ export default function AddPlanForm({ clubId }: Props) {
       return;
     }
 
+    // Upload cover if selected
+    let coverUrl: string | null = null;
+    if (coverFile) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ext = coverFile.name.split(".").pop();
+      const path = `${user?.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("books").upload(path, coverFile);
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from("books").getPublicUrl(path);
+        coverUrl = publicUrl;
+      }
+    }
+
     // Create book first
     const { data: book, error: bookError } = await supabase
       .from("books")
@@ -66,6 +88,7 @@ export default function AddPlanForm({ clubId }: Props) {
         title: form.book_title.trim(),
         author: form.book_author.trim() || null,
         page_count: form.book_pages ? parseInt(form.book_pages) : null,
+        cover_url: coverUrl,
       })
       .select()
       .single();
@@ -192,6 +215,27 @@ export default function AddPlanForm({ clubId }: Props) {
             className="input"
           />
         </div>
+      </div>
+
+      {/* Cover image */}
+      <div>
+        <label className="mb-1.5 block text-sm font-medium text-gray-700">Обложка</label>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverFile(f); }} />
+        {coverPreview ? (
+          <div className="relative w-24">
+            <img src={coverPreview} alt="cover" className="h-36 w-24 rounded-xl object-cover border border-gray-200 shadow-sm" />
+            <button type="button" onClick={() => { setCoverFile(null); setCoverPreview(null); }}
+              className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white hover:bg-red-600">
+              <X size={10} />
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-xl border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 hover:border-primary-400 hover:text-primary-600 transition">
+            <ImagePlus size={16} /> Сурет қосу
+          </button>
+        )}
       </div>
 
       <hr className="border-gray-100" />

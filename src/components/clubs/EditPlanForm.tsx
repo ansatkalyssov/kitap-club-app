@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MONTHS_KZ } from "@/lib/constants";
-import { RefreshCw, Trash2 } from "lucide-react";
+import { RefreshCw, Trash2, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Props {
@@ -24,6 +24,7 @@ interface Props {
       title: string;
       author: string | null;
       page_count: number | null;
+      cover_url: string | null;
     } | null;
   };
 }
@@ -34,6 +35,15 @@ export default function EditPlanForm({ clubId, plan }: Props) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(plan.books?.cover_url ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleCoverFile(file: File) {
+    if (file.size > 3 * 1024 * 1024) { toast.error("Сурет 3MB-тан аспауы керек"); return; }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
@@ -63,12 +73,27 @@ export default function EditPlanForm({ clubId, plan }: Props) {
     }
     setLoading(true);
 
+    let coverUrl: string | null = plan.books?.cover_url ?? null;
+    if (coverFile) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ext = coverFile.name.split(".").pop();
+      const path = `${user?.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("books").upload(path, coverFile);
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from("books").getPublicUrl(path);
+        coverUrl = publicUrl;
+      }
+    } else if (!coverPreview) {
+      coverUrl = null;
+    }
+
     const { error: bookError } = await supabase
       .from("books")
       .update({
         title: form.book_title.trim(),
         author: form.book_author.trim() || null,
         page_count: form.book_pages ? parseInt(form.book_pages) : null,
+        cover_url: coverUrl,
       })
       .eq("id", plan.book_id);
 
@@ -182,6 +207,27 @@ export default function EditPlanForm({ clubId, plan }: Props) {
             className="input"
           />
         </div>
+      </div>
+
+      {/* Cover image */}
+      <div>
+        <label className="mb-1.5 block text-sm font-medium text-gray-700">Обложка</label>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverFile(f); }} />
+        {coverPreview ? (
+          <div className="relative w-24">
+            <img src={coverPreview} alt="cover" className="h-36 w-24 rounded-xl object-cover border border-gray-200 shadow-sm" />
+            <button type="button" onClick={() => { setCoverFile(null); setCoverPreview(null); }}
+              className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white hover:bg-red-600">
+              <X size={10} />
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-xl border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 hover:border-primary-400 hover:text-primary-600 transition">
+            <ImagePlus size={16} /> Сурет қосу
+          </button>
+        )}
       </div>
 
       <hr className="border-gray-100" />
