@@ -49,6 +49,7 @@ export default function ProfilePage() {
       toast.error("Сақталмады");
     } else {
       toast.success("Профиль жаңартылды!");
+      router.push("/dashboard");
       router.refresh();
     }
     setLoading(false);
