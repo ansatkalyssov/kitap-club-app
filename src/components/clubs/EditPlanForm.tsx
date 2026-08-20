@@ -211,7 +211,7 @@ export default function EditPlanForm({ clubId, plan }: Props) {
 
       {/* Cover image */}
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">Обложка</label>
+        <label className="mb-1.5 block text-sm font-medium text-gray-700">Мұқабасы</label>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverFile(f); }} />
         {coverPreview ? (
