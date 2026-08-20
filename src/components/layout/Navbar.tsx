@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, LayoutDashboard, Users, BookMarked, BarChart3, LogOut, Shield, Target } from "lucide-react";
+import { BookOpen, LayoutDashboard, Users, BookMarked, BarChart3, LogOut, Shield, Target, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -83,11 +83,11 @@ export default function Navbar({ profile }: NavbarProps) {
 
         {/* User info */}
         <div className="border-t border-gray-100 p-3">
-          <div className="mb-2 flex items-center gap-3 rounded-xl px-3 py-2">
+          <Link href="/profile" className="mb-2 flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-gray-50 transition">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold text-sm">
               {(profile.name || profile.email).charAt(0).toUpperCase()}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-gray-900">
                 {profile.name || "Пайдаланушы"}
               </p>
@@ -95,7 +95,8 @@ export default function Navbar({ profile }: NavbarProps) {
                 {profile.role === "admin" ? "Админ" : profile.role === "facilitator" ? "Жүргізуші" : "Оқырман"}
               </p>
             </div>
-          </div>
+            <Settings size={14} className="shrink-0 text-gray-400" />
+          </Link>
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gray-600 transition hover:bg-red-50 hover:text-red-600"
@@ -114,13 +115,18 @@ export default function Navbar({ profile }: NavbarProps) {
           </div>
           <span className="font-bold text-primary-900 text-sm">Oqyrman</span>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
-        >
-          <LogOut size={14} />
-          Шығу
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/profile" className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold text-sm">
+            {(profile.name || profile.email).charAt(0).toUpperCase()}
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+          >
+            <LogOut size={14} />
+            Шығу
+          </button>
+        </div>
       </header>
 
       {/* Mobile bottom nav */}
