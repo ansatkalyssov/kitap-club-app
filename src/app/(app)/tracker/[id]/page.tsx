@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, CheckCircle2, Calendar, BookOpen, Trash2 } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
 import LogProgressForm from "@/components/tracker/LogProgressForm";
@@ -20,7 +21,7 @@ export default async function TrackerDetailPage({
 
   const { data: tracker } = await supabase
     .from("book_trackers")
-    .select("*")
+    .select("*, club_plans(books(cover_url))")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -52,9 +53,19 @@ export default async function TrackerDetailPage({
         <div className="card mb-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100">
-                <BookOpen size={20} className="text-primary-600" />
-              </div>
+              {(tracker.club_plans as any)?.books?.cover_url ? (
+                <Image
+                  src={(tracker.club_plans as any).books.cover_url}
+                  alt={tracker.book_title}
+                  width={56}
+                  height={80}
+                  className="h-20 w-14 shrink-0 rounded-xl object-cover border border-gray-200 shadow-sm"
+                />
+              ) : (
+                <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+                  <BookOpen size={20} className="text-primary-600" />
+                </div>
+              )}
               <div>
                 <h1 className="text-lg font-bold text-gray-900">{tracker.book_title}</h1>
                 {tracker.book_author && (

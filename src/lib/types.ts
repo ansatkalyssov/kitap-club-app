@@ -76,6 +76,7 @@ export interface BookTracker {
   is_completed: boolean;
   created_at: string;
   reading_progress?: ReadingProgress[];
+  club_plans?: { books?: { cover_url?: string | null } | null } | null;
 }
 
 export interface ReadingProgress {

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Link from "next/link";
+import Image from "next/image";
 import { Users, BookMarked, Plus, TrendingUp, Calendar } from "lucide-react";
 import PushSubscribe from "@/components/PushSubscribe";
 import ProgressBar from "@/components/ui/ProgressBar";
@@ -22,7 +23,7 @@ export default async function DashboardPage() {
   const [{ data: trackers }, { data: memberships }, { data: managedClubs }] = await Promise.all([
     supabase
       .from("book_trackers")
-      .select("*")
+      .select("*, club_plans(books(cover_url))")
       .eq("user_id", user.id)
       .eq("is_completed", false)
       .gte("deadline", today)
@@ -134,20 +135,31 @@ export default async function DashboardPage() {
                           : "border-l-4 border-l-gray-200"
                       }`}
                     >
-                      <div className="mb-2 flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <p className="font-semibold text-gray-900 line-clamp-1">{t.book_title}</p>
+                      <div className="mb-2 flex items-start gap-3">
+                        {(t.club_plans as any)?.books?.cover_url ? (
+                          <Image
+                            src={(t.club_plans as any).books.cover_url}
+                            alt={t.book_title}
+                            width={36}
+                            height={52}
+                            className="h-[52px] w-9 shrink-0 rounded-md object-cover border border-gray-200 shadow-sm"
+                          />
+                        ) : null}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-900 line-clamp-1">{t.book_title}</p>
+                              {t.book_author && <p className="text-xs text-gray-500">{t.book_author}</p>}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className={`badge text-xs ${t.club_plan_id ? "badge-green" : "bg-gray-100 text-gray-500"}`}>
+                                {t.club_plan_id ? "Клуб" : "Жеке"}
+                              </span>
+                              <span className={`badge shrink-0 ${days <= 7 ? "badge-yellow" : "badge-green"}`}>
+                                {days === 0 ? "Бүгін" : `${days} күн`}
+                              </span>
+                            </div>
                           </div>
-                          {t.book_author && <p className="text-xs text-gray-500">{t.book_author}</p>}
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`badge text-xs ${t.club_plan_id ? "badge-green" : "bg-gray-100 text-gray-500"}`}>
-                            {t.club_plan_id ? "Клуб" : "Жеке"}
-                          </span>
-                          <span className={`badge shrink-0 ${days <= 7 ? "badge-yellow" : "badge-green"}`}>
-                            {days === 0 ? "Бүгін" : `${days} күн`}
-                          </span>
                         </div>
                       </div>
                       <ProgressBar value={progress} size="sm" />
