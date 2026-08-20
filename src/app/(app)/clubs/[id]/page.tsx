@@ -33,7 +33,7 @@ export default async function ClubDetailPage({
     supabase.from("clubs").select("*, cities(name), profiles(name, email)").eq("id", id).single(),
     supabase.from("club_plans").select("*, books(*)").eq("club_id", id).order("meeting_date", { ascending: true, nullsFirst: false }).order("year", { ascending: true }).order("month", { ascending: true }),
     supabase.from("club_members").select("id").eq("club_id", id).eq("user_id", user.id).single(),
-    supabase.from("club_members").select("id", { count: "exact" }).eq("club_id", id),
+    createAdminClient().from("club_members").select("id", { count: "exact" }).eq("club_id", id),
     supabase.from("club_members").select("id", { count: "exact" }).eq("user_id", user.id),
   ]);
 

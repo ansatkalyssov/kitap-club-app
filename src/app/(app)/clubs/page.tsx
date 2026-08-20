@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import Link from "next/link";
@@ -19,8 +20,10 @@ export default async function ClubsPage({
   const tab = sp.tab || "all";
   const q = sp.q || "";
 
-  // All clubs
-  let query = supabase
+  const admin = createAdminClient();
+
+  // All clubs — admin client for accurate member counts (bypasses RLS)
+  let query = admin
     .from("clubs")
     .select("*, cities(name), profiles(name), club_members(count)")
     .eq("is_active", true);
