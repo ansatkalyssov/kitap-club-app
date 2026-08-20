@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
 import { getUser } from "@/lib/queries";
+
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare } from "lucide-react";
 import { formatDateKz, formatMonthKz, calcProgress } from "@/lib/utils";
