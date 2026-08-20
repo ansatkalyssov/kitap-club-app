@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import EditPlanForm from "@/components/clubs/EditPlanForm";
@@ -14,10 +15,11 @@ export default async function EditPlanPage({
   const user = await getUser();
   if (!user) redirect("/login");
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   const [{ data: club }, { data: plan }] = await Promise.all([
     supabase.from("clubs").select("id, name, facilitator_id").eq("id", id).single(),
-    supabase.from("club_plans").select("*, books(*)").eq("id", planId).single(),
+    admin.from("club_plans").select("*, books(*)").eq("id", planId).single(),
   ]);
 
   if (!club || club.facilitator_id !== user.id) notFound();
