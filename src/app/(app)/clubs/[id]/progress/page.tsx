@@ -60,31 +60,28 @@ export default async function ClubProgressPage({
     .select("user_id, profiles(name, email)")
     .eq("club_id", id);
 
-  // Әр мүшенің прогресі
-  const membersProgress = await Promise.all(
-    (members || []).map(async (m: any) => {
-      if (!nearestPlan) return { ...m, progress: null, currentPage: 0, totalPages: 0 };
+  // Барлық мүшелердің прогресін бір сұраумен аламыз
+  let trackerMap: Record<string, any> = {};
+  if (nearestPlan && members && members.length > 0) {
+    const memberIds = (members as any[]).map((m) => m.user_id);
+    const { data: trackers } = await adminDb
+      .from("book_trackers")
+      .select("user_id, current_page, total_pages, is_completed")
+      .eq("club_plan_id", nearestPlan.id)
+      .in("user_id", memberIds);
+    trackerMap = Object.fromEntries((trackers || []).map((t) => [t.user_id, t]));
+  }
 
-      const { data: tracker } = await adminDb
-        .from("book_trackers")
-        .select("current_page, total_pages, is_completed")
-        .eq("user_id", m.user_id)
-        .eq("club_plan_id", nearestPlan.id)
-        .single();
-
-      const progress = tracker
-        ? calcProgress(tracker.current_page, tracker.total_pages)
-        : null;
-
-      return {
-        ...m,
-        progress,
-        currentPage: tracker?.current_page ?? 0,
-        totalPages: tracker?.total_pages ?? nearestPlan.books?.page_count ?? 0,
-        isCompleted: tracker?.is_completed ?? false,
-      };
-    })
-  );
+  const membersProgress = (members || []).map((m: any) => {
+    const tracker = trackerMap[m.user_id];
+    return {
+      ...m,
+      progress: tracker ? calcProgress(tracker.current_page, tracker.total_pages) : null,
+      currentPage: tracker?.current_page ?? 0,
+      totalPages: tracker?.total_pages ?? nearestPlan?.books?.page_count ?? 0,
+      isCompleted: tracker?.is_completed ?? false,
+    };
+  });
 
   // Прогресі барларды алдымен, жоқтарын соңға
   const sorted = [...membersProgress].sort((a, b) => {

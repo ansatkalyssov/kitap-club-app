@@ -8,7 +8,11 @@
       "WebSearch",
       "Bash(npx expo *)",
       "PowerShell(npx tsc --noEmit 2>&1)",
-      "PowerShell(git add -A)"
+      "PowerShell(git add -A)",
+      "PowerShell(git add src/lib/queries.ts)",
+      "PowerShell(git push)",
+      "PowerShell(git add src/app/login/page.tsx)",
+      "PowerShell(git commit --message \"Auth: email verification screen on register with resend button`n`nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\")"
     ]
   }
 }

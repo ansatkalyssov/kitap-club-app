@@ -5,6 +5,7 @@ import { getUser } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare } from "lucide-react";
 import { formatDateKz, formatMonthKz, calcProgress } from "@/lib/utils";
 import ProgressBar from "@/components/ui/ProgressBar";
@@ -23,6 +24,8 @@ export default async function ClubDetailPage({
   const supabase = await createClient();
 
   // Parallel: club + plans + membership + memberCount + userClubCount
+  const adminDb = createAdminClient();
+
   const [
     { data: club },
     { data: plans },
@@ -33,7 +36,7 @@ export default async function ClubDetailPage({
     supabase.from("clubs").select("*, cities(name), profiles(name, email)").eq("id", id).single(),
     supabase.from("club_plans").select("*, books(*)").eq("club_id", id).order("meeting_date", { ascending: true, nullsFirst: false }).order("year", { ascending: true }).order("month", { ascending: true }),
     supabase.from("club_members").select("id").eq("club_id", id).eq("user_id", user.id).single(),
-    createAdminClient().from("club_members").select("id", { count: "exact" }).eq("club_id", id),
+    adminDb.from("club_members").select("id", { count: "exact" }).eq("club_id", id),
     supabase.from("club_members").select("id", { count: "exact" }).eq("user_id", user.id),
   ]);
 
@@ -50,23 +53,27 @@ export default async function ClubDetailPage({
   // If facilitator: get members with their progress (adminDb — RLS айналып өтеді)
   let membersWithProgress: any[] = [];
   if (isFacilitator) {
-    const adminDb = createAdminClient();
     const { data: members } = await adminDb
       .from("club_members")
       .select("user_id, profiles(name, email)")
       .eq("club_id", id);
 
-    if (members) {
+    if (members && members.length > 0) {
+      const memberIds = members.map((m) => m.user_id);
+      let trackerMap: Record<string, any> = {};
 
-      membersWithProgress = await Promise.all(
-        members.map(async (m) => {
-          if (!nearestPlan) return { ...m, progress: null, currentPage: 0, totalPages: 0 };
-          const { data: tracker } = await adminDb
-            .from("book_trackers")
-            .select("current_page, total_pages, is_completed")
-            .eq("user_id", m.user_id)
-            .eq("club_plan_id", nearestPlan.id)
-            .single();
+      if (nearestPlan) {
+        const { data: trackers } = await adminDb
+          .from("book_trackers")
+          .select("user_id, current_page, total_pages, is_completed")
+          .eq("club_plan_id", nearestPlan.id)
+          .in("user_id", memberIds);
+        trackerMap = Object.fromEntries((trackers || []).map((t) => [t.user_id, t]));
+      }
+
+      membersWithProgress = members
+        .map((m) => {
+          const tracker = trackerMap[m.user_id];
           return {
             ...m,
             progress: tracker ? calcProgress(tracker.current_page, tracker.total_pages) : null,
@@ -74,9 +81,7 @@ export default async function ClubDetailPage({
             totalPages: tracker?.total_pages ?? 0,
           };
         })
-      );
-      // Үздіктерді жоғары шығару
-      membersWithProgress.sort((a, b) => (b.progress ?? -1) - (a.progress ?? -1));
+        .sort((a, b) => (b.progress ?? -1) - (a.progress ?? -1));
     }
   }
 
@@ -114,7 +119,7 @@ export default async function ClubDetailPage({
           <div className="flex items-start gap-4">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 text-2xl font-bold">
               {club.emblem_url ? (
-                <img src={club.emblem_url} alt={club.name} className="h-16 w-16 rounded-2xl object-cover border border-gray-800" />
+                <Image src={club.emblem_url} alt={club.name} width={64} height={64} className="h-16 w-16 rounded-2xl object-cover border border-gray-800" />
               ) : (
                 club.name.charAt(0)
               )}
@@ -206,7 +211,7 @@ export default async function ClubDetailPage({
                   </div>
                   {/* Cover */}
                   {nearestPlan.books?.cover_url && (
-                    <img src={nearestPlan.books.cover_url} alt={nearestPlan.books.title} className="h-16 w-11 shrink-0 rounded-lg object-cover border border-gray-200 shadow-sm" />
+                    <Image src={nearestPlan.books.cover_url} alt={nearestPlan.books.title} width={44} height={64} className="h-16 w-11 shrink-0 rounded-lg object-cover border border-gray-200 shadow-sm" />
                   )}
                   {/* Info */}
                   <div className="flex-1 min-w-0">
@@ -268,7 +273,7 @@ export default async function ClubDetailPage({
                   .map((plan: any) => (
                     <div key={plan.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
                       {plan.books?.cover_url && (
-                        <img src={plan.books.cover_url} alt={plan.books.title} className="h-16 w-11 shrink-0 rounded-lg object-cover border border-gray-200 shadow-sm" />
+                        <Image src={plan.books.cover_url} alt={plan.books.title} width={44} height={64} className="h-16 w-11 shrink-0 rounded-lg object-cover border border-gray-200 shadow-sm" />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
@@ -316,7 +321,7 @@ export default async function ClubDetailPage({
                       {pastPlans.map((plan: any) => (
                         <div key={plan.id} className="mb-2 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 opacity-60">
                           {plan.books?.cover_url && (
-                            <img src={plan.books.cover_url} alt={plan.books.title} className="h-12 w-8 shrink-0 rounded-md object-cover border border-gray-200" />
+                            <Image src={plan.books.cover_url} alt={plan.books.title} width={32} height={48} className="h-12 w-8 shrink-0 rounded-md object-cover border border-gray-200" />
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-700 text-sm line-clamp-1">

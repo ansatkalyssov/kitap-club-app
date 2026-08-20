@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import Link from "next/link";
+import Image from "next/image";
 import { Users, MapPin, Plus, Search } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import JoinClubButton from "@/components/clubs/JoinClubButton";
@@ -120,7 +121,7 @@ export default async function ClubsPage({
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700 font-bold text-lg">
                       {club.emblem_url ? (
-                        <img src={club.emblem_url} alt={club.name} className="h-12 w-12 rounded-xl object-cover border border-gray-800" />
+                        <Image src={club.emblem_url} alt={club.name} width={48} height={48} className="h-12 w-12 rounded-xl object-cover border border-gray-800" />
                       ) : (
                         club.name.charAt(0)
                       )}
