@@ -146,7 +146,7 @@ export default async function ClubsPage({
                       {memberCount} мүше
                     </span>
                     {isMember ? (
-                      <span className="badge-green">Мүшесіз</span>
+                      <span className="badge-green">Тіркелдіңіз</span>
                     ) : (
                       <JoinClubButton
                         clubId={club.id}
