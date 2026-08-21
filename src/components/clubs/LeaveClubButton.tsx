@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { leaveClub } from "@/app/actions/clubs";
 import toast from "react-hot-toast";
 import { UserMinus, RefreshCw } from "lucide-react";
 
@@ -15,6 +15,7 @@ export default function LeaveClubButton({ clubId, userId }: Props) {
   const [loading, setLoading] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
 
   async function handleLeave() {
     if (!confirm) {
@@ -23,14 +24,48 @@ export default function LeaveClubButton({ clubId, userId }: Props) {
       return;
     }
     setLoading(true);
-    try {
-      await leaveClub(clubId);
-      toast.success("Клубтан шықтыңыз");
-      router.push("/clubs");
-    } catch {
-      toast.error("Клубтан шығу сәтсіз болды");
-      setLoading(false);
+
+    // 1. Клубтың жоспарларын аламыз
+    const { data: plans } = await supabase
+      .from("club_plans")
+      .select("id")
+      .eq("club_id", clubId);
+
+    const planIds = (plans || []).map((p: any) => p.id);
+
+    // 2. Осы жоспарларға байланысты трекерлерді жоямыз
+    if (planIds.length > 0) {
+      const { error: trackerError } = await supabase
+        .from("book_trackers")
+        .delete()
+        .eq("user_id", userId)
+        .in("club_plan_id", planIds);
+
+      if (trackerError) {
+        console.error("tracker delete error:", trackerError);
+        toast.error("Трекерлер жойылмады: " + trackerError.message);
+        setLoading(false);
+        return;
+      }
     }
+
+    // 3. Клуб мүшелігін жоямыз
+    const { error } = await supabase
+      .from("club_members")
+      .delete()
+      .eq("club_id", clubId)
+      .eq("user_id", userId);
+
+    setLoading(false);
+
+    if (error) {
+      toast.error("Клубтан шығу сәтсіз болды");
+      return;
+    }
+
+    toast.success("Клубтан шықтыңыз");
+    router.push("/clubs");
+    router.refresh();
   }
 
   return (
