@@ -15,6 +15,9 @@ interface Props {
   goalMinutes: number;
 }
 
+// Таймер басталған уақытты localStorage-та сақтаймыз
+const TIMER_KEY = "reading_timer_start_ts";
+
 export default function ReadingTimer({ userId, date, todayMinutes, todayPages, goalMinutes }: Props) {
   const router = useRouter();
   const supabase = createClient();
@@ -25,24 +28,44 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
   const [clockTime, setClockTime] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<any>(null);
+  // startTs = Date.now() - elapsedSec*1000 кезіндегі мән (pause ескеріледі)
+  const startTsRef = useRef<number | null>(null);
 
+  // Уақытты startTs-тен есептеп жаңарту
+  function recalcElapsed() {
+    if (startTsRef.current !== null) {
+      setElapsedSec(Math.floor((Date.now() - startTsRef.current) / 1000));
+    }
+  }
+
+  // Interval
   useEffect(() => {
     if (running) {
-      intervalRef.current = setInterval(() => setElapsedSec((s) => s + 1), 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(recalcElapsed, 1000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [running]);
 
+  // Қолданбаға оралғанда уақытты қайта есептеу
+  useEffect(() => {
+    function onVisibility() {
+      if (document.visibilityState === "visible" && running) {
+        recalcElapsed();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [running]);
+
+  // Сағат
   useEffect(() => {
     function tick() {
       const now = new Date();
-      setClockTime(
-        now.toLocaleTimeString("kk-KZ", { hour: "2-digit", minute: "2-digit" })
-      );
+      setClockTime(now.toLocaleTimeString("kk-KZ", { hour: "2-digit", minute: "2-digit" }));
     }
     tick();
     const id = setInterval(tick, 15000);
@@ -50,7 +73,9 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
   }, []);
 
   const sessionMinutes = Math.floor(elapsedSec / 60);
-  const sessionDisplay = `${Math.floor(elapsedSec / 60).toString().padStart(2, "0")}:${(elapsedSec % 60).toString().padStart(2, "0")}`;
+  const mm = Math.floor(elapsedSec / 60).toString().padStart(2, "0");
+  const ss = (elapsedSec % 60).toString().padStart(2, "0");
+  const sessionDisplay = `${mm}:${ss}`;
   const totalMinutes = todayMinutes + sessionMinutes;
   const progress = goalMinutes > 0 ? Math.min(100, Math.round((totalMinutes / goalMinutes) * 100)) : 0;
   const goalReached = goalMinutes > 0 && totalMinutes >= goalMinutes;
@@ -68,24 +93,44 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
     wakeLockRef.current = null;
   }
 
-  async function enterFocusMode() {
+  function startTimer(currentElapsed: number) {
+    // Adjusted start time to account for already-elapsed seconds
+    startTsRef.current = Date.now() - currentElapsed * 1000;
+    localStorage.setItem(TIMER_KEY, String(startTsRef.current));
     setRunning(true);
+  }
+
+  function pauseTimer() {
+    startTsRef.current = null;
+    localStorage.removeItem(TIMER_KEY);
+    setRunning(false);
+  }
+
+  function clearTimer() {
+    startTsRef.current = null;
+    localStorage.removeItem(TIMER_KEY);
+    setRunning(false);
+    setElapsedSec(0);
+  }
+
+  async function enterFocusMode() {
+    startTimer(elapsedSec);
     setFocusMode(true);
     await acquireWakeLock();
   }
 
   function exitFocusMode() {
-    setRunning(false);
+    pauseTimer();
     setFocusMode(false);
     releaseWakeLock();
   }
 
   async function togglePause() {
     if (running) {
-      setRunning(false);
+      pauseTimer();
       releaseWakeLock();
     } else {
-      setRunning(true);
+      startTimer(elapsedSec);
       await acquireWakeLock();
     }
   }
@@ -109,8 +154,7 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
       return;
     }
     releaseWakeLock();
-    setRunning(false);
-    setElapsedSec(0);
+    clearTimer();
     setFocusMode(false);
     toast.success(`${sessionMinutes} минут сақталды!`);
     router.refresh();
