@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { leaveClub } from "@/app/actions/clubs";
 import toast from "react-hot-toast";
 import { UserMinus, RefreshCw } from "lucide-react";
 
@@ -15,7 +15,6 @@ export default function LeaveClubButton({ clubId, userId }: Props) {
   const [loading, setLoading] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   async function handleLeave() {
     if (!confirm) {
@@ -24,19 +23,14 @@ export default function LeaveClubButton({ clubId, userId }: Props) {
       return;
     }
     setLoading(true);
-    const { error } = await supabase
-      .from("club_members")
-      .delete()
-      .eq("club_id", clubId)
-      .eq("user_id", userId);
-    setLoading(false);
-    if (error) {
+    try {
+      await leaveClub(clubId);
+      toast.success("Клубтан шықтыңыз");
+      router.push("/clubs");
+    } catch {
       toast.error("Клубтан шығу сәтсіз болды");
-      return;
+      setLoading(false);
     }
-    toast.success("Клубтан шықтыңыз");
-    router.refresh();
-    router.push("/clubs");
   }
 
   return (
