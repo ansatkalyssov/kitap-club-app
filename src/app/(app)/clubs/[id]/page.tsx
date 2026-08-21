@@ -50,9 +50,9 @@ export default async function ClubDetailPage({
   const pastPlans = (plans || []).filter((p) => p.meeting_date && p.meeting_date < today).reverse();
   const nearestPlan = activePlans[0] ?? null;
 
-  // If facilitator: get members with their progress (adminDb — RLS айналып өтеді)
+  // Facilitator OR member: get members with their progress (adminDb — RLS айналып өтеді)
   let membersWithProgress: any[] = [];
-  if (isFacilitator) {
+  if (isFacilitator || isMember) {
     const { data: members } = await adminDb
       .from("club_members")
       .select("user_id, profiles(name, email, avatar_url)")
@@ -344,21 +344,22 @@ export default async function ClubDetailPage({
             )}
           </section>
 
-          {/* Members progress (facilitator) OR Analyses */}
+          {/* Members progress — visible to facilitator and member */}
           <section>
-            {isFacilitator ? (
-              <>
-                <div className="section-title">
-                  <h2>Оқырмандар үлгерімі</h2>
-                  <Link
-                    href={`/clubs/${id}/progress`}
-                    className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 font-medium"
-                  >
-                    <TrendingUp size={14} /> Толық көру
-                  </Link>
-                </div>
+            <div className="section-title">
+              <h2>Оқырмандар үлгерімі</h2>
+              {(isFacilitator || isMember) && (
+                <Link
+                  href={`/clubs/${id}/progress`}
+                  className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  <TrendingUp size={14} /> Толық көру
+                </Link>
+              )}
+            </div>
 
-                {/* Қай кітап бойынша */}
+            {(isFacilitator || isMember) ? (
+              <>
                 {nearestPlan && (
                   <div className="mb-3 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
                     <BookOpen size={13} className="shrink-0 text-primary-500" />
@@ -413,47 +414,23 @@ export default async function ClubDetailPage({
                 )}
               </>
             ) : (
-              <>
-                <div className="section-title">
-                  <h2>Пікір алмасу</h2>
-                </div>
-                {analyses && analyses.length > 0 ? (
-                  <div className="space-y-2">
-                    {analyses.map((a: any) => (
-                      <Link key={a.id} href={`/analysis/${a.id}`}
-                        className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-4 hover:border-primary-200 hover:shadow-sm transition"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 text-sm line-clamp-1">{a.title}</p>
-                          {a.club_plans?.books?.title && (
-                            <p className="text-xs text-gray-400 mt-0.5">{a.club_plans.books.title}</p>
-                          )}
-                        </div>
-                        <span className="shrink-0 flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-                          <MessageSquare size={11} />
-                          {replyCountMap[a.id] || 0}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="card text-center py-8 text-sm text-gray-500">
-                    Пікір жоқ. Жүргізуші ашқаннан кейін пікір қалдыра аласыз.
-                  </div>
-                )}
-              </>
+              <div className="card text-center py-8 text-sm text-gray-500">
+                Прогресті көру үшін клубқа қосылыңыз
+              </div>
             )}
           </section>
         </div>
 
-        {/* Threads section for facilitator view */}
-        {isFacilitator && (
+        {/* Threads section — visible to facilitator and member */}
+        {(isFacilitator || isMember) && (
           <div className="mt-5">
             <div className="section-title">
               <h2>Пікір алмасу</h2>
-              <Link href={`/analysis/new?club=${id}`} className="btn-primary py-1.5 px-3 text-xs">
-                <Plus size={14} /> Пікір ашу
-              </Link>
+              {isFacilitator && (
+                <Link href={`/analysis/new?club=${id}`} className="btn-primary py-1.5 px-3 text-xs">
+                  <Plus size={14} /> Пікір ашу
+                </Link>
+              )}
             </div>
             {analyses && analyses.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2">
