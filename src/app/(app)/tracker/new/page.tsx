@@ -10,6 +10,7 @@ export default async function NewTrackerPage({
   searchParams: Promise<{
     plan?: string;
     book?: string;
+    club?: string;
     title?: string;
     pages?: string;
     author?: string;
@@ -34,6 +35,7 @@ export default async function NewTrackerPage({
           prefill={{
             planId: sp.plan,
             bookId: sp.book,
+            clubId: sp.club,
             title: sp.title ? decodeURIComponent(sp.title) : undefined,
             pages: sp.pages,
             author: sp.author ? decodeURIComponent(sp.author) : undefined,

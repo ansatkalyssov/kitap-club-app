@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 interface Prefill {
   planId?: string;
   bookId?: string;
+  clubId?: string;
   title?: string;
   pages?: string;
   author?: string;
@@ -81,6 +82,7 @@ export default function CreateTrackerForm({ userId, prefill }: Props) {
 
     const { error } = await supabase.from("book_trackers").insert({
       user_id: userId,
+      club_id: prefill?.clubId || null,
       book_id: prefill?.bookId || null,
       club_plan_id: prefill?.planId || null,
       book_title: form.book_title.trim(),
