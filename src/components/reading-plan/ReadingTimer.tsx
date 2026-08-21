@@ -17,6 +17,7 @@ interface Props {
 
 // Таймер басталған уақытты localStorage-та сақтаймыз
 const TIMER_KEY = "reading_timer_start_ts";
+const DND_SKIP_KEY = "reading_dnd_skip";
 
 export default function ReadingTimer({ userId, date, todayMinutes, todayPages, goalMinutes }: Props) {
   const router = useRouter();
@@ -25,6 +26,8 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
   const [elapsedSec, setElapsedSec] = useState(0);
   const [saving, setSaving] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [dndPrompt, setDndPrompt] = useState(false);
+  const [dndDone, setDndDone] = useState(false);
   const [clockTime, setClockTime] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<any>(null);
@@ -117,6 +120,9 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
     startTimer(elapsedSec);
     setFocusMode(true);
     await acquireWakeLock();
+    if (!localStorage.getItem(DND_SKIP_KEY)) {
+      setDndPrompt(true);
+    }
   }
 
   function exitFocusMode() {
@@ -206,6 +212,33 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
             Аяқтау
           </button>
         </div>
+
+        {/* DND prompt */}
+        {dndPrompt && !dndDone && (
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-[calc(100%-2.5rem)] max-w-xs rounded-2xl border border-[#3a2e1e] bg-[#231a0f] p-4">
+            <p className="mb-1 text-sm font-semibold text-[#f0d8a0]">📵 Мазаламаңыз режимі</p>
+            <p className="mb-4 text-xs text-[#7a6245]">
+              Оқу кезінде хабарландырулар келмеуі үшін телефоныңызда «Мазаламаңыз» режимін қосыңыз.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { setDndDone(true); setDndPrompt(false); }}
+                className="rounded-xl bg-[#c9a96e] py-2 text-sm font-semibold text-[#18120c]"
+              >
+                Түсіндім, қосамын
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem(DND_SKIP_KEY, "1");
+                  setDndPrompt(false);
+                }}
+                className="text-xs text-[#7a6245]"
+              >
+                Енді сұрама
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
