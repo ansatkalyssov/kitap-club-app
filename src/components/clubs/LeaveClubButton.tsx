@@ -25,43 +25,16 @@ export default function LeaveClubButton({ clubId, userId }: Props) {
     }
     setLoading(true);
 
-    // 1. Пайдаланушының осы клубтағы трекерлерін табамыз
-    //    (club_plans join арқылы — пайдаланушы өз трекерлерін оқи алады)
-    const { data: trackers } = await supabase
-      .from("book_trackers")
-      .select("id, club_plans(club_id)")
-      .eq("user_id", userId)
-      .not("club_plan_id", "is", null);
-
-    const trackerIds = (trackers || [])
-      .filter((t: any) => t.club_plans?.club_id === clubId)
-      .map((t: any) => t.id);
-
-    // 2. Табылған трекерлерді жоямыз
-    if (trackerIds.length > 0) {
-      const { error: trackerError } = await supabase
-        .from("book_trackers")
-        .delete()
-        .in("id", trackerIds);
-
-      if (trackerError) {
-        toast.error("Трекерлер жойылмады: " + trackerError.message);
-        setLoading(false);
-        return;
-      }
-    }
-
-    // 3. Клуб мүшелігін жоямыз
-    const { error } = await supabase
-      .from("club_members")
-      .delete()
-      .eq("club_id", clubId)
-      .eq("user_id", userId);
+    // SQL функциясы RLS-ті айналып өтіп, трекерлер мен мүшелікті жояды
+    const { error } = await supabase.rpc("leave_club", {
+      p_club_id: clubId,
+      p_user_id: userId,
+    });
 
     setLoading(false);
 
     if (error) {
-      toast.error("Клубтан шығу сәтсіз болды");
+      toast.error("Клубтан шығу сәтсіз болды: " + error.message);
       return;
     }
 
