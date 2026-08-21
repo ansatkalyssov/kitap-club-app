@@ -113,9 +113,9 @@ export default async function TrackerPage() {
                           }`}
                         >
                           <div className="flex items-start gap-3">
-                            {(t.club_plans as any)?.books?.cover_url ? (
+                            {(t.cover_url || (t.club_plans as any)?.books?.cover_url) ? (
                               <Image
-                                src={(t.club_plans as any).books.cover_url}
+                                src={t.cover_url || (t.club_plans as any).books.cover_url}
                                 alt={t.book_title}
                                 width={44}
                                 height={64}

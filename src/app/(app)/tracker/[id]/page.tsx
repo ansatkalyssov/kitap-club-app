@@ -53,9 +53,9 @@ export default async function TrackerDetailPage({
         <div className="card mb-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              {(tracker.club_plans as any)?.books?.cover_url ? (
+              {(tracker.cover_url || (tracker.club_plans as any)?.books?.cover_url) ? (
                 <Image
-                  src={(tracker.club_plans as any).books.cover_url}
+                  src={tracker.cover_url || (tracker.club_plans as any).books.cover_url}
                   alt={tracker.book_title}
                   width={56}
                   height={80}
