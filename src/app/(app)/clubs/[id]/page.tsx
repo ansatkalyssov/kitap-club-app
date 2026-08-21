@@ -147,7 +147,7 @@ export default async function ClubDetailPage({
 
           {/* Join/Leave + Share */}
           <div className="mt-4 flex items-center justify-between gap-3">
-            {isFacilitator ? (
+            {(isFacilitator || isMember) ? (
               <ShareClubButton clubId={id} clubName={club.name} />
             ) : (
               <div />
