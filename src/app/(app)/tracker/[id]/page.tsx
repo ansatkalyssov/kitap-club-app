@@ -6,7 +6,6 @@ import Image from "next/image";
 import { ArrowLeft, CheckCircle2, Calendar, BookOpen, Trash2 } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
 import LogProgressForm from "@/components/tracker/LogProgressForm";
-import TrackerPlanPrompt from "@/components/tracker/TrackerPlanPrompt";
 import DeleteTrackerButton from "@/components/tracker/DeleteTrackerButton";
 import { calcProgress, calcDailyPages, daysUntil, formatDateKz } from "@/lib/utils";
 
@@ -113,17 +112,6 @@ export default async function TrackerDetailPage({
             Дедлайн: {formatDateKz(tracker.deadline)}
           </div>
         </div>
-
-        {/* Daily plan prompt — first visit only */}
-        {!tracker.is_completed && tracker.deadline && (
-          <TrackerPlanPrompt
-            trackerId={id}
-            userId={user.id}
-            currentPage={tracker.current_page}
-            totalPages={tracker.total_pages}
-            deadline={tracker.deadline}
-          />
-        )}
 
         {/* Log progress */}
         {!tracker.is_completed && (

@@ -4,7 +4,6 @@ import { getUser } from "@/lib/queries";
 import { Target, Flame } from "lucide-react";
 import GoalForm from "@/components/reading-plan/GoalForm";
 import ReadingTimer from "@/components/reading-plan/ReadingTimer";
-import LogPagesForm from "@/components/reading-plan/LogPagesForm";
 import { calcReadingStreak, formatDateKz } from "@/lib/utils";
 
 export default async function ReadingPlanPage() {
@@ -20,21 +19,12 @@ export default async function ReadingPlanPage() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  const [{ data: logs }, { data: activeTrackers }] = await Promise.all([
-    supabase
-      .from("reading_logs")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("date", { ascending: false })
-      .limit(30),
-    supabase
-      .from("book_trackers")
-      .select("id, book_title, current_page, total_pages")
-      .eq("user_id", user.id)
-      .eq("is_completed", false)
-      .gte("deadline", today)
-      .order("deadline", { ascending: true }),
-  ]);
+  const { data: logs } = await supabase
+    .from("reading_logs")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("date", { ascending: false })
+    .limit(30);
 
   const todayLog = (logs || []).find((l) => l.date === today) || null;
   const target = goal ? (goal.goal_type === "time" ? goal.daily_minutes : goal.daily_pages) || 0 : 0;
@@ -74,24 +64,13 @@ export default async function ReadingPlanPage() {
             </div>
 
             {/* Today's progress */}
-            {goal.goal_type === "time" ? (
-              <ReadingTimer
-                userId={user.id}
-                date={today}
-                todayMinutes={todayLog?.minutes_read || 0}
-                todayPages={todayLog?.pages_read || 0}
-                goalMinutes={goal.daily_minutes || 0}
-              />
-            ) : (
-              <LogPagesForm
-                userId={user.id}
-                date={today}
-                todayPages={todayLog?.pages_read || 0}
-                todayMinutes={todayLog?.minutes_read || 0}
-                goalPages={goal.daily_pages || 0}
-                trackers={activeTrackers || []}
-              />
-            )}
+            <ReadingTimer
+              userId={user.id}
+              date={today}
+              todayMinutes={todayLog?.minutes_read || 0}
+              todayPages={todayLog?.pages_read || 0}
+              goalMinutes={goal.daily_minutes || 0}
+            />
 
             {/* History */}
             {logs && logs.length > 0 && (
