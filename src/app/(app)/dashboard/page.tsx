@@ -230,24 +230,45 @@ export default async function DashboardPage() {
       ) : (
         /* ── ОҚЫРМАН: келесі талқы жоғарыда, трекерлер төменде ── */
         <div className="space-y-5">
-          {/* Келесі талқы */}
+          {/* Келесі талқы / Клубтар CTA */}
           <section>
-            <div className="section-title">
-              <h2>Келесі талқы</h2>
-              <Link href="/meetings" className="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                Толығырақ →
-              </Link>
-            </div>
-            {upcomingMeetings && upcomingMeetings.length > 0 ? (
-              <div className="space-y-3">
-                {(upcomingMeetings as any[]).map((plan) => (
-                  <MeetingCard key={plan.id} plan={plan} />
-                ))}
-              </div>
+            {clubIds.length === 0 ? (
+              <>
+                <div className="section-title">
+                  <h2>Клубтар</h2>
+                  <Link href="/clubs" className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                    Толығырақ →
+                  </Link>
+                </div>
+                <Link href="/clubs" className="card flex items-center gap-4 hover:border-primary-200 transition">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100">
+                    <Users size={20} className="text-primary-600" />
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Клубқа тіркеліп, кітап талдайтын орта табыңыз
+                  </p>
+                </Link>
+              </>
             ) : (
-              <div className="card text-center py-6 text-gray-500 text-sm">
-                Алдағы талқы жоспарланбаған
-              </div>
+              <>
+                <div className="section-title">
+                  <h2>Келесі талқы</h2>
+                  <Link href="/meetings" className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                    Толығырақ →
+                  </Link>
+                </div>
+                {upcomingMeetings && upcomingMeetings.length > 0 ? (
+                  <div className="space-y-3">
+                    {(upcomingMeetings as any[]).map((plan) => (
+                      <MeetingCard key={plan.id} plan={plan} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="card text-center py-6 text-gray-500 text-sm">
+                    Алдағы талқы жоспарланбаған
+                  </div>
+                )}
+              </>
             )}
           </section>
 
