@@ -26,6 +26,8 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
+  const next = searchParams.get("next") || "/dashboard";
+
   const [step, setStep] = useState<Step>(
     searchParams.get("step") === "name" ? "name" : "auth"
   );
@@ -45,7 +47,7 @@ function LoginForm() {
     setGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     });
     if (error) {
       toast.error("Google қатесі: " + error.message);
@@ -75,7 +77,7 @@ function LoginForm() {
       setStep("verify-email");
       return;
     }
-    router.push("/dashboard");
+    router.push(next);
     router.refresh();
   }
 
@@ -181,7 +183,7 @@ function LoginForm() {
       name: fullName,
     });
     setLoading(false);
-    router.push("/dashboard");
+    router.push(next);
     router.refresh();
   }
 

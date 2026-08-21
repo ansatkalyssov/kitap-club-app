@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+
   if (!profile?.name) {
     // Google-дан аты бар ма — автоматты сақтау
     const googleName = user.user_metadata?.full_name || user.user_metadata?.name;
@@ -62,11 +64,11 @@ export async function GET(request: NextRequest) {
         email: user.email!,
         name: googleName,
       });
-      return NextResponse.redirect(`${origin}/dashboard`);
+      return NextResponse.redirect(`${origin}${safeNext}`);
     }
-    // Аты жоқ — атын сұрайтын беттерге жіберу
-    return NextResponse.redirect(`${origin}/login?step=name`);
+    // Аты жоқ — атын сұрайтын беттерге жіберу, next сақтаймыз
+    return NextResponse.redirect(`${origin}/login?step=name&next=${encodeURIComponent(safeNext)}`);
   }
 
-  return NextResponse.redirect(`${origin}/dashboard`);
+  return NextResponse.redirect(`${origin}${safeNext}`);
 }
