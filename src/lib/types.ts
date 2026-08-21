@@ -65,6 +65,7 @@ export interface ClubPlan {
 export interface BookTracker {
   id: string;
   user_id: string;
+  club_id: string | null;
   book_id: string | null;
   club_plan_id: string | null;
   book_title: string;

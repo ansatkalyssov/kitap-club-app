@@ -68,6 +68,7 @@ export default function JoinClubButton({ clubId, userId, disabled, disabledReaso
           const deadline = plan.end_date || plan.meeting_date || null;
           return {
             user_id: userId,
+            club_id: clubId,
             book_id: plan.book_id || null,
             club_plan_id: plan.id,
             book_title: plan.books.title,
