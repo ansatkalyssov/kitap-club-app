@@ -25,24 +25,26 @@ export default function LeaveClubButton({ clubId, userId }: Props) {
     }
     setLoading(true);
 
-    // 1. Клубтың жоспарларын аламыз
-    const { data: plans } = await supabase
-      .from("club_plans")
-      .select("id")
-      .eq("club_id", clubId);
+    // 1. Пайдаланушының осы клубтағы трекерлерін табамыз
+    //    (club_plans join арқылы — пайдаланушы өз трекерлерін оқи алады)
+    const { data: trackers } = await supabase
+      .from("book_trackers")
+      .select("id, club_plans(club_id)")
+      .eq("user_id", userId)
+      .not("club_plan_id", "is", null);
 
-    const planIds = (plans || []).map((p: any) => p.id);
+    const trackerIds = (trackers || [])
+      .filter((t: any) => t.club_plans?.club_id === clubId)
+      .map((t: any) => t.id);
 
-    // 2. Осы жоспарларға байланысты трекерлерді жоямыз
-    if (planIds.length > 0) {
+    // 2. Табылған трекерлерді жоямыз
+    if (trackerIds.length > 0) {
       const { error: trackerError } = await supabase
         .from("book_trackers")
         .delete()
-        .eq("user_id", userId)
-        .in("club_plan_id", planIds);
+        .in("id", trackerIds);
 
       if (trackerError) {
-        console.error("tracker delete error:", trackerError);
         toast.error("Трекерлер жойылмады: " + trackerError.message);
         setLoading(false);
         return;
