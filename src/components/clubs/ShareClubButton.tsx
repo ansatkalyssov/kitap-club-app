@@ -13,7 +13,7 @@ export default function ShareClubButton({ clubId, clubName }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
-    const url = `${window.location.origin}/clubs/${clubId}`;
+    const url = `${window.location.origin}/c/${clubId}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success("Сілтеме көшірілді!");
