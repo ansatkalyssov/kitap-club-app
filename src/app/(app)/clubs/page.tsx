@@ -44,7 +44,7 @@ export default async function ClubsPage({
   const myClubs = allClubs?.filter((c) => myClubIds.has(c.id)) || [];
   const otherClubs = allClubs?.filter((c) => !myClubIds.has(c.id)) || [];
 
-  const displayClubs = tab === "my" ? myClubs : otherClubs;
+  const displayClubs = tab === "my" ? myClubs : (allClubs || []);
 
   const canJoinMore = myClubIds.size < 3;
 
@@ -65,7 +65,7 @@ export default async function ClubsPage({
         {/* Tabs */}
         <div className="mb-4 flex gap-1 rounded-xl bg-gray-100 p-1">
           {[
-            { key: "all", label: `Барлығы (${otherClubs.length})` },
+            { key: "all", label: `Барлығы (${allClubs?.length ?? 0})` },
             { key: "my", label: `Менің клубтарым (${myClubs.length})` },
           ].map(({ key, label }) => (
             <Link
