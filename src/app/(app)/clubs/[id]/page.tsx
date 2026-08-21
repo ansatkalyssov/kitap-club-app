@@ -55,7 +55,7 @@ export default async function ClubDetailPage({
   if (isFacilitator) {
     const { data: members } = await adminDb
       .from("club_members")
-      .select("user_id, profiles(name, email)")
+      .select("user_id, profiles(name, email, avatar_url)")
       .eq("club_id", id);
 
     if (members && members.length > 0) {
@@ -380,8 +380,12 @@ export default async function ClubDetailPage({
                     {membersWithProgress.map((m: any) => (
                       <div key={m.user_id} className="card">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-sm font-semibold">
-                            {(m.profiles?.name || m.profiles?.email || "?").charAt(0).toUpperCase()}
+                          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-sm font-semibold overflow-hidden">
+                            {m.profiles?.avatar_url ? (
+                              <Image src={m.profiles.avatar_url} alt={m.profiles.name || ""} fill className="object-cover" sizes="36px" />
+                            ) : (
+                              (m.profiles?.name || m.profiles?.email || "?").charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">

@@ -6,6 +6,7 @@ import { RefreshCw, Camera } from "lucide-react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { updateProfile } from "@/app/actions/profile";
 
 export default function ProfilePage() {
   const supabase = createClient();
@@ -75,17 +76,13 @@ export default function ProfilePage() {
       newAvatarUrl = publicUrl;
     }
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ name: name.trim(), avatar_url: newAvatarUrl })
-      .eq("id", userId);
-
-    if (error) {
-      toast.error("Сақталмады");
-    } else {
+    try {
+      await updateProfile({ name: name.trim(), avatar_url: newAvatarUrl });
       toast.success("Профиль жаңартылды!");
       router.push("/dashboard");
       router.refresh();
+    } catch {
+      toast.error("Сақталмады");
     }
     setLoading(false);
   }

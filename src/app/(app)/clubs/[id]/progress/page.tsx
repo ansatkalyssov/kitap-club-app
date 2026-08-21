@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Calendar, BookOpen, TrendingUp } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, formatDateKz } from "@/lib/utils";
@@ -57,7 +58,7 @@ export default async function ClubProgressPage({
   // Клуб мүшелері
   const { data: members } = await adminDb
     .from("club_members")
-    .select("user_id, profiles(name, email)")
+    .select("user_id, profiles(name, email, avatar_url)")
     .eq("club_id", id);
 
   // Барлық мүшелердің прогресін бір сұраумен аламыз
@@ -156,8 +157,10 @@ export default async function ClubProgressPage({
             return (
               <div key={m.user_id} className="card">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold">
-                    {initials}
+                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold overflow-hidden">
+                    {m.profiles?.avatar_url ? (
+                      <Image src={m.profiles.avatar_url} alt={m.profiles.name || ""} fill className="object-cover" sizes="40px" />
+                    ) : initials}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -196,8 +199,10 @@ export default async function ClubProgressPage({
                 return (
                   <div key={m.user_id} className="card opacity-50">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 font-semibold">
-                        {initials}
+                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 font-semibold overflow-hidden">
+                        {m.profiles?.avatar_url ? (
+                          <Image src={m.profiles.avatar_url} alt={m.profiles.name || ""} fill className="object-cover" sizes="40px" />
+                        ) : initials}
                       </div>
                       <p className="text-sm text-gray-500">
                         {m.profiles?.name || m.profiles?.email}
