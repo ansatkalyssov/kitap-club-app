@@ -19,7 +19,7 @@ export default function LogPagesForm({ userId, date, todayPages, todayMinutes, g
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
-  const [pages, setPages] = useState(todayPages > 0 ? todayPages.toString() : "");
+  const [pages, setPages] = useState("");
 
   const goalReached = goalPages > 0 && todayPages >= goalPages;
   const progress = goalPages > 0 ? Math.min(100, Math.round((todayPages / goalPages) * 100)) : 0;
@@ -32,10 +32,11 @@ export default function LogPagesForm({ userId, date, todayPages, todayMinutes, g
       return;
     }
     setLoading(true);
+    const newTotal = todayPages + value;
     const { error } = await supabase
       .from("reading_logs")
       .upsert(
-        { user_id: userId, date, pages_read: value, minutes_read: todayMinutes },
+        { user_id: userId, date, pages_read: newTotal, minutes_read: todayMinutes },
         { onConflict: "user_id,date" }
       );
     setLoading(false);
@@ -43,12 +44,13 @@ export default function LogPagesForm({ userId, date, todayPages, todayMinutes, g
       toast.error("Сақталмады");
       return;
     }
-    toast.success("Сақталды!");
+    toast.success(`+${value} бет сақталды!`);
+    setPages("");
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-4">
+    <div className="card space-y-4">
       <div className="flex items-center justify-between">
         <h3>Бүгін оқыдыңыз ба?</h3>
         {goalReached && <span className="badge-green">Мақсат орындалды ✓</span>}
@@ -57,25 +59,25 @@ export default function LogPagesForm({ userId, date, todayPages, todayMinutes, g
       <div>
         <ProgressBar value={progress} showLabel={false} />
         <p className="mt-1 text-sm text-gray-500">
-          Бүгін: {todayPages} / {goalPages} бет
+          Бүгін барлығы: <strong>{todayPages}</strong> / {goalPages} бет
         </p>
       </div>
 
-      <div className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           type="number"
           value={pages}
           onChange={(e) => setPages(e.target.value)}
-          placeholder={`Мысалы: ${goalPages}`}
+          placeholder="Қанша бет оқыдыңыз?"
           min={1}
           className="input"
           required
         />
         <button type="submit" disabled={loading} className="btn-primary shrink-0">
           {loading ? <RefreshCw size={16} className="animate-spin" /> : <BookOpen size={16} />}
-          Сақтау
+          Қосу
         </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
