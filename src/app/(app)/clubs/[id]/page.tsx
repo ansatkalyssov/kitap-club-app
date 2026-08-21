@@ -4,6 +4,40 @@ import { redirect, notFound } from "next/navigation";
 import { getUser } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const adminDb = createAdminClient();
+  const { data: club } = await adminDb
+    .from("clubs")
+    .select("name, description, emblem_url, cities(name)")
+    .eq("id", id)
+    .single();
+
+  if (!club) return {};
+
+  const title = club.name;
+  const description = club.description || `Кітап клубы — ${(club.cities as any)?.name ?? ""}`;
+  const image = club.emblem_url || null;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(image ? { images: [{ url: image, width: 400, height: 400 }] } : {}),
+      type: "website",
+    },
+    twitter: {
+      card: image ? "summary" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
+}
+
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare } from "lucide-react";
