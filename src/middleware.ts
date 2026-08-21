@@ -21,7 +21,8 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/auth") ||
     pathname === "/" ||
-    pathname === "/login"
+    pathname === "/login" ||
+    /^\/clubs\/[^/]+$/.test(pathname)
   ) {
     return NextResponse.next({ request });
   }

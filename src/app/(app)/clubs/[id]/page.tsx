@@ -54,12 +54,60 @@ export default async function ClubDetailPage({
 }) {
   const { id } = await params;
   const user = await getUser();
-  if (!user) redirect("/login");
   const supabase = await createClient();
-
-  // Parallel: club + plans + membership + memberCount + userClubCount
   const adminDb = createAdminClient();
 
+  // Тіркелмеген пайдаланушы — публичный view
+  if (!user) {
+    const [{ data: club }, { count: memberCount }, { data: plans }] = await Promise.all([
+      adminDb.from("clubs").select("*, cities(name), profiles(name)").eq("id", id).single(),
+      adminDb.from("club_members").select("id", { count: "exact" }).eq("club_id", id),
+      adminDb.from("club_plans").select("*, books(title, cover_url, author)").eq("club_id", id).order("meeting_date", { ascending: true, nullsFirst: false }).limit(3),
+    ]);
+    if (!club) notFound();
+    const today = new Date().toISOString().split("T")[0];
+    const nearestPlan = (plans || []).find((p) => !p.meeting_date || p.meeting_date >= today) ?? null;
+    return (
+      <div className="page-container max-w-lg">
+        <div className="card mb-5">
+          <div className="flex items-start gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 text-2xl font-bold">
+              {club.emblem_url ? (
+                <Image src={club.emblem_url} alt={club.name} width={64} height={64} className="h-16 w-16 rounded-2xl object-cover" />
+              ) : club.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-bold text-gray-900">{club.name}</h1>
+              <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-500">
+                {club.cities && <span className="flex items-center gap-1"><MapPin size={13} /> {(club.cities as any).name}</span>}
+                <span className="flex items-center gap-1"><Users size={13} /> {memberCount} мүше</span>
+              </div>
+              {club.description && <p className="mt-2 text-sm text-gray-600">{club.description}</p>}
+            </div>
+          </div>
+          {nearestPlan?.books && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl bg-primary-50 p-3">
+              {nearestPlan.books.cover_url && (
+                <Image src={nearestPlan.books.cover_url} alt={nearestPlan.books.title} width={36} height={52} className="h-13 w-9 rounded-lg object-cover border border-gray-200" />
+              )}
+              <div>
+                <p className="text-xs text-primary-600 font-medium">Қазіргі кітап</p>
+                <p className="text-sm font-semibold text-gray-900 line-clamp-1">{nearestPlan.books.title}</p>
+                {nearestPlan.books.author && <p className="text-xs text-gray-500">{nearestPlan.books.author}</p>}
+              </div>
+            </div>
+          )}
+          <div className="mt-4">
+            <Link href={`/login?next=/clubs/${id}`} className="btn-primary w-full justify-center">
+              Клубқа қосылу үшін кіріңіз
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Parallel: club + plans + membership + memberCount + userClubCount
   const [
     { data: club },
     { data: plans },
