@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, LayoutDashboard, Users, BookMarked, BarChart3, LogOut, Shield, Target, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -84,8 +85,12 @@ export default function Navbar({ profile }: NavbarProps) {
         {/* User info */}
         <div className="border-t border-gray-100 p-3">
           <Link href="/profile" className="mb-2 flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-gray-50 transition">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold text-sm">
-              {(profile.name || profile.email).charAt(0).toUpperCase()}
+            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold text-sm overflow-hidden">
+              {profile.avatar_url ? (
+                <Image src={profile.avatar_url} alt={profile.name || ""} fill className="object-cover" sizes="32px" />
+              ) : (
+                (profile.name || profile.email).charAt(0).toUpperCase()
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-gray-900">
@@ -116,8 +121,12 @@ export default function Navbar({ profile }: NavbarProps) {
           <span className="font-bold text-primary-900 text-sm">Oqyrman</span>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/profile" className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold text-sm">
-            {(profile.name || profile.email).charAt(0).toUpperCase()}
+          <Link href="/profile" className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold text-sm overflow-hidden">
+            {profile.avatar_url ? (
+              <Image src={profile.avatar_url} alt={profile.name || ""} fill className="object-cover" sizes="32px" />
+            ) : (
+              (profile.name || profile.email).charAt(0).toUpperCase()
+            )}
           </Link>
           <button
             onClick={handleLogout}
