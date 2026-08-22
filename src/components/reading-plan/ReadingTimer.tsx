@@ -147,6 +147,11 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
       toast.error("Кемінде 1 минут оқыңыз");
       return;
     }
+    // Бірден тоқтат
+    releaseWakeLock();
+    clearTimer();
+    setFocusMode(false);
+
     setSaving(true);
     const newMinutes = todayMinutes + sessionMinutes;
     const { error } = await supabase
@@ -160,9 +165,6 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
       toast.error("Сақталмады");
       return;
     }
-    releaseWakeLock();
-    clearTimer();
-    setFocusMode(false);
     toast.success(`${sessionMinutes} минут сақталды!`);
 
     // Fetch active trackers BEFORE refresh so state isn't disrupted
