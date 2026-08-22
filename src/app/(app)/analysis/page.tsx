@@ -76,7 +76,7 @@ export default async function AnalysisPage() {
     return bDate.localeCompare(aDate);
   });
 
-  const clubNames = [...new Set((sorted).map((t: any) => t.clubs?.name).filter(Boolean))];
+  const clubNames = Array.from(new Set((sorted).map((t: any) => t.clubs?.name).filter(Boolean)));
   const subtitle =
     clubNames.length === 1
       ? `${clubNames[0]} талқылау алаңы`
