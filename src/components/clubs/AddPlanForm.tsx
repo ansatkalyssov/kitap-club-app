@@ -125,13 +125,17 @@ export default function AddPlanForm({ clubId }: Props) {
       return;
     }
 
-    // Дедлайнды анықтау
-    const deadline = form.end_date || form.meeting_date || null;
+    // Дедлайнды анықтау (болмаса 6 ай кейін)
     const today = new Date().toISOString().split("T")[0];
-    const deadlineValid = deadline && deadline >= today;
+    const sixMonthsLater = (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() + 6);
+      return d.toISOString().split("T")[0];
+    })();
+    const deadline = form.end_date || form.meeting_date || sixMonthsLater;
 
-    // Дедлайн бітпесе — server action арқылы мүшелерге трекер жасау
-    if (deadlineValid && form.book_pages) {
+    // Бет саны болса — мүшелерге трекер жасау
+    if (form.book_pages) {
       try {
         const { count } = await createTrackersForMembers({
           clubId,
