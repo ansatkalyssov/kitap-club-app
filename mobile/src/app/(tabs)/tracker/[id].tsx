@@ -100,7 +100,7 @@ export default function TrackerDetailScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [2, 3],
       quality: 0.7,
@@ -289,21 +289,24 @@ export default function TrackerDetailScreen() {
 
             {/* Cover picker */}
             <Text style={styles.label}>Мұқабасы</Text>
-            <TouchableOpacity onPress={pickImage} style={styles.coverPicker}>
-              {editCoverUri ? (
-                <Image source={{ uri: editCoverUri }} style={styles.coverPickerImg} />
-              ) : coverUrl ? (
-                <Image source={{ uri: coverUrl }} style={styles.coverPickerImg} />
+            <View style={styles.coverRow}>
+              {(editCoverUri || coverUrl) ? (
+                <Image
+                  source={{ uri: editCoverUri || coverUrl! }}
+                  style={styles.coverPickerImg}
+                />
               ) : (
                 <View style={styles.coverPickerEmpty}>
-                  <Feather name="image" size={24} color={Colors.gray400} />
-                  <Text style={styles.coverPickerText}>Сурет қосу</Text>
+                  <Feather name="image" size={22} color={Colors.gray400} />
                 </View>
               )}
-              <View style={styles.coverPickerOverlay}>
-                <Feather name="camera" size={16} color={Colors.white} />
-              </View>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={pickImage} style={styles.coverChangeBtn}>
+                <Feather name="camera" size={14} color={Colors.primary600} />
+                <Text style={styles.coverChangeBtnText}>
+                  {editCoverUri || coverUrl ? "Суретті өзгерту" : "Сурет қосу"}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.label}>Кітап аты *</Text>
             <TextInput
@@ -468,36 +471,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.gray900,
   },
-  coverPicker: {
-    width: 72,
-    height: 100,
-    borderRadius: Radius.md,
-    overflow: "hidden",
-    position: "relative",
-  },
-  coverPickerImg: { width: 72, height: 100, resizeMode: "cover" },
+  coverRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
+  coverPickerImg: { width: 60, height: 84, borderRadius: Radius.md, resizeMode: "cover" },
   coverPickerEmpty: {
-    width: 72,
-    height: 100,
+    width: 60,
+    height: 84,
     borderWidth: 1,
     borderColor: Colors.gray200,
-    borderStyle: "dashed",
     borderRadius: Radius.md,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    backgroundColor: Colors.gray50,
   },
-  coverPickerText: { fontSize: 11, color: Colors.gray400 },
-  coverPickerOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 28,
-    backgroundColor: "rgba(0,0,0,0.45)",
+  coverChangeBtn: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: Colors.primary600,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
+  coverChangeBtnText: { fontSize: 13, fontWeight: "600", color: Colors.primary600 },
   modalBtns: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.md },
   modalBtn: { flex: 1, borderRadius: Radius.md, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
   modalBtnCancel: { borderWidth: 1, borderColor: Colors.gray200 },
