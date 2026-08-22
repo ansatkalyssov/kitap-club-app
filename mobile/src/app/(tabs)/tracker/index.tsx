@@ -67,13 +67,20 @@ export default function TrackerListScreen() {
     if (!groups[key]) groups[key] = { clubName, items: [] };
     groups[key].items.push(t);
   });
-  const sortedGroups = Object.entries(groups).sort(([aKey, aVal], [bKey, bVal]) => {
-    if (aKey === "__personal__") return 1;
-    if (bKey === "__personal__") return -1;
-    const aMin = aVal.items.map((t) => t.deadline).filter(Boolean).sort()[0] || "";
-    const bMin = bVal.items.map((t) => t.deadline).filter(Boolean).sort()[0] || "";
-    return aMin.localeCompare(bMin);
-  });
+  // Тәртіп: ең жақын клуб → жеке → қалған клубтар
+  const clubGroups = Object.entries(groups)
+    .filter(([key]) => key !== "__personal__")
+    .sort(([, a], [, b]) => {
+      const aMin = a.items.map((t) => t.deadline).filter(Boolean).sort()[0] || "";
+      const bMin = b.items.map((t) => t.deadline).filter(Boolean).sort()[0] || "";
+      return aMin.localeCompare(bMin);
+    });
+  const personalEntry = Object.entries(groups).find(([key]) => key === "__personal__");
+  const sortedGroups = [
+    ...clubGroups.slice(0, 1),
+    ...(personalEntry ? [personalEntry] : []),
+    ...clubGroups.slice(1),
+  ];
 
   return (
     <SafeAreaView style={styles.flex}>
