@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Switch, Alert, ActivityIndicator } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
-import { ReadingGoal, ReadingGoalType } from "@/lib/types";
+import { ReadingGoal } from "@/lib/types";
 import { Colors, Spacing, Radius } from "@/constants/theme";
 import { setDailyReminder, cancelDailyReminder } from "@/lib/notifications";
 
@@ -14,14 +13,12 @@ interface Props {
 
 export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
-  const [goalType, setGoalType] = useState<ReadingGoalType>(existingGoal?.goal_type || "time");
   const [minutes, setMinutes] = useState(existingGoal?.daily_minutes?.toString() || "30");
-  const [pages, setPages] = useState(existingGoal?.daily_pages?.toString() || "30");
   const [reminderEnabled, setReminderEnabled] = useState(existingGoal?.reminder_enabled ?? true);
   const [reminderTime, setReminderTime] = useState(existingGoal?.reminder_time?.slice(0, 5) || "20:00");
 
   async function handleSubmit() {
-    const value = goalType === "time" ? parseInt(minutes, 10) : parseInt(pages, 10);
+    const value = parseInt(minutes, 10);
     if (!value || value <= 0) {
       Alert.alert("Қате", "Мақсатты дұрыс енгізіңіз");
       return;
@@ -36,9 +33,7 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
     const { error } = await supabase.from("reading_goals").upsert(
       {
         user_id: userId,
-        goal_type: goalType,
-        daily_minutes: goalType === "time" ? value : existingGoal?.daily_minutes ?? null,
-        daily_pages: goalType === "pages" ? value : existingGoal?.daily_pages ?? null,
+        daily_minutes: value,
         reminder_enabled: reminderEnabled,
         reminder_time: reminderTime,
         updated_at: new Date().toISOString(),
@@ -52,17 +47,19 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
       return;
     }
 
-    if (reminderEnabled) {
-      const granted = await setDailyReminder(reminderTime);
-      if (!granted) {
-        Alert.alert(
-          "Хабарландыру рұқсаты жоқ",
-          "Жоспар сақталды, бірақ еске салғыш жұмыс істеуі үшін хабарландыруға рұқсат беріңіз"
-        );
+    try {
+      if (reminderEnabled) {
+        const granted = await setDailyReminder(reminderTime);
+        if (!granted) {
+          Alert.alert(
+            "Хабарландыру рұқсаты жоқ",
+            "Жоспар сақталды, бірақ еске салғыш жұмыс істеуі үшін хабарландыруға рұқсат беріңіз"
+          );
+        }
+      } else {
+        await cancelDailyReminder();
       }
-    } else {
-      await cancelDailyReminder();
-    }
+    } catch {}
 
     onSaved();
   }
@@ -76,66 +73,25 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
         </View>
       )}
 
-      {/* Goal type selector */}
-      <View style={styles.typeRow}>
-        <TouchableOpacity
-          onPress={() => setGoalType("time")}
-          style={[styles.typeBtn, goalType === "time" && styles.typeBtnActive]}
-        >
-          <Feather name="clock" size={22} color={goalType === "time" ? Colors.primary600 : Colors.gray400} />
-          <Text style={[styles.typeLabel, goalType === "time" && styles.typeLabelActive]}>Уақыт бойынша</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setGoalType("pages")}
-          style={[styles.typeBtn, goalType === "pages" && styles.typeBtnActive]}
-        >
-          <Feather name="book-open" size={22} color={goalType === "pages" ? Colors.primary600 : Colors.gray400} />
-          <Text style={[styles.typeLabel, goalType === "pages" && styles.typeLabelActive]}>Бет саны бойынша</Text>
-        </TouchableOpacity>
+      <View>
+        <Text style={styles.label}>Күніне неше минут оқисыз?</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            value={minutes}
+            onChangeText={setMinutes}
+            keyboardType="number-pad"
+            style={[styles.input, { flex: 1 }]}
+          />
+          <Text style={styles.unit}>минут</Text>
+        </View>
+        <View style={styles.presetRow}>
+          {[15, 30, 60].map((m) => (
+            <TouchableOpacity key={m} style={styles.presetBtn} onPress={() => setMinutes(m.toString())}>
+              <Text style={styles.presetText}>{m} мин</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
-
-      {/* Value input */}
-      {goalType === "time" ? (
-        <View>
-          <Text style={styles.label}>Күніне неше минут оқисыз?</Text>
-          <View style={styles.inputRow}>
-            <TextInput
-              value={minutes}
-              onChangeText={setMinutes}
-              keyboardType="number-pad"
-              style={[styles.input, { flex: 1 }]}
-            />
-            <Text style={styles.unit}>минут</Text>
-          </View>
-          <View style={styles.presetRow}>
-            {[15, 30, 60].map((m) => (
-              <TouchableOpacity key={m} style={styles.presetBtn} onPress={() => setMinutes(m.toString())}>
-                <Text style={styles.presetText}>{m} мин</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      ) : (
-        <View>
-          <Text style={styles.label}>Күніне неше бет оқисыз?</Text>
-          <View style={styles.inputRow}>
-            <TextInput
-              value={pages}
-              onChangeText={setPages}
-              keyboardType="number-pad"
-              style={[styles.input, { flex: 1 }]}
-            />
-            <Text style={styles.unit}>бет</Text>
-          </View>
-          <View style={styles.presetRow}>
-            {[10, 20, 30, 50].map((p) => (
-              <TouchableOpacity key={p} style={styles.presetBtn} onPress={() => setPages(p.toString())}>
-                <Text style={styles.presetText}>{p} бет</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
 
       {/* Reminder */}
       <View style={styles.reminderCard}>
@@ -180,19 +136,6 @@ const styles = StyleSheet.create({
   intro: { gap: 4 },
   h3: { fontSize: 16, fontWeight: "700", color: Colors.gray900 },
   subtitle: { fontSize: 12, color: Colors.gray500 },
-  typeRow: { flexDirection: "row", gap: Spacing.md },
-  typeBtn: {
-    flex: 1,
-    alignItems: "center",
-    gap: Spacing.sm,
-    borderRadius: Radius.lg,
-    borderWidth: 2,
-    borderColor: Colors.gray100,
-    paddingVertical: Spacing.lg,
-  },
-  typeBtnActive: { borderColor: Colors.primary500, backgroundColor: Colors.primary50 },
-  typeLabel: { fontSize: 13, fontWeight: "600", color: Colors.gray500 },
-  typeLabelActive: { color: Colors.primary700 },
   label: { fontSize: 13, fontWeight: "500", color: Colors.gray700, marginBottom: Spacing.sm },
   inputRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   input: {
