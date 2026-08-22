@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, SafeAreaView, Modal, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, SafeAreaView, Modal, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
@@ -43,6 +43,7 @@ export default function ReadingPlanScreen() {
   }
 
   function handleSaved() {
+    Alert.alert("DEBUG", "handleSaved шақырылды");
     setEditingGoal(false);
     fetchData().catch(() => {});
   }
