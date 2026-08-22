@@ -164,9 +164,8 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
     clearTimer();
     setFocusMode(false);
     toast.success(`${sessionMinutes} минут сақталды!`);
-    router.refresh();
 
-    // Fetch active trackers for the update modal
+    // Fetch active trackers BEFORE refresh so state isn't disrupted
     const { data: activeTrackers } = await supabase
       .from("book_trackers")
       .select("id, book_title, book_author, current_page, total_pages")
@@ -179,7 +178,11 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
       setSelectedTrackerId(activeTrackers[0].id);
       setNewPage(String(activeTrackers[0].current_page || ""));
       setShowModal(true);
+    } else {
+      toast("Белсенді трекер жоқ", { icon: "📚" });
     }
+
+    router.refresh();
   }
 
   async function handleModalSave() {
