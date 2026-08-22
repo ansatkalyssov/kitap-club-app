@@ -217,7 +217,7 @@ export default async function ClubProgressPage({
 
           {members?.length === 0 && (
             <div className="card text-center py-10 text-gray-400 text-sm">
-              Клубта мүше жоқ
+              Клубта оқырман жоқ
             </div>
           )}
         </div>

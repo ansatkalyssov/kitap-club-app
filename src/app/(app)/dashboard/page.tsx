@@ -220,7 +220,7 @@ export default async function DashboardPage() {
                 <Link key={c.id} href={`/clubs/${c.id}`} className="card block hover:border-primary-200 transition">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-gray-900">{c.name}</p>
-                    <span className="badge-green">{c.club_members?.[0]?.count ?? 0} мүше</span>
+                    <span className="badge-green">{c.club_members?.[0]?.count ?? 0} оқырман</span>
                   </div>
                 </Link>
               ))}

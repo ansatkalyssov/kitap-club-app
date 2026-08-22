@@ -144,7 +144,7 @@ export default async function ClubsPage({
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1 text-xs text-gray-500">
                       <Users size={12} />
-                      {memberCount} мүше
+                      {memberCount} оқырман
                     </span>
                     {isMember ? (
                       <span className="badge-green">Тіркелдіңіз</span>

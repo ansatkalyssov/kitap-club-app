@@ -94,7 +94,7 @@ export default async function PublicClubPage({
                   </span>
                 )}
                 <span className="flex items-center gap-1">
-                  <Users size={11} /> {memberCount} мүше
+                  <Users size={11} /> {memberCount} оқырман
                 </span>
               </div>
               {club.description && (

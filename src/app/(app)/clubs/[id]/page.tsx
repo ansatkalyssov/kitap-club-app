@@ -80,7 +80,7 @@ export default async function ClubDetailPage({
               <h1 className="text-xl font-bold text-gray-900">{club.name}</h1>
               <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-500">
                 {club.cities && <span className="flex items-center gap-1"><MapPin size={13} /> {(club.cities as any).name}</span>}
-                <span className="flex items-center gap-1"><Users size={13} /> {memberCount} мүше</span>
+                <span className="flex items-center gap-1"><Users size={13} /> {memberCount} оқырман</span>
               </div>
               {club.description && <p className="mt-2 text-sm text-gray-600">{club.description}</p>}
             </div>
@@ -215,7 +215,7 @@ export default async function ClubDetailPage({
                   </span>
                 )}
                 <span className="flex items-center gap-1">
-                  <Users size={13} /> {memberCount} мүше
+                  <Users size={13} /> {memberCount} оқырман
                 </span>
                 <span className="flex items-center gap-1">
                   <BookOpen size={13} /> Жүргізуші: {(club.profiles as any)?.name || "—"}
@@ -492,7 +492,7 @@ export default async function ClubDetailPage({
                     ))}
                   </div>
                 ) : (
-                  <div className="card text-center py-8 text-sm text-gray-500">Мүше жоқ</div>
+                  <div className="card text-center py-8 text-sm text-gray-500">Оқырман жоқ</div>
                 )}
               </>
             ) : (
