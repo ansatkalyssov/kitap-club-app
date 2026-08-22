@@ -172,7 +172,7 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
       .select("id, book_title, book_author, current_page, total_pages")
       .eq("user_id", userId)
       .eq("is_completed", false)
-      .order("updated_at", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (activeTrackers && activeTrackers.length > 0) {
       setTrackers(activeTrackers);
@@ -196,7 +196,6 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
       .update({
         current_page: page,
         ...(isCompleted ? { is_completed: true } : {}),
-        updated_at: new Date().toISOString(),
       })
       .eq("id", selectedTrackerId);
     setModalSaving(false);
