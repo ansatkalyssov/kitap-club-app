@@ -94,7 +94,9 @@ export default function TrackerDetailScreen() {
   }
 
   async function pickImage() {
+    Alert.alert("Debug", "pickImage басылды");
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    Alert.alert("Debug", `Рұқсат: ${status}`);
     if (status !== "granted") {
       Alert.alert("Рұқсат қажет", "Галереяға рұқсат беріңіз");
       return;
@@ -105,6 +107,7 @@ export default function TrackerDetailScreen() {
       aspect: [2, 3],
       quality: 0.7,
     });
+    Alert.alert("Debug", `Нәтиже: canceled=${result.canceled}, assets=${result.assets?.length}`);
     if (!result.canceled && result.assets[0]) {
       setEditCoverUri(result.assets[0].uri);
     }
