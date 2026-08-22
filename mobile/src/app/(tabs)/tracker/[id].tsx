@@ -24,6 +24,7 @@ export default function TrackerDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [tracker, setTracker] = useState<BookTracker | null>(null);
   const [history, setHistory] = useState<ReadingProgress[]>([]);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   // Edit modal
   const [editVisible, setEditVisible] = useState(false);
@@ -32,7 +33,6 @@ export default function TrackerDetailScreen() {
   const [editAuthor, setEditAuthor] = useState("");
   const [editPages, setEditPages] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
-  const [editCoverUri, setEditCoverUri] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const { data: trackerData } = await supabase
@@ -84,19 +84,9 @@ export default function TrackerDetailScreen() {
     );
   }
 
-  function openEdit() {
-    setEditTitle(tracker!.book_title);
-    setEditAuthor(tracker!.book_author || "");
-    setEditPages(String(tracker!.total_pages));
-    setEditDeadline(tracker!.deadline);
-    setEditCoverUri(null);
-    setEditVisible(true);
-  }
-
-  async function pickImage() {
-    Alert.alert("Debug", "pickImage басылды");
+  // Cover change — directly on the page, no modal
+  async function handleChangeCover() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    Alert.alert("Debug", `Рұқсат: ${status}`);
     if (status !== "granted") {
       Alert.alert("Рұқсат қажет", "Галереяға рұқсат беріңіз");
       return;
@@ -107,10 +97,51 @@ export default function TrackerDetailScreen() {
       aspect: [2, 3],
       quality: 0.7,
     });
-    Alert.alert("Debug", `Нәтиже: canceled=${result.canceled}, assets=${result.assets?.length}`);
-    if (!result.canceled && result.assets[0]) {
-      setEditCoverUri(result.assets[0].uri);
+    if (result.canceled || !result.assets[0]) return;
+
+    const uri = result.assets[0].uri;
+    const ext = uri.split(".").pop()?.split("?")[0]?.toLowerCase() || "jpg";
+    const mime = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+    const path = `${userId}/${Date.now()}.${ext}`;
+
+    setCoverUploading(true);
+    const formData = new FormData();
+    formData.append("file", { uri, name: `photo.${ext}`, type: mime } as any);
+
+    const { data: { session: s } } = await supabase.auth.getSession();
+    const uploadRes = await fetch(
+      `${supabaseUrl}/storage/v1/object/books/${path}`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${s?.access_token}` },
+        body: formData,
+      }
+    );
+
+    if (!uploadRes.ok) {
+      setCoverUploading(false);
+      const txt = await uploadRes.text();
+      Alert.alert("Қате", `Жүктелмеді: ${txt}`);
+      return;
     }
+
+    const coverUrl = `${supabaseUrl}/storage/v1/object/public/books/${path}`;
+    const { error } = await supabase
+      .from("book_trackers")
+      .update({ cover_url: coverUrl })
+      .eq("id", id);
+
+    setCoverUploading(false);
+    if (error) { Alert.alert("Қате", "Сақталмады"); return; }
+    await fetchData();
+  }
+
+  function openEdit() {
+    setEditTitle(tracker!.book_title);
+    setEditAuthor(tracker!.book_author || "");
+    setEditPages(String(tracker!.total_pages));
+    setEditDeadline(tracker!.deadline);
+    setEditVisible(true);
   }
 
   async function handleEditSave() {
@@ -123,36 +154,6 @@ export default function TrackerDetailScreen() {
     }
 
     setEditSaving(true);
-
-    let coverUrl = tracker!.cover_url;
-
-    if (editCoverUri) {
-      const ext = editCoverUri.split(".").pop()?.split("?")[0]?.toLowerCase() || "jpg";
-      const mime = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
-      const path = `${userId}/${Date.now()}.${ext}`;
-
-      const formData = new FormData();
-      formData.append("file", { uri: editCoverUri, name: `photo.${ext}`, type: mime } as any);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const uploadRes = await fetch(
-        `${supabaseUrl}/storage/v1/object/books/${path}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-          body: formData,
-        }
-      );
-
-      if (!uploadRes.ok) {
-        const txt = await uploadRes.text();
-        setEditSaving(false);
-        Alert.alert("Қате", `Сурет жүктелмеді: ${txt}`);
-        return;
-      }
-      coverUrl = `${supabaseUrl}/storage/v1/object/public/books/${path}`;
-    }
-
     const { error } = await supabase
       .from("book_trackers")
       .update({
@@ -160,7 +161,6 @@ export default function TrackerDetailScreen() {
         book_author: editAuthor.trim() || null,
         total_pages: pages,
         deadline: editDeadline,
-        cover_url: coverUrl,
       })
       .eq("id", id);
     setEditSaving(false);
@@ -173,11 +173,8 @@ export default function TrackerDetailScreen() {
   const progress = calcProgress(tracker.current_page, tracker.total_pages);
   const dailyPages = calcDailyPages(tracker.current_page, tracker.total_pages, tracker.deadline);
   const daysLeft = daysUntil(tracker.deadline);
-
   const today = new Date().toISOString().split("T")[0];
   const todayProgress = history.find((p) => p.date === today) || null;
-
-  const coverUrl = tracker.cover_url;
 
   return (
     <SafeAreaView style={styles.flex}>
@@ -186,13 +183,22 @@ export default function TrackerDetailScreen() {
         <View style={styles.card}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              {coverUrl ? (
-                <Image source={{ uri: coverUrl }} style={styles.coverImg} />
-              ) : (
-                <View style={styles.iconBox}>
-                  <Feather name="book-open" size={20} color={Colors.primary600} />
+              {/* Cover with change button */}
+              <TouchableOpacity onPress={handleChangeCover} style={styles.coverWrapper} disabled={coverUploading}>
+                {tracker.cover_url ? (
+                  <Image source={{ uri: tracker.cover_url }} style={styles.coverImg} />
+                ) : (
+                  <View style={styles.iconBox}>
+                    <Feather name="book-open" size={20} color={Colors.primary600} />
+                  </View>
+                )}
+                <View style={styles.coverEditBadge}>
+                  {coverUploading
+                    ? <ActivityIndicator size="small" color={Colors.white} />
+                    : <Feather name="camera" size={10} color={Colors.white} />}
                 </View>
-              )}
+              </TouchableOpacity>
+
               <View style={{ flex: 1 }}>
                 <Text style={styles.bookTitle}>{tracker.book_title}</Text>
                 {tracker.book_author && <Text style={styles.bookAuthor}>{tracker.book_author}</Text>}
@@ -281,94 +287,42 @@ export default function TrackerDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Edit Modal */}
+      {/* Edit Modal — text fields only, no cover */}
       <Modal visible={editVisible} animationType="slide" transparent>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
         >
-          <ScrollView style={styles.modalSheet} contentContainerStyle={{ gap: Spacing.sm, paddingBottom: Spacing.xl }}>
+          <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Трекерді өңдеу</Text>
 
-            {/* Cover picker */}
-            <Text style={styles.label}>Мұқабасы</Text>
-            <View style={styles.coverRow}>
-              {(editCoverUri || coverUrl) ? (
-                <Image
-                  source={{ uri: editCoverUri || coverUrl! }}
-                  style={styles.coverPickerImg}
-                />
-              ) : (
-                <View style={styles.coverPickerEmpty}>
-                  <Feather name="image" size={22} color={Colors.gray400} />
-                </View>
-              )}
-              <TouchableOpacity onPress={pickImage} style={styles.coverChangeBtn}>
-                <Feather name="camera" size={14} color={Colors.primary600} />
-                <Text style={styles.coverChangeBtnText}>
-                  {editCoverUri || coverUrl ? "Суретті өзгерту" : "Сурет қосу"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
             <Text style={styles.label}>Кітап аты *</Text>
-            <TextInput
-              value={editTitle}
-              onChangeText={setEditTitle}
-              style={styles.input}
-              placeholder="Кітап аты"
-              placeholderTextColor={Colors.gray400}
-            />
+            <TextInput value={editTitle} onChangeText={setEditTitle} style={styles.input}
+              placeholder="Кітап аты" placeholderTextColor={Colors.gray400} />
 
             <Text style={styles.label}>Автор</Text>
-            <TextInput
-              value={editAuthor}
-              onChangeText={setEditAuthor}
-              style={styles.input}
-              placeholder="Автор аты"
-              placeholderTextColor={Colors.gray400}
-            />
+            <TextInput value={editAuthor} onChangeText={setEditAuthor} style={styles.input}
+              placeholder="Автор аты" placeholderTextColor={Colors.gray400} />
 
             <Text style={styles.label}>Беттер саны *</Text>
-            <TextInput
-              value={editPages}
-              onChangeText={setEditPages}
-              style={styles.input}
-              keyboardType="number-pad"
-              placeholder="300"
-              placeholderTextColor={Colors.gray400}
-            />
+            <TextInput value={editPages} onChangeText={setEditPages} style={styles.input}
+              keyboardType="number-pad" placeholder="300" placeholderTextColor={Colors.gray400} />
 
             <Text style={styles.label}>Дедлайн (ЖЖЖЖ-АА-КК) *</Text>
-            <TextInput
-              value={editDeadline}
-              onChangeText={setEditDeadline}
-              style={styles.input}
-              placeholder="2025-12-31"
-              placeholderTextColor={Colors.gray400}
-              maxLength={10}
-            />
+            <TextInput value={editDeadline} onChangeText={setEditDeadline} style={styles.input}
+              placeholder="2025-12-31" placeholderTextColor={Colors.gray400} maxLength={10} />
 
             <View style={styles.modalBtns}>
-              <TouchableOpacity
-                onPress={() => setEditVisible(false)}
-                style={[styles.modalBtn, styles.modalBtnCancel]}
-              >
+              <TouchableOpacity onPress={() => setEditVisible(false)} style={[styles.modalBtn, styles.modalBtnCancel]}>
                 <Text style={styles.modalBtnCancelText}>Болдырмау</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleEditSave}
-                disabled={editSaving}
-                style={[styles.modalBtn, styles.modalBtnSave]}
-              >
-                {editSaving ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
-                ) : (
-                  <Text style={styles.modalBtnSaveText}>Сақтау</Text>
-                )}
+              <TouchableOpacity onPress={handleEditSave} disabled={editSaving} style={[styles.modalBtn, styles.modalBtnSave]}>
+                {editSaving
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Text style={styles.modalBtnSaveText}>Сақтау</Text>}
               </TouchableOpacity>
             </View>
-          </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
@@ -389,25 +343,24 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.sm },
   headerLeft: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.md, flex: 1 },
-  coverImg: { width: 40, height: 56, borderRadius: Radius.md, resizeMode: "cover" },
+  coverWrapper: { position: "relative" },
+  coverImg: { width: 44, height: 60, borderRadius: Radius.md, resizeMode: "cover" },
   iconBox: {
-    width: 40,
-    height: 56,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primary100,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 44, height: 60, borderRadius: Radius.md,
+    backgroundColor: Colors.primary100, alignItems: "center", justifyContent: "center",
+  },
+  coverEditBadge: {
+    position: "absolute", bottom: 0, right: 0,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: Colors.primary600,
+    alignItems: "center", justifyContent: "center",
   },
   bookTitle: { fontSize: 16, fontWeight: "700", color: Colors.gray900 },
   bookAuthor: { fontSize: 13, color: Colors.gray500, marginTop: 2 },
   doneBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.primary100,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 4,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: Colors.primary100, borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md, paddingVertical: 4,
   },
   doneBadgeText: { fontSize: 12, fontWeight: "600", color: Colors.primary700 },
   progressBlock: { gap: 4 },
@@ -415,11 +368,8 @@ const styles = StyleSheet.create({
   progressLabel: { fontSize: 13, color: Colors.gray700 },
   progressPercent: { fontSize: 13, fontWeight: "700", color: Colors.primary700 },
   statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    borderTopColor: Colors.gray50,
-    paddingTop: Spacing.md,
+    flexDirection: "row", justifyContent: "space-between",
+    borderTopWidth: 1, borderTopColor: Colors.gray50, paddingTop: Spacing.md,
   },
   statItem: { alignItems: "center", flex: 1 },
   statValue: { fontSize: 18, fontWeight: "700", color: Colors.gray900 },
@@ -432,10 +382,7 @@ const styles = StyleSheet.create({
   section: { gap: Spacing.sm },
   h2: { fontSize: 15, fontWeight: "700", color: Colors.gray900 },
   historyCard: {
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.gray100,
-    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.gray100, paddingHorizontal: Spacing.lg,
   },
   historyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: Spacing.md },
   historyRowBorder: { borderTopWidth: 1, borderTopColor: Colors.gray50 },
@@ -445,58 +392,23 @@ const styles = StyleSheet.create({
   badgeGreenText: { fontSize: 11, fontWeight: "700", color: Colors.primary700 },
   actionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   editBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.gray200,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.gray200,
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
   },
   editBtnText: { fontSize: 13, fontWeight: "500", color: Colors.gray500 },
   modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
   modalSheet: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: Spacing.xl,
-    maxHeight: "90%",
+    backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: Spacing.xl, gap: Spacing.xs,
   },
   modalTitle: { fontSize: 17, fontWeight: "700", color: Colors.gray900, marginBottom: Spacing.sm },
-  label: { fontSize: 13, fontWeight: "500", color: Colors.gray700, marginTop: Spacing.xs },
+  label: { fontSize: 13, fontWeight: "500", color: Colors.gray700, marginTop: Spacing.sm },
   input: {
-    borderWidth: 1,
-    borderColor: Colors.gray200,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    fontSize: 14,
-    color: Colors.gray900,
+    borderWidth: 1, borderColor: Colors.gray200, borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    fontSize: 14, color: Colors.gray900,
   },
-  coverRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
-  coverPickerImg: { width: 60, height: 84, borderRadius: Radius.md, resizeMode: "cover" },
-  coverPickerEmpty: {
-    width: 60,
-    height: 84,
-    borderWidth: 1,
-    borderColor: Colors.gray200,
-    borderRadius: Radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.gray50,
-  },
-  coverChangeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: Colors.primary600,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  coverChangeBtnText: { fontSize: 13, fontWeight: "600", color: Colors.primary600 },
   modalBtns: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.md },
   modalBtn: { flex: 1, borderRadius: Radius.md, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
   modalBtnCancel: { borderWidth: 1, borderColor: Colors.gray200 },
