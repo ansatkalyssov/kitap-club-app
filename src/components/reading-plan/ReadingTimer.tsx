@@ -254,7 +254,7 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
           {/* Page input */}
           <div className="mb-5">
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Қай бетке жеттіңіз?
+              Қай бетке келдіңіз?
               {selectedTracker?.total_pages > 0 && (
                 <span className="ml-1 font-normal text-gray-400">
                   (барлығы {selectedTracker.total_pages} бет)
