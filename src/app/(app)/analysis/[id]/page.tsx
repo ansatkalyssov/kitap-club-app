@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Calendar, BookOpen, MessageSquare } from "lucide-react";
 import { formatDateKz, formatMonthKz } from "@/lib/utils";
 import AddReplyForm from "@/components/analysis/AddReplyForm";
+import ReplyContent from "@/components/analysis/ReplyContent";
+import DeleteThreadButton from "@/components/analysis/DeleteThreadButton";
 
 export default async function AnalysisDetailPage({
   params,
@@ -55,6 +57,9 @@ export default async function AnalysisDetailPage({
         <div className="mb-6 rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50/60 to-white p-5 shadow-sm">
           <div className="mb-1 flex items-start justify-between gap-3">
             <h1 className="text-xl font-bold text-gray-900 leading-snug">{thread.title}</h1>
+            {thread.author_id === user.id && (
+              <DeleteThreadButton threadId={id} />
+            )}
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -183,24 +188,12 @@ export default async function AnalysisDetailPage({
                       </span>
                     </div>
 
-                    {reply.content && (
-                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                        {reply.content}
-                      </p>
-                    )}
-
-                    {reply.key_insights && (reply.key_insights as string[]).length > 0 && (
-                      <ul className="mt-2 space-y-1">
-                        {(reply.key_insights as string[]).map((ins: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
-                            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-semibold text-gray-500">
-                              {i + 1}
-                            </span>
-                            {ins}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <ReplyContent
+                      replyId={reply.id}
+                      content={reply.content}
+                      canEdit={isMe}
+                      canDelete={isMe || isFacilitator}
+                    />
                   </div>
                 </div>
               );
