@@ -46,7 +46,7 @@ export default function GoalForm({ userId, existingGoal }: Props) {
     setLoading(false);
 
     if (error) {
-      toast.error("Сақталмады");
+      toast.error("Сақталмады: " + error.message);
       return;
     }
 
