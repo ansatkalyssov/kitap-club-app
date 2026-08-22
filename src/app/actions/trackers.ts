@@ -84,13 +84,13 @@ export async function updateTracker(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Авторизация қажет" };
 
-  // Ownership check
+  // Ownership check — club trackers are not editable by readers
   const { data: tracker } = await supabase
     .from("book_trackers")
-    .select("user_id")
+    .select("user_id, club_plan_id")
     .eq("id", trackerId)
     .single();
-  if (!tracker || tracker.user_id !== user.id) return { error: "Рұқсат жоқ" };
+  if (!tracker || tracker.user_id !== user.id || tracker.club_plan_id) return { error: "Рұқсат жоқ" };
 
   const { error } = await supabase
     .from("book_trackers")
@@ -107,13 +107,13 @@ export async function deleteTracker(trackerId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Авторизация қажет" };
 
-  // Ownership check
+  // Ownership check — club trackers are not deletable by readers
   const { data: tracker } = await supabase
     .from("book_trackers")
-    .select("user_id")
+    .select("user_id, club_plan_id")
     .eq("id", trackerId)
     .single();
-  if (!tracker || tracker.user_id !== user.id) return { error: "Рұқсат жоқ" };
+  if (!tracker || tracker.user_id !== user.id || tracker.club_plan_id) return { error: "Рұқсат жоқ" };
 
   const { error } = await supabase
     .from("book_trackers")

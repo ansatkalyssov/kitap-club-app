@@ -144,16 +144,18 @@ export default async function TrackerDetailPage({
           </div>
         )}
 
-        {/* Edit / Delete */}
-        <div className="flex items-center justify-between">
-          <Link
-            href={`/tracker/${id}/edit`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50"
-          >
-            <Pencil size={13} /> Өңдеу
-          </Link>
-          <DeleteTrackerButton trackerId={id} />
-        </div>
+        {/* Edit / Delete — тек жеке трекерлерде */}
+        {!tracker.club_plan_id && (
+          <div className="flex items-center justify-between">
+            <Link
+              href={`/tracker/${id}/edit`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50"
+            >
+              <Pencil size={13} /> Өңдеу
+            </Link>
+            <DeleteTrackerButton trackerId={id} />
+          </div>
+        )}
       </div>
   );
 }

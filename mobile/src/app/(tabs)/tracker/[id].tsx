@@ -183,8 +183,8 @@ export default function TrackerDetailScreen() {
         <View style={styles.card}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              {/* Cover with change button */}
-              <TouchableOpacity onPress={handleChangeCover} style={styles.coverWrapper} disabled={coverUploading}>
+              {/* Cover — жеке трекерде өзгертуге болады */}
+              <TouchableOpacity onPress={tracker.club_plan_id ? undefined : handleChangeCover} style={styles.coverWrapper} disabled={coverUploading || !!tracker.club_plan_id}>
                 {tracker.cover_url ? (
                   <Image source={{ uri: tracker.cover_url }} style={styles.coverImg} />
                 ) : (
@@ -192,11 +192,13 @@ export default function TrackerDetailScreen() {
                     <Feather name="book-open" size={20} color={Colors.primary600} />
                   </View>
                 )}
-                <View style={styles.coverEditBadge}>
-                  {coverUploading
-                    ? <ActivityIndicator size="small" color={Colors.white} />
-                    : <Feather name="camera" size={10} color={Colors.white} />}
-                </View>
+                {!tracker.club_plan_id && (
+                  <View style={styles.coverEditBadge}>
+                    {coverUploading
+                      ? <ActivityIndicator size="small" color={Colors.white} />
+                      : <Feather name="camera" size={10} color={Colors.white} />}
+                  </View>
+                )}
               </TouchableOpacity>
 
               <View style={{ flex: 1 }}>
@@ -277,14 +279,16 @@ export default function TrackerDetailScreen() {
           </View>
         )}
 
-        {/* Edit / Delete row */}
-        <View style={styles.actionRow}>
-          <TouchableOpacity onPress={openEdit} style={styles.editBtn}>
-            <Feather name="edit-2" size={14} color={Colors.gray500} />
-            <Text style={styles.editBtnText}>Өңдеу</Text>
-          </TouchableOpacity>
-          <DeleteTrackerButton trackerId={tracker.id} onDeleted={() => router.replace("/tracker")} />
-        </View>
+        {/* Edit / Delete row — тек жеке трекерлерде */}
+        {!tracker.club_plan_id && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity onPress={openEdit} style={styles.editBtn}>
+              <Feather name="edit-2" size={14} color={Colors.gray500} />
+              <Text style={styles.editBtnText}>Өңдеу</Text>
+            </TouchableOpacity>
+            <DeleteTrackerButton trackerId={tracker.id} onDeleted={() => router.replace("/tracker")} />
+          </View>
+        )}
       </ScrollView>
 
       {/* Edit Modal — text fields only, no cover */}

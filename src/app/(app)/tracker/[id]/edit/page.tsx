@@ -17,11 +17,11 @@ export default async function EditTrackerPage({
   const supabase = await createClient();
   const { data: tracker } = await supabase
     .from("book_trackers")
-    .select("id, book_title, book_author, total_pages, deadline, cover_url, user_id")
+    .select("id, book_title, book_author, total_pages, deadline, cover_url, user_id, club_plan_id")
     .eq("id", id)
     .single();
 
-  if (!tracker || tracker.user_id !== user.id) notFound();
+  if (!tracker || tracker.user_id !== user.id || tracker.club_plan_id) notFound();
 
   return (
     <div className="page-container max-w-lg">
