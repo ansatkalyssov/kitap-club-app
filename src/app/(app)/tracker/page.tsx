@@ -28,29 +28,18 @@ export default async function TrackerPage() {
     (t) => t.is_completed || (t.deadline && t.deadline < today)
   );
 
-  // Белсенді трекерлерді топтастыру
-  const groups: Record<string, { clubName: string | null; trackers: any[] }> = {};
-  active.forEach((t) => {
-    const clubName = (t.club_plans as any)?.clubs?.name || null;
-    const key = clubName || "__personal__";
-    if (!groups[key]) groups[key] = { clubName, trackers: [] };
-    groups[key].trackers.push(t);
-  });
+  // Тәртіп: ең жақын клуб трекері → жеке трекерлер → клубтың қалған трекерлері
+  const sortByDeadline = (a: any, b: any) => (a.deadline || "").localeCompare(b.deadline || "");
+  const clubTrackers = active.filter((t: any) => t.club_plan_id).sort(sortByDeadline);
+  const personalTrackers = active.filter((t: any) => !t.club_plan_id).sort(sortByDeadline);
+  const nearestClubTracker = clubTrackers[0] ?? null;
+  const otherClubTrackers = clubTrackers.slice(1);
 
-  // Тәртіп: ең жақын клуб → жеке → қалған клубтар
-  const clubGroups = Object.entries(groups)
-    .filter(([key]) => key !== "__personal__")
-    .sort(([, a], [, b]) => {
-      const aMin = a.trackers.map((t: any) => t.deadline).filter(Boolean).sort()[0] || "";
-      const bMin = b.trackers.map((t: any) => t.deadline).filter(Boolean).sort()[0] || "";
-      return aMin.localeCompare(bMin);
-    });
-  const personalEntry = Object.entries(groups).find(([key]) => key === "__personal__");
-  const sortedGroups = [
-    ...clubGroups.slice(0, 1),
-    ...(personalEntry ? [personalEntry] : []),
-    ...clubGroups.slice(1),
-  ];
+  type Section = { clubName: string | null; trackers: any[] };
+  const sortedGroups: Section[] = [];
+  if (nearestClubTracker) sortedGroups.push({ clubName: (nearestClubTracker.club_plans as any)?.clubs?.name || null, trackers: [nearestClubTracker] });
+  if (personalTrackers.length > 0) sortedGroups.push({ clubName: null, trackers: personalTrackers });
+  if (otherClubTrackers.length > 0) sortedGroups.push({ clubName: (otherClubTrackers[0].club_plans as any)?.clubs?.name || null, trackers: otherClubTrackers });
 
   return (
       <div className="page-container">
@@ -80,8 +69,8 @@ export default async function TrackerPage() {
             />
           ) : (
             <div className="space-y-6">
-              {sortedGroups.map(([key, group]) => (
-                <div key={key}>
+              {sortedGroups.map((group, gi) => (
+                <div key={gi}>
                   {/* Топ тақырыбы */}
                   <div className="mb-3 flex items-center gap-2">
                     {group.clubName ? (

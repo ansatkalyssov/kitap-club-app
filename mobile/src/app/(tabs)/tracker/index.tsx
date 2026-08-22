@@ -60,27 +60,20 @@ export default function TrackerListScreen() {
   const active = trackers.filter((t) => !t.is_completed && (!t.deadline || t.deadline >= today));
   const completed = trackers.filter((t) => t.is_completed || (t.deadline && t.deadline < today));
 
-  const groups: Record<string, { clubName: string | null; items: BookTracker[] }> = {};
-  active.forEach((t) => {
-    const clubName = t.club_plans?.clubs?.name || null;
-    const key = clubName || "__personal__";
-    if (!groups[key]) groups[key] = { clubName, items: [] };
-    groups[key].items.push(t);
-  });
-  // Тәртіп: ең жақын клуб → жеке → қалған клубтар
-  const clubGroups = Object.entries(groups)
-    .filter(([key]) => key !== "__personal__")
-    .sort(([, a], [, b]) => {
-      const aMin = a.items.map((t) => t.deadline).filter(Boolean).sort()[0] || "";
-      const bMin = b.items.map((t) => t.deadline).filter(Boolean).sort()[0] || "";
-      return aMin.localeCompare(bMin);
-    });
-  const personalEntry = Object.entries(groups).find(([key]) => key === "__personal__");
-  const sortedGroups = [
-    ...clubGroups.slice(0, 1),
-    ...(personalEntry ? [personalEntry] : []),
-    ...clubGroups.slice(1),
-  ];
+  // Тәртіп: ең жақын клуб трекері → жеке трекерлер → клубтың қалған трекерлері
+  const sortByDeadline = (a: BookTracker, b: BookTracker) =>
+    (a.deadline || "").localeCompare(b.deadline || "");
+  const clubTrackers = active.filter((t) => t.club_plan_id).sort(sortByDeadline);
+  const personalTrackers = active.filter((t) => !t.club_plan_id).sort(sortByDeadline);
+  const nearestClub = clubTrackers[0] ?? null;
+  const otherClubs = clubTrackers.slice(1);
+
+  // Секциялар: жеке карточкалар тізімі
+  type Section = { label: string; isClub: boolean; items: BookTracker[] };
+  const sections: Section[] = [];
+  if (nearestClub) sections.push({ label: nearestClub.club_plans?.clubs?.name || "Клуб", isClub: true, items: [nearestClub] });
+  if (personalTrackers.length > 0) sections.push({ label: "Жеке трекерлер", isClub: false, items: personalTrackers });
+  if (otherClubs.length > 0) sections.push({ label: otherClubs[0].club_plans?.clubs?.name || "Клуб", isClub: true, items: otherClubs });
 
   return (
     <SafeAreaView style={styles.flex}>
@@ -117,28 +110,28 @@ export default function TrackerListScreen() {
               </Link>
             </View>
           ) : (
-            sortedGroups.map(([key, group]) => (
-              <View key={key} style={styles.group}>
+            sections.map((section, si) => (
+              <View key={si} style={styles.group}>
                 <View style={styles.groupHeader}>
                   <Feather
-                    name={group.clubName ? "users" : "user"}
+                    name={section.isClub ? "users" : "user"}
                     size={13}
-                    color={group.clubName ? Colors.primary500 : Colors.gray400}
+                    color={section.isClub ? Colors.primary500 : Colors.gray400}
                   />
-                  <Text style={[styles.groupLabel, group.clubName && styles.groupLabelClub]}>
-                    {group.clubName || "Жеке трекерлер"}
+                  <Text style={[styles.groupLabel, section.isClub && styles.groupLabelClub]}>
+                    {section.label}
                   </Text>
                   <View style={styles.groupLine} />
                 </View>
                 <View style={styles.cardList}>
-                  {group.items.map((t) => {
+                  {section.items.map((t) => {
                     const progress = calcProgress(t.current_page, t.total_pages);
                     const dailyPages = calcDailyPages(t.current_page, t.total_pages, t.deadline);
                     const days = daysUntil(t.deadline);
                     return (
                       <Link key={t.id} href={`/tracker/${t.id}`} asChild>
                         <TouchableOpacity
-                          style={[styles.card, group.clubName ? styles.cardClub : styles.cardPersonal]}
+                          style={[styles.card, section.isClub ? styles.cardClub : styles.cardPersonal]}
                         >
                           <View style={styles.cardTop}>
                             <View style={{ flex: 1, marginRight: Spacing.sm }}>
