@@ -1,5 +1,8 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, SafeAreaView } from "react-native";
+import {
+  View, Text, ScrollView, StyleSheet, ActivityIndicator, SafeAreaView,
+  Modal, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert,
+} from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
@@ -20,6 +23,14 @@ export default function TrackerDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [tracker, setTracker] = useState<BookTracker | null>(null);
   const [history, setHistory] = useState<ReadingProgress[]>([]);
+
+  // Edit modal
+  const [editVisible, setEditVisible] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editAuthor, setEditAuthor] = useState("");
+  const [editPages, setEditPages] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
 
   const fetchData = useCallback(async () => {
     const { data: trackerData } = await supabase
@@ -71,6 +82,37 @@ export default function TrackerDetailScreen() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  function openEdit() {
+    setEditTitle(tracker!.book_title);
+    setEditAuthor(tracker!.book_author || "");
+    setEditPages(String(tracker!.total_pages));
+    setEditDeadline(tracker!.deadline);
+    setEditVisible(true);
+  }
+
+  async function handleEditSave() {
+    if (!editTitle.trim()) { Alert.alert("Қате", "Кітап атын енгізіңіз"); return; }
+    const pages = parseInt(editPages);
+    if (!pages || pages < 1) { Alert.alert("Қате", "Бет санын дұрыс енгізіңіз"); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(editDeadline)) { Alert.alert("Қате", "Дедлайнды ЖЖЖЖ-АА-КК форматында енгізіңіз"); return; }
+
+    setEditSaving(true);
+    const { error } = await supabase
+      .from("book_trackers")
+      .update({
+        book_title: editTitle.trim(),
+        book_author: editAuthor.trim() || null,
+        total_pages: pages,
+        deadline: editDeadline,
+      })
+      .eq("id", id);
+    setEditSaving(false);
+
+    if (error) { Alert.alert("Қате", "Сақталмады"); return; }
+    setEditVisible(false);
+    await fetchData();
   }
 
   const progress = calcProgress(tracker.current_page, tracker.total_pages);
@@ -173,8 +215,85 @@ export default function TrackerDetailScreen() {
           </View>
         )}
 
-        <DeleteTrackerButton trackerId={tracker.id} onDeleted={() => router.replace("/tracker")} />
+        {/* Edit / Delete row */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity onPress={openEdit} style={styles.editBtn}>
+            <Feather name="edit-2" size={14} color={Colors.gray500} />
+            <Text style={styles.editBtnText}>Өңдеу</Text>
+          </TouchableOpacity>
+          <DeleteTrackerButton trackerId={tracker.id} onDeleted={() => router.replace("/tracker")} />
+        </View>
       </ScrollView>
+
+      {/* Edit Modal */}
+      <Modal visible={editVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Трекерді өңдеу</Text>
+
+            <Text style={styles.label}>Кітап аты *</Text>
+            <TextInput
+              value={editTitle}
+              onChangeText={setEditTitle}
+              style={styles.input}
+              placeholder="Кітап аты"
+              placeholderTextColor={Colors.gray400}
+            />
+
+            <Text style={styles.label}>Автор</Text>
+            <TextInput
+              value={editAuthor}
+              onChangeText={setEditAuthor}
+              style={styles.input}
+              placeholder="Автор аты"
+              placeholderTextColor={Colors.gray400}
+            />
+
+            <Text style={styles.label}>Беттер саны *</Text>
+            <TextInput
+              value={editPages}
+              onChangeText={setEditPages}
+              style={styles.input}
+              keyboardType="number-pad"
+              placeholder="300"
+              placeholderTextColor={Colors.gray400}
+            />
+
+            <Text style={styles.label}>Дедлайн (ЖЖЖЖ-АА-КК) *</Text>
+            <TextInput
+              value={editDeadline}
+              onChangeText={setEditDeadline}
+              style={styles.input}
+              placeholder="2025-12-31"
+              placeholderTextColor={Colors.gray400}
+              maxLength={10}
+            />
+
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                onPress={() => setEditVisible(false)}
+                style={[styles.modalBtn, styles.modalBtnCancel]}
+              >
+                <Text style={styles.modalBtnCancelText}>Болдырмау</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleEditSave}
+                disabled={editSaving}
+                style={[styles.modalBtn, styles.modalBtnSave]}
+              >
+                {editSaving ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.modalBtnSaveText}>Сақтау</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -246,4 +365,41 @@ const styles = StyleSheet.create({
   historyNote: { fontSize: 12, color: Colors.gray500, marginTop: 2 },
   badgeGreen: { backgroundColor: Colors.primary50, borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 3 },
   badgeGreenText: { fontSize: 11, fontWeight: "700", color: Colors.primary700 },
+  actionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  editBtnText: { fontSize: 13, fontWeight: "500", color: Colors.gray500 },
+  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+  modalSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  modalTitle: { fontSize: 17, fontWeight: "700", color: Colors.gray900, marginBottom: Spacing.sm },
+  label: { fontSize: 13, fontWeight: "500", color: Colors.gray700, marginTop: Spacing.xs },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 14,
+    color: Colors.gray900,
+  },
+  modalBtns: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.md },
+  modalBtn: { flex: 1, borderRadius: Radius.md, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
+  modalBtnCancel: { borderWidth: 1, borderColor: Colors.gray200 },
+  modalBtnCancelText: { fontSize: 14, fontWeight: "600", color: Colors.gray700 },
+  modalBtnSave: { backgroundColor: Colors.primary600 },
+  modalBtnSaveText: { fontSize: 14, fontWeight: "600", color: Colors.white },
 });
