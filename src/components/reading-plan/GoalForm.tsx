@@ -34,6 +34,7 @@ export default function GoalForm({ userId, existingGoal }: Props) {
     const { error } = await supabase.from("reading_goals").upsert(
       {
         user_id: userId,
+        goal_type: "time",
         daily_minutes: value,
         reminder_enabled: reminderEnabled,
         reminder_time: reminderTime,
