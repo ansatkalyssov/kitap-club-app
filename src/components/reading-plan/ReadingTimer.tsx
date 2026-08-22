@@ -24,7 +24,14 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
   const [elapsedSec, setElapsedSec] = useState(0);
   const [saving, setSaving] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-const [clockTime, setClockTime] = useState("");
+  const [clockTime, setClockTime] = useState("");
+
+  // Tracker update modal
+  const [showModal, setShowModal] = useState(false);
+  const [trackers, setTrackers] = useState<any[]>([]);
+  const [selectedTrackerId, setSelectedTrackerId] = useState("");
+  const [newPage, setNewPage] = useState("");
+  const [modalSaving, setModalSaving] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<any>(null);
   // startTs = Date.now() - elapsedSec*1000 кезіндегі мән (pause ескеріледі)
@@ -158,6 +165,132 @@ const [clockTime, setClockTime] = useState("");
     setFocusMode(false);
     toast.success(`${sessionMinutes} минут сақталды!`);
     router.refresh();
+
+    // Fetch active trackers for the update modal
+    const { data: activeTrackers } = await supabase
+      .from("book_trackers")
+      .select("id, book_title, book_author, current_page, total_pages")
+      .eq("user_id", userId)
+      .eq("is_completed", false)
+      .order("updated_at", { ascending: false });
+
+    if (activeTrackers && activeTrackers.length > 0) {
+      setTrackers(activeTrackers);
+      setSelectedTrackerId(activeTrackers[0].id);
+      setNewPage(String(activeTrackers[0].current_page || ""));
+      setShowModal(true);
+    }
+  }
+
+  async function handleModalSave() {
+    const page = parseInt(newPage);
+    if (!selectedTrackerId || isNaN(page) || page < 0) {
+      toast.error("Бетті дұрыс енгізіңіз");
+      return;
+    }
+    const tracker = trackers.find((t) => t.id === selectedTrackerId);
+    const isCompleted = tracker && tracker.total_pages > 0 && page >= tracker.total_pages;
+    setModalSaving(true);
+    const { error } = await supabase
+      .from("book_trackers")
+      .update({
+        current_page: page,
+        ...(isCompleted ? { is_completed: true } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedTrackerId);
+    setModalSaving(false);
+    if (error) {
+      toast.error("Жаңартылмады");
+      return;
+    }
+    toast.success(isCompleted ? "Кітап аяқталды! 🎉" : "Трекер жаңартылды!");
+    setShowModal(false);
+    router.refresh();
+  }
+
+  // Tracker update modal
+  if (showModal) {
+    const selectedTracker = trackers.find((t) => t.id === selectedTrackerId);
+    return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+        <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+          <h2 className="mb-1 text-lg font-bold text-gray-900">Прогресті жаңарту</h2>
+          <p className="mb-5 text-sm text-gray-500">Қай кітапты оқыдыңыз және қай бетке жеттіңіз?</p>
+
+          {/* Book selector */}
+          {trackers.length > 1 && (
+            <div className="mb-4 space-y-2">
+              {trackers.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTrackerId(t.id);
+                    setNewPage(String(t.current_page || ""));
+                  }}
+                  className={`w-full rounded-2xl border p-3 text-left transition ${
+                    selectedTrackerId === t.id
+                      ? "border-primary-400 bg-primary-50"
+                      : "border-gray-100 hover:border-gray-200"
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-gray-900 line-clamp-1">{t.book_title}</p>
+                  {t.book_author && <p className="text-xs text-gray-400">{t.book_author}</p>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {trackers.length === 1 && (
+            <div className="mb-4 rounded-2xl border border-primary-100 bg-primary-50 p-3">
+              <p className="text-sm font-semibold text-gray-900">{trackers[0].book_title}</p>
+              {trackers[0].book_author && <p className="text-xs text-gray-400">{trackers[0].book_author}</p>}
+            </div>
+          )}
+
+          {/* Page input */}
+          <div className="mb-5">
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Қай бетке жеттіңіз?
+              {selectedTracker?.total_pages > 0 && (
+                <span className="ml-1 font-normal text-gray-400">
+                  (барлығы {selectedTracker.total_pages} бет)
+                </span>
+              )}
+            </label>
+            <input
+              type="number"
+              value={newPage}
+              onChange={(e) => setNewPage(e.target.value)}
+              min={0}
+              max={selectedTracker?.total_pages || undefined}
+              className="input text-center text-lg font-semibold"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="btn-secondary flex-1"
+            >
+              Өткізіп жіберу
+            </button>
+            <button
+              type="button"
+              onClick={handleModalSave}
+              disabled={modalSaving}
+              className="btn-primary flex-1"
+            >
+              {modalSaving ? <RefreshCw size={16} className="animate-spin" /> : null}
+              Жаңарту
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (focusMode) {
