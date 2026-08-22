@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare } from "lucide-react";
+import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare, Pencil } from "lucide-react";
 import { formatDateKz, formatMonthKz, calcProgress } from "@/lib/utils";
 import ProgressBar from "@/components/ui/ProgressBar";
 import LeaveClubButton from "@/components/clubs/LeaveClubButton";
@@ -229,11 +229,19 @@ export default async function ClubDetailPage({
 
           {/* Join/Leave + Share */}
           <div className="mt-4 flex items-center justify-between gap-3">
-            {(isFacilitator || isMember) ? (
-              <ShareClubButton clubId={id} clubName={club.name} />
-            ) : (
-              <div />
-            )}
+            <div className="flex items-center gap-2">
+              {(isFacilitator || isMember) && (
+                <ShareClubButton clubId={id} clubName={club.name} />
+              )}
+              {isFacilitator && (
+                <Link
+                  href={`/clubs/${id}/edit`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50"
+                >
+                  <Pencil size={13} /> Өңдеу
+                </Link>
+              )}
+            </div>
             {!isFacilitator && (
               <div>
                 {isMember ? (
