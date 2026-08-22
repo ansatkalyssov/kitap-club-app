@@ -17,7 +17,7 @@ export default async function EditTrackerPage({
   const supabase = await createClient();
   const { data: tracker } = await supabase
     .from("book_trackers")
-    .select("id, book_title, book_author, total_pages, deadline, user_id")
+    .select("id, book_title, book_author, total_pages, deadline, cover_url, user_id")
     .eq("id", id)
     .single();
 
@@ -41,6 +41,7 @@ export default async function EditTrackerPage({
           book_author: tracker.book_author,
           total_pages: tracker.total_pages,
           deadline: tracker.deadline,
+          cover_url: tracker.cover_url ?? null,
         }}
       />
     </div>
