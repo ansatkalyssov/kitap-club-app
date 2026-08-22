@@ -37,14 +37,20 @@ export default async function TrackerPage() {
     groups[key].trackers.push(t);
   });
 
-  // Дедлайны ең жақын клуб жоғарыда, жекені соңға
-  const sortedGroups = Object.entries(groups).sort(([aKey, aVal], [bKey, bVal]) => {
-    if (aKey === "__personal__") return 1;
-    if (bKey === "__personal__") return -1;
-    const aMin = aVal.trackers.map((t) => t.deadline).filter(Boolean).sort()[0] || "";
-    const bMin = bVal.trackers.map((t) => t.deadline).filter(Boolean).sort()[0] || "";
-    return aMin.localeCompare(bMin);
-  });
+  // Тәртіп: ең жақын клуб → жеке → қалған клубтар
+  const clubGroups = Object.entries(groups)
+    .filter(([key]) => key !== "__personal__")
+    .sort(([, a], [, b]) => {
+      const aMin = a.trackers.map((t: any) => t.deadline).filter(Boolean).sort()[0] || "";
+      const bMin = b.trackers.map((t: any) => t.deadline).filter(Boolean).sort()[0] || "";
+      return aMin.localeCompare(bMin);
+    });
+  const personalEntry = Object.entries(groups).find(([key]) => key === "__personal__");
+  const sortedGroups = [
+    ...clubGroups.slice(0, 1),
+    ...(personalEntry ? [personalEntry] : []),
+    ...clubGroups.slice(1),
+  ];
 
   return (
       <div className="page-container">
