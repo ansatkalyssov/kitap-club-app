@@ -65,7 +65,11 @@ export default function JoinClubButton({ clubId, userId, disabled, disabledReaso
           return true;
         })
         .map((plan) => {
-          const deadline = plan.end_date || plan.meeting_date || null;
+          const deadline = plan.end_date || plan.meeting_date || (() => {
+            const d = new Date();
+            d.setMonth(d.getMonth() + 6);
+            return d.toISOString().split("T")[0];
+          })();
           return {
             user_id: userId,
             club_id: clubId,
@@ -76,10 +80,9 @@ export default function JoinClubButton({ clubId, userId, disabled, disabledReaso
             total_pages: plan.books.page_count,
             current_page: 0,
             start_date: today,
-            deadline: deadline,
+            deadline,
           };
-        })
-        .filter((t) => t.deadline); // Дедлайн жоқ болса қоспаймыз
+        });
 
       if (trackersToInsert.length > 0) {
         await supabase.from("book_trackers").insert(trackersToInsert);
