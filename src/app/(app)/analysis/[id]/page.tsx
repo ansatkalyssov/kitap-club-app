@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Link from "next/link";
-import { ArrowLeft, Calendar, BookOpen, MessageSquare } from "lucide-react";
+import { ArrowLeft, Calendar, BookOpen, MessageSquare, Pencil } from "lucide-react";
 import { formatDateKz, formatMonthKz } from "@/lib/utils";
 import AddReplyForm from "@/components/analysis/AddReplyForm";
 import ReplyContent from "@/components/analysis/ReplyContent";
@@ -58,7 +58,15 @@ export default async function AnalysisDetailPage({
           <div className="mb-1 flex items-start justify-between gap-3">
             <h1 className="text-xl font-bold text-gray-900 leading-snug">{thread.title}</h1>
             {thread.author_id === user.id && (
-              <DeleteThreadButton threadId={id} />
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href={`/analysis/${id}/edit`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50"
+                >
+                  <Pencil size={13} /> Өңдеу
+                </Link>
+                <DeleteThreadButton threadId={id} />
+              </div>
             )}
           </div>
 
