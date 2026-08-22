@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 // Жүргізуші жоспар қосқанда мүшелерге трекер жасайды
 export async function createTrackersForMembers(params: {
@@ -67,4 +68,59 @@ export async function createTrackersForMembers(params: {
   await adminDb.from("book_trackers").insert(trackersToInsert);
 
   return { count: trackersToInsert.length };
+}
+
+export async function updateTracker(
+  trackerId: string,
+  fields: {
+    book_title: string;
+    book_author: string | null;
+    total_pages: number;
+    deadline: string;
+    cover_url?: string | null;
+  }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Авторизация қажет" };
+
+  // Ownership check
+  const { data: tracker } = await supabase
+    .from("book_trackers")
+    .select("user_id")
+    .eq("id", trackerId)
+    .single();
+  if (!tracker || tracker.user_id !== user.id) return { error: "Рұқсат жоқ" };
+
+  const { error } = await supabase
+    .from("book_trackers")
+    .update(fields)
+    .eq("id", trackerId);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/tracker/${trackerId}`);
+  return { error: null };
+}
+
+export async function deleteTracker(trackerId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Авторизация қажет" };
+
+  // Ownership check
+  const { data: tracker } = await supabase
+    .from("book_trackers")
+    .select("user_id")
+    .eq("id", trackerId)
+    .single();
+  if (!tracker || tracker.user_id !== user.id) return { error: "Рұқсат жоқ" };
+
+  const { error } = await supabase
+    .from("book_trackers")
+    .delete()
+    .eq("id", trackerId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/tracker");
+  return { error: null };
 }

@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Trash2, RefreshCw } from "lucide-react";
+import { deleteTracker } from "@/app/actions/trackers";
 
 export default function DeleteTrackerButton({ trackerId }: { trackerId: string }) {
   const [loading, setLoading] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   async function handleDelete() {
     if (!confirm) {
@@ -19,8 +18,9 @@ export default function DeleteTrackerButton({ trackerId }: { trackerId: string }
       return;
     }
     setLoading(true);
-    await supabase.from("book_trackers").delete().eq("id", trackerId);
+    const { error } = await deleteTracker(trackerId);
     setLoading(false);
+    if (error) { toast.error(`Жойылмады: ${error}`); return; }
     toast.success("Трекер жойылды");
     router.push("/tracker");
   }

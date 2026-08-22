@@ -7,6 +7,7 @@ import { ArrowLeft, RefreshCw, ImagePlus, X } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { updateTracker } from "@/app/actions/trackers";
 
 interface Props {
   trackerId: string;
@@ -79,19 +80,16 @@ export default function EditTrackerForm({ trackerId, existing }: Props) {
       coverUrl = null;
     }
 
-    const { error } = await supabase
-      .from("book_trackers")
-      .update({
-        book_title: form.book_title.trim(),
-        book_author: form.book_author.trim() || null,
-        total_pages: pages,
-        deadline: form.deadline,
-        cover_url: coverUrl,
-      })
-      .eq("id", trackerId);
+    const { error } = await updateTracker(trackerId, {
+      book_title: form.book_title.trim(),
+      book_author: form.book_author.trim() || null,
+      total_pages: pages,
+      deadline: form.deadline,
+      cover_url: coverUrl,
+    });
     setLoading(false);
 
-    if (error) { toast.error("Сақталмады"); return; }
+    if (error) { toast.error(`Сақталмады: ${error}`); return; }
     toast.success("Трекер жаңартылды!");
     router.push(`/tracker/${trackerId}`);
     router.refresh();

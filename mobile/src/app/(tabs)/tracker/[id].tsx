@@ -165,7 +165,7 @@ export default function TrackerDetailScreen() {
       .eq("id", id);
     setEditSaving(false);
 
-    if (error) { Alert.alert("Қате", "Сақталмады"); return; }
+    if (error) { Alert.alert("Қате", `Сақталмады: ${error.message}`); return; }
     setEditVisible(false);
     await fetchData();
   }

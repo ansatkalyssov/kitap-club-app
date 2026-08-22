@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { Colors, Spacing, Radius } from "@/constants/theme";
@@ -15,8 +15,12 @@ export default function DeleteTrackerButton({ trackerId, onDeleted }: { trackerI
       return;
     }
     setLoading(true);
-    await supabase.from("book_trackers").delete().eq("id", trackerId);
+    const { error } = await supabase.from("book_trackers").delete().eq("id", trackerId);
     setLoading(false);
+    if (error) {
+      Alert.alert("Қате", `Жойылмады: ${error.message}`);
+      return;
+    }
     onDeleted();
   }
 
