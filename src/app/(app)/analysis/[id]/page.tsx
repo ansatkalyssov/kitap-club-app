@@ -41,7 +41,6 @@ export default async function AnalysisDetailPage({
   const isFacilitator = clubs?.facilitator_id === user.id;
 
   const canReply = isFacilitator || !!membership;
-  const userReply = (replies || []).find((r) => r.author_id === user.id);
   const userInitial = (profile?.name || user.email || "?").charAt(0).toUpperCase();
 
   return (
@@ -208,7 +207,7 @@ export default async function AnalysisDetailPage({
             })}
 
             {/* Add reply row */}
-            {canReply && !userReply && (
+            {canReply && (
               <div className="relative flex gap-3">
                 <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-600 text-xs font-bold border-2 border-primary-200 border-dashed">
                   {userInitial}
@@ -222,12 +221,6 @@ export default async function AnalysisDetailPage({
                   />
                 </div>
               </div>
-            )}
-
-            {canReply && userReply && (
-              <p className="pl-11 text-xs text-gray-400">
-                ✓ Сіз бұл талқыға пікіріңізді қалдырдыңыз
-              </p>
             )}
 
             {!canReply && (
