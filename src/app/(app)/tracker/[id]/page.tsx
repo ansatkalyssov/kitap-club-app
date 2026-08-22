@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, CheckCircle2, Calendar, BookOpen, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Calendar, BookOpen, Pencil } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
 import LogProgressForm from "@/components/tracker/LogProgressForm";
 import DeleteTrackerButton from "@/components/tracker/DeleteTrackerButton";
@@ -144,8 +144,14 @@ export default async function TrackerDetailPage({
           </div>
         )}
 
-        {/* Delete */}
-        <div className="flex justify-end">
+        {/* Edit / Delete */}
+        <div className="flex items-center justify-between">
+          <Link
+            href={`/tracker/${id}/edit`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50"
+          >
+            <Pencil size={13} /> Өңдеу
+          </Link>
           <DeleteTrackerButton trackerId={id} />
         </div>
       </div>
