@@ -6,7 +6,7 @@ import {
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Feather } from "@expo/vector-icons";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseUrl } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
 import { BookTracker, ReadingProgress } from "@/lib/types";
 import { calcProgress, calcDailyPages, daysUntil, formatDateKz } from "@/lib/utils";
@@ -124,21 +124,30 @@ export default function TrackerDetailScreen() {
     let coverUrl = tracker!.cover_url;
 
     if (editCoverUri) {
-      const ext = editCoverUri.split(".").pop()?.split("?")[0] || "jpg";
+      const ext = editCoverUri.split(".").pop()?.split("?")[0]?.toLowerCase() || "jpg";
+      const mime = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
       const path = `${userId}/${Date.now()}.${ext}`;
-      const response = await fetch(editCoverUri);
-      const blob = await response.blob();
-      const { error: uploadError } = await supabase.storage
-        .from("books")
-        .upload(path, blob, { contentType: `image/${ext === "jpg" ? "jpeg" : ext}` });
 
-      if (uploadError) {
+      const formData = new FormData();
+      formData.append("file", { uri: editCoverUri, name: `photo.${ext}`, type: mime } as any);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const uploadRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/books/${path}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+          body: formData,
+        }
+      );
+
+      if (!uploadRes.ok) {
+        const txt = await uploadRes.text();
         setEditSaving(false);
-        Alert.alert("Қате", "Сурет жүктелмеді");
+        Alert.alert("Қате", `Сурет жүктелмеді: ${txt}`);
         return;
       }
-      const { data: { publicUrl } } = supabase.storage.from("books").getPublicUrl(path);
-      coverUrl = publicUrl;
+      coverUrl = `${supabaseUrl}/storage/v1/object/public/books/${path}`;
     }
 
     const { error } = await supabase
