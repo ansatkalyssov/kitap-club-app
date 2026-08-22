@@ -43,7 +43,7 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Қате", "Сақталмады");
+      Alert.alert("Қате", `Сақталмады: ${error.message} (${error.code})`);
       return;
     }
 
