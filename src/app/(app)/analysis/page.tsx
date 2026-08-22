@@ -76,18 +76,11 @@ export default async function AnalysisPage() {
     return bDate.localeCompare(aDate);
   });
 
-  const clubNames = Array.from(new Set((sorted).map((t: any) => t.clubs?.name).filter(Boolean)));
-  const subtitle =
-    clubNames.length === 1
-      ? `${clubNames[0]} талқылау алаңы`
-      : "Клубтардың талқылау алаңы";
-
   return (
       <div className="page-container max-w-xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1>Пікір алмасу</h1>
-            <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>
           </div>
           {managedClubs && managedClubs.length > 0 && (
             <Link href="/analysis/new" className="btn-primary py-1.5 px-3 text-sm">
