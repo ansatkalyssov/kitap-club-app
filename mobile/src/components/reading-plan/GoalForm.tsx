@@ -47,6 +47,10 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
       return;
     }
 
+    // Формды бірден жабу
+    onSaved();
+
+    // Хабарландыру формадан тыс орнатылады
     try {
       if (reminderEnabled) {
         const granted = await setDailyReminder(reminderTime);
@@ -60,8 +64,6 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
         await cancelDailyReminder();
       }
     } catch {}
-
-    onSaved();
   }
 
   return (

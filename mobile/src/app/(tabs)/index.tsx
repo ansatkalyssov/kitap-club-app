@@ -8,7 +8,6 @@ import { calcReadingStreak, formatDateKz } from "@/lib/utils";
 import { Colors, Spacing, Radius } from "@/constants/theme";
 import GoalForm from "@/components/reading-plan/GoalForm";
 import ReadingTimer from "@/components/reading-plan/ReadingTimer";
-import LogPagesForm from "@/components/reading-plan/LogPagesForm";
 
 export default function ReadingPlanScreen() {
   const { session } = useAuth();
@@ -43,9 +42,9 @@ export default function ReadingPlanScreen() {
     setRefreshing(false);
   }
 
-  async function handleSaved() {
+  function handleSaved() {
     setEditingGoal(false);
-    await fetchData();
+    fetchData();
   }
 
   if (loading) {
@@ -60,8 +59,8 @@ export default function ReadingPlanScreen() {
 
   const today = new Date().toISOString().split("T")[0];
   const todayLog = logs.find((l) => l.date === today) || null;
-  const target = goal ? (goal.goal_type === "time" ? goal.daily_minutes : goal.daily_pages) || 0 : 0;
-  const streak = goal ? calcReadingStreak(logs, goal.goal_type, target) : 0;
+  const target = goal?.daily_minutes || 0;
+  const streak = goal ? calcReadingStreak(logs, target) : 0;
 
   return (
     <SafeAreaView style={styles.flex}>
@@ -85,9 +84,7 @@ export default function ReadingPlanScreen() {
                   <Feather name="target" size={20} color={Colors.primary600} />
                 </View>
                 <View>
-                  <Text style={styles.summaryTitle}>
-                    Күніне {goal.goal_type === "time" ? `${goal.daily_minutes} минут` : `${goal.daily_pages} бет`}
-                  </Text>
+                  <Text style={styles.summaryTitle}>Күніне {goal.daily_minutes} минут</Text>
                   <Text style={styles.summarySub}>Жеке мақсат</Text>
                 </View>
               </View>
@@ -100,25 +97,13 @@ export default function ReadingPlanScreen() {
             </View>
 
             {/* Today's progress */}
-            {goal.goal_type === "time" ? (
-              <ReadingTimer
-                userId={userId}
-                date={today}
-                todayMinutes={todayLog?.minutes_read || 0}
-                todayPages={todayLog?.pages_read || 0}
-                goalMinutes={goal.daily_minutes || 0}
-                onSaved={fetchData}
-              />
-            ) : (
-              <LogPagesForm
-                userId={userId}
-                date={today}
-                todayPages={todayLog?.pages_read || 0}
-                todayMinutes={todayLog?.minutes_read || 0}
-                goalPages={goal.daily_pages || 0}
-                onSaved={fetchData}
-              />
-            )}
+            <ReadingTimer
+              userId={userId}
+              date={today}
+              todayMinutes={todayLog?.minutes_read || 0}
+              goalMinutes={goal.daily_minutes || 0}
+              onSaved={fetchData}
+            />
 
             {/* History */}
             {logs.length > 0 && (
@@ -126,13 +111,12 @@ export default function ReadingPlanScreen() {
                 <Text style={styles.h2}>Соңғы күндер</Text>
                 <View style={styles.card}>
                   {logs.slice(0, 7).map((l, i) => {
-                    const value = goal.goal_type === "time" ? l.minutes_read : l.pages_read;
-                    const met = target > 0 && value >= target;
+                    const met = target > 0 && l.minutes_read >= target;
                     return (
                       <View key={l.id} style={[styles.historyRow, i > 0 && styles.historyRowBorder]}>
                         <Text style={styles.historyDate}>{formatDateKz(l.date)}</Text>
                         <Text style={[styles.historyValue, met && styles.historyValueMet]}>
-                          {goal.goal_type === "time" ? `${l.minutes_read} мин` : `${l.pages_read} бет`}
+                          {l.minutes_read} мин
                           {met && " ✓"}
                         </Text>
                       </View>
