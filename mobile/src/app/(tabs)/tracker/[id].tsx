@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator, SafeAreaView,
-  Modal, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert,
+  Modal, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Image,
 } from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
@@ -31,6 +32,7 @@ export default function TrackerDetailScreen() {
   const [editAuthor, setEditAuthor] = useState("");
   const [editPages, setEditPages] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
+  const [editCoverUri, setEditCoverUri] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const { data: trackerData } = await supabase
@@ -58,9 +60,7 @@ export default function TrackerDetailScreen() {
         await fetchData();
         if (active) setLoading(false);
       })();
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }, [fetchData])
   );
 
@@ -89,16 +89,58 @@ export default function TrackerDetailScreen() {
     setEditAuthor(tracker!.book_author || "");
     setEditPages(String(tracker!.total_pages));
     setEditDeadline(tracker!.deadline);
+    setEditCoverUri(null);
     setEditVisible(true);
+  }
+
+  async function pickImage() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Рұқсат қажет", "Галереяға рұқсат беріңіз");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [2, 3],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setEditCoverUri(result.assets[0].uri);
+    }
   }
 
   async function handleEditSave() {
     if (!editTitle.trim()) { Alert.alert("Қате", "Кітап атын енгізіңіз"); return; }
     const pages = parseInt(editPages);
     if (!pages || pages < 1) { Alert.alert("Қате", "Бет санын дұрыс енгізіңіз"); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(editDeadline)) { Alert.alert("Қате", "Дедлайнды ЖЖЖЖ-АА-КК форматында енгізіңіз"); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(editDeadline)) {
+      Alert.alert("Қате", "Дедлайнды ЖЖЖЖ-АА-КК форматында енгізіңіз");
+      return;
+    }
 
     setEditSaving(true);
+
+    let coverUrl = tracker!.cover_url;
+
+    if (editCoverUri) {
+      const ext = editCoverUri.split(".").pop()?.split("?")[0] || "jpg";
+      const path = `${userId}/${Date.now()}.${ext}`;
+      const response = await fetch(editCoverUri);
+      const blob = await response.blob();
+      const { error: uploadError } = await supabase.storage
+        .from("books")
+        .upload(path, blob, { contentType: `image/${ext === "jpg" ? "jpeg" : ext}` });
+
+      if (uploadError) {
+        setEditSaving(false);
+        Alert.alert("Қате", "Сурет жүктелмеді");
+        return;
+      }
+      const { data: { publicUrl } } = supabase.storage.from("books").getPublicUrl(path);
+      coverUrl = publicUrl;
+    }
+
     const { error } = await supabase
       .from("book_trackers")
       .update({
@@ -106,6 +148,7 @@ export default function TrackerDetailScreen() {
         book_author: editAuthor.trim() || null,
         total_pages: pages,
         deadline: editDeadline,
+        cover_url: coverUrl,
       })
       .eq("id", id);
     setEditSaving(false);
@@ -122,6 +165,8 @@ export default function TrackerDetailScreen() {
   const today = new Date().toISOString().split("T")[0];
   const todayProgress = history.find((p) => p.date === today) || null;
 
+  const coverUrl = tracker.cover_url;
+
   return (
     <SafeAreaView style={styles.flex}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -129,9 +174,13 @@ export default function TrackerDetailScreen() {
         <View style={styles.card}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              <View style={styles.iconBox}>
-                <Feather name="book-open" size={20} color={Colors.primary600} />
-              </View>
+              {coverUrl ? (
+                <Image source={{ uri: coverUrl }} style={styles.coverImg} />
+              ) : (
+                <View style={styles.iconBox}>
+                  <Feather name="book-open" size={20} color={Colors.primary600} />
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.bookTitle}>{tracker.book_title}</Text>
                 {tracker.book_author && <Text style={styles.bookAuthor}>{tracker.book_author}</Text>}
@@ -155,12 +204,7 @@ export default function TrackerDetailScreen() {
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text
-                style={[
-                  styles.statValue,
-                  daysLeft < 0 ? styles.statRed : daysLeft <= 7 ? styles.statYellow : styles.statPrimary,
-                ]}
-              >
+              <Text style={[styles.statValue, daysLeft < 0 ? styles.statRed : daysLeft <= 7 ? styles.statYellow : styles.statPrimary]}>
                 {daysLeft < 0 ? Math.abs(daysLeft) : daysLeft}
               </Text>
               <Text style={styles.statLabel}>{daysLeft < 0 ? "күн кешікті" : "күн қалды"}</Text>
@@ -231,8 +275,26 @@ export default function TrackerDetailScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.modalOverlay}
         >
-          <View style={styles.modalSheet}>
+          <ScrollView style={styles.modalSheet} contentContainerStyle={{ gap: Spacing.sm, paddingBottom: Spacing.xl }}>
             <Text style={styles.modalTitle}>Трекерді өңдеу</Text>
+
+            {/* Cover picker */}
+            <Text style={styles.label}>Мұқабасы</Text>
+            <TouchableOpacity onPress={pickImage} style={styles.coverPicker}>
+              {editCoverUri ? (
+                <Image source={{ uri: editCoverUri }} style={styles.coverPickerImg} />
+              ) : coverUrl ? (
+                <Image source={{ uri: coverUrl }} style={styles.coverPickerImg} />
+              ) : (
+                <View style={styles.coverPickerEmpty}>
+                  <Feather name="image" size={24} color={Colors.gray400} />
+                  <Text style={styles.coverPickerText}>Сурет қосу</Text>
+                </View>
+              )}
+              <View style={styles.coverPickerOverlay}>
+                <Feather name="camera" size={16} color={Colors.white} />
+              </View>
+            </TouchableOpacity>
 
             <Text style={styles.label}>Кітап аты *</Text>
             <TextInput
@@ -291,7 +353,7 @@ export default function TrackerDetailScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
@@ -312,6 +374,7 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.sm },
   headerLeft: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.md, flex: 1 },
+  coverImg: { width: 40, height: 56, borderRadius: Radius.md, resizeMode: "cover" },
   iconBox: {
     width: 40,
     height: 56,
@@ -383,7 +446,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: Spacing.xl,
-    gap: Spacing.sm,
+    maxHeight: "90%",
   },
   modalTitle: { fontSize: 17, fontWeight: "700", color: Colors.gray900, marginBottom: Spacing.sm },
   label: { fontSize: 13, fontWeight: "500", color: Colors.gray700, marginTop: Spacing.xs },
@@ -395,6 +458,36 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     fontSize: 14,
     color: Colors.gray900,
+  },
+  coverPicker: {
+    width: 72,
+    height: 100,
+    borderRadius: Radius.md,
+    overflow: "hidden",
+    position: "relative",
+  },
+  coverPickerImg: { width: 72, height: 100, resizeMode: "cover" },
+  coverPickerEmpty: {
+    width: 72,
+    height: 100,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    borderStyle: "dashed",
+    borderRadius: Radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  coverPickerText: { fontSize: 11, color: Colors.gray400 },
+  coverPickerOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 28,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBtns: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.md },
   modalBtn: { flex: 1, borderRadius: Radius.md, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
