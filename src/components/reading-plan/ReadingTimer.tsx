@@ -11,14 +11,13 @@ interface Props {
   userId: string;
   date: string;
   todayMinutes: number;
-  todayPages: number;
   goalMinutes: number;
 }
 
 // Таймер басталған уақытты localStorage-та сақтаймыз
 const TIMER_KEY = "reading_timer_start_ts";
 
-export default function ReadingTimer({ userId, date, todayMinutes, todayPages, goalMinutes }: Props) {
+export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [running, setRunning] = useState(false);
@@ -79,6 +78,7 @@ const [clockTime, setClockTime] = useState("");
   const totalMinutes = todayMinutes + sessionMinutes;
   const progress = goalMinutes > 0 ? Math.min(100, Math.round((totalMinutes / goalMinutes) * 100)) : 0;
   const goalReached = goalMinutes > 0 && totalMinutes >= goalMinutes;
+  const minutesLeft = Math.max(0, goalMinutes - totalMinutes);
 
   async function acquireWakeLock() {
     try {
@@ -145,7 +145,7 @@ const [clockTime, setClockTime] = useState("");
     const { error } = await supabase
       .from("reading_logs")
       .upsert(
-        { user_id: userId, date, minutes_read: newMinutes, pages_read: todayPages },
+        { user_id: userId, date, minutes_read: newMinutes },
         { onConflict: "user_id,date" }
       );
     setSaving(false);
@@ -183,8 +183,14 @@ const [clockTime, setClockTime] = useState("");
           {goalMinutes > 0 && <span> / {goalMinutes} мин</span>}
         </p>
 
-        {goalReached && (
+        {goalReached ? (
           <p className="mt-3 text-sm font-semibold text-emerald-400">Мақсат орындалды ✓</p>
+        ) : (
+          goalMinutes > 0 && (
+            <p className="mt-3 text-sm text-[#7a6245]">
+              Мақсатқа дейін <span className="text-[#c9a96e] font-medium">{minutesLeft} мин</span> қалды
+            </p>
+          )
         )}
 
         <div className="mt-16 flex gap-4">
@@ -222,6 +228,7 @@ const [clockTime, setClockTime] = useState("");
         <p className="text-4xl font-bold tabular-nums text-primary-700">{sessionDisplay}</p>
         <p className="mt-1 text-sm text-gray-500">
           Бүгін: {totalMinutes} / {goalMinutes} минут
+          {!goalReached && goalMinutes > 0 && ` (${minutesLeft} мин қалды)`}
         </p>
       </div>
 

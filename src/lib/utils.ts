@@ -50,15 +50,13 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
 }
 
 export function calcReadingStreak(
-  logs: { date: string; minutes_read: number; pages_read: number }[],
-  goalType: "time" | "pages",
+  logs: { date: string; minutes_read: number }[],
   target: number
 ): number {
   if (!target) return 0;
 
   const logMap = new Map(logs.map((l) => [l.date, l]));
-  const getValue = (l: { minutes_read: number; pages_read: number }) =>
-    goalType === "time" ? l.minutes_read : l.pages_read;
+  const getValue = (l: { minutes_read: number }) => l.minutes_read;
 
   const d = new Date();
   d.setHours(0, 0, 0, 0);

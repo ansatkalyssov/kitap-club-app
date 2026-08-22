@@ -27,8 +27,8 @@ export default async function ReadingPlanPage() {
     .limit(30);
 
   const todayLog = (logs || []).find((l) => l.date === today) || null;
-  const target = goal ? (goal.goal_type === "time" ? goal.daily_minutes : goal.daily_pages) || 0 : 0;
-  const streak = goal ? calcReadingStreak(logs || [], goal.goal_type, target) : 0;
+  const target = goal?.daily_minutes || 0;
+  const streak = goal ? calcReadingStreak(logs || [], target) : 0;
 
   return (
       <div className="page-container max-w-xl">
@@ -48,10 +48,7 @@ export default async function ReadingPlanPage() {
                   <Target size={20} />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">
-                    Күніне{" "}
-                    {goal.goal_type === "time" ? `${goal.daily_minutes} минут` : `${goal.daily_pages} бет`}
-                  </p>
+                  <p className="font-semibold text-gray-900">Күніне {goal.daily_minutes} минут</p>
                   <p className="text-xs text-gray-500">Жеке мақсат</p>
                 </div>
               </div>
@@ -68,7 +65,6 @@ export default async function ReadingPlanPage() {
               userId={user.id}
               date={today}
               todayMinutes={todayLog?.minutes_read || 0}
-              todayPages={todayLog?.pages_read || 0}
               goalMinutes={goal.daily_minutes || 0}
             />
 
@@ -78,13 +74,12 @@ export default async function ReadingPlanPage() {
                 <h2 className="mb-3">Соңғы күндер</h2>
                 <div className="card divide-y divide-gray-50">
                   {logs.slice(0, 7).map((l) => {
-                    const value = goal.goal_type === "time" ? l.minutes_read : l.pages_read;
-                    const met = target > 0 && value >= target;
+                    const met = target > 0 && l.minutes_read >= target;
                     return (
                       <div key={l.id} className="flex items-center justify-between py-2.5">
                         <span className="text-sm text-gray-700">{formatDateKz(l.date)}</span>
                         <span className={`text-sm font-medium ${met ? "text-primary-600" : "text-gray-400"}`}>
-                          {goal.goal_type === "time" ? `${l.minutes_read} мин` : `${l.pages_read} бет`}
+                          {l.minutes_read} мин
                           {met && " ✓"}
                         </span>
                       </div>

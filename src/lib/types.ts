@@ -90,14 +90,10 @@ export interface ReadingProgress {
   created_at: string;
 }
 
-export type ReadingGoalType = "time" | "pages";
-
 export interface ReadingGoal {
   id: string;
   user_id: string;
-  goal_type: ReadingGoalType;
   daily_minutes: number | null;
-  daily_pages: number | null;
   reminder_enabled: boolean;
   reminder_time: string | null;
   created_at: string;
@@ -109,7 +105,6 @@ export interface ReadingLog {
   user_id: string;
   date: string;
   minutes_read: number;
-  pages_read: number;
   created_at: string;
 }
 
