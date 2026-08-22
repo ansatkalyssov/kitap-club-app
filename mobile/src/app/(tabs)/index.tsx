@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, SafeAreaView } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, SafeAreaView, Modal, KeyboardAvoidingView, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
@@ -44,7 +44,7 @@ export default function ReadingPlanScreen() {
 
   function handleSaved() {
     setEditingGoal(false);
-    fetchData();
+    fetchData().catch(() => {});
   }
 
   if (loading) {
@@ -131,7 +131,22 @@ export default function ReadingPlanScreen() {
               <Text style={styles.editToggleText}>Мақсатты өзгерту</Text>
               <Feather name={editingGoal ? "chevron-up" : "chevron-down"} size={16} color={Colors.gray500} />
             </TouchableOpacity>
-            {editingGoal && <GoalForm userId={userId} existingGoal={goal} onSaved={handleSaved} />}
+
+            <Modal
+              visible={editingGoal}
+              animationType="slide"
+              transparent
+              onRequestClose={() => setEditingGoal(false)}
+            >
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.modalOverlay}
+              >
+                <View style={styles.modalSheet}>
+                  <GoalForm userId={userId} existingGoal={goal} onSaved={handleSaved} />
+                </View>
+              </KeyboardAvoidingView>
+            </Modal>
           </View>
         )}
       </ScrollView>
@@ -189,4 +204,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   editToggleText: { fontSize: 13, color: Colors.gray500 },
+  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+  modalSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: Spacing.xl,
+    paddingBottom: 36,
+  },
 });
