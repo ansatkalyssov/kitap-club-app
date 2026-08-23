@@ -9,12 +9,11 @@ interface Props {
   userId: string;
   date: string;
   todayMinutes: number;
-  todayPages: number;
   goalMinutes: number;
   onSaved: () => void;
 }
 
-export default function ReadingTimer({ userId, date, todayMinutes, todayPages, goalMinutes, onSaved }: Props) {
+export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes, onSaved }: Props) {
   const [running, setRunning] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -38,6 +37,7 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
   const totalMinutes = todayMinutes + sessionMinutes;
   const progress = goalMinutes > 0 ? Math.min(100, Math.round((totalMinutes / goalMinutes) * 100)) : 0;
   const goalReached = goalMinutes > 0 && totalMinutes >= goalMinutes;
+  const minutesLeft = Math.max(0, goalMinutes - totalMinutes);
 
   async function handleFinish() {
     if (sessionMinutes < 1) {
@@ -48,7 +48,7 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
     const newMinutes = todayMinutes + sessionMinutes;
     const { error } = await supabase
       .from("reading_logs")
-      .upsert({ user_id: userId, date, minutes_read: newMinutes, pages_read: todayPages }, { onConflict: "user_id,date" });
+      .upsert({ user_id: userId, date, minutes_read: newMinutes }, { onConflict: "user_id,date" });
     setSaving(false);
     if (error) {
       Alert.alert("Қате", "Сақталмады");
@@ -75,6 +75,9 @@ export default function ReadingTimer({ userId, date, todayMinutes, todayPages, g
         <Text style={styles.timerSub}>
           Бүгін: {totalMinutes} / {goalMinutes} минут
         </Text>
+        {!goalReached && goalMinutes > 0 && (
+          <Text style={styles.timerSub}>Мақсатқа дейін {minutesLeft} мин қалды</Text>
+        )}
       </View>
 
       <ProgressBar value={progress} />

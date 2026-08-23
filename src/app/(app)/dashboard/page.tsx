@@ -19,8 +19,8 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
 
-  // Parallel: trackers + memberships + managedClubs
-  const [{ data: trackers }, { data: memberships }, { data: managedClubs }] = await Promise.all([
+  // Parallel: trackers + memberships + managedClubs + total tracker count
+  const [{ data: trackers }, { data: memberships }, { data: managedClubs }, { count: totalTrackerCount }] = await Promise.all([
     supabase
       .from("book_trackers")
       .select("*, club_plans(books(cover_url))")
@@ -40,6 +40,10 @@ export default async function DashboardPage() {
           .eq("facilitator_id", user.id)
           .eq("is_active", true)
       : Promise.resolve({ data: null }),
+    supabase
+      .from("book_trackers")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id),
   ]);
 
   // Алдағы талқылар (depends on memberships)
@@ -163,7 +167,7 @@ export default async function DashboardPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Клубтар", value: memberships?.length ?? 0, icon: Users, href: "/clubs", color: "text-blue-600 bg-blue-50" },
-          { label: "Активті трекер", value: trackers?.length ?? 0, icon: BookMarked, href: "/tracker", color: "text-primary-600 bg-primary-50" },
+          { label: "Трекерлер", value: totalTrackerCount ?? 0, icon: BookMarked, href: "/tracker", color: "text-primary-600 bg-primary-50" },
           { label: "Талқылар", value: upcomingMeetings?.length ?? 0, icon: Calendar, href: "/clubs", color: "text-yellow-600 bg-yellow-50" },
           {
             label: "Прогрес",

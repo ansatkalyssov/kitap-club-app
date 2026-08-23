@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import { Target, Flame } from "lucide-react";
 import GoalForm from "@/components/reading-plan/GoalForm";
+import EditGoalSection from "@/components/reading-plan/EditGoalSection";
 import ReadingTimer from "@/components/reading-plan/ReadingTimer";
 import { calcReadingStreak, formatDateKz } from "@/lib/utils";
 
@@ -34,7 +35,7 @@ export default async function ReadingPlanPage() {
       <div className="page-container max-w-xl">
         <div className="mb-6">
           <h1>Күнделікті оқу</h1>
-          <p className="mt-0.5 text-sm text-gray-500">Жеке оқу жоспарыңызды бақылаңыз</p>
+          <p className="mt-0.5 text-sm text-gray-500">Мақсат қойып, кітап оқуды күнделікті дағдыға айналдырыңыз</p>
         </div>
 
         {!goal ? (
@@ -90,14 +91,7 @@ export default async function ReadingPlanPage() {
             )}
 
             {/* Edit goal */}
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center gap-1 text-sm text-gray-500 select-none hover:text-gray-700">
-                Мақсатты өзгерту
-              </summary>
-              <div className="mt-3">
-                <GoalForm userId={user.id} existingGoal={goal} />
-              </div>
-            </details>
+            <EditGoalSection userId={user.id} goal={goal} />
           </div>
         )}
       </div>

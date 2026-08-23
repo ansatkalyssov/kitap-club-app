@@ -39,7 +39,7 @@ export async function setDailyReminder(time: string): Promise<boolean> {
     identifier: REMINDER_ID,
     content: {
       title: "Кітап оқу уақыты келді 📖",
-      body: "Бүгінгі мақсатыңызды әлі орындаған жоқсыз. Бірнеше бет оқып алыңыз!",
+      body: "Бүгінгі мақсатыңызды әлі орындаған жоқсыз. Бірнеше минут оқып алыңыз!",
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,

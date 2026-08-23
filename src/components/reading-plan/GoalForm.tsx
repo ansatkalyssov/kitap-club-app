@@ -10,9 +10,10 @@ import { ReadingGoal } from "@/lib/types";
 interface Props {
   userId: string;
   existingGoal?: ReadingGoal | null;
+  onSaved?: () => void;
 }
 
-export default function GoalForm({ userId, existingGoal }: Props) {
+export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
@@ -51,6 +52,7 @@ export default function GoalForm({ userId, existingGoal }: Props) {
     }
 
     toast.success("Жоспар сақталды!");
+    onSaved?.();
     router.refresh();
   }
 

@@ -96,7 +96,7 @@ export default function TrackerListScreen() {
 
         {/* Active */}
         <View style={styles.section}>
-          <Text style={styles.h2}>Белсенді ({active.length})</Text>
+          <Text style={styles.h2}>Трекерлер ({active.length})</Text>
           {active.length === 0 ? (
             <View style={styles.emptyCard}>
               <Feather name="bookmark" size={28} color={Colors.gray300} />
