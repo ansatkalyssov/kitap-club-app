@@ -16,8 +16,9 @@ interface NavbarProps {
 const navItems = [
   { href: "/dashboard", label: "Басты бет", mobileLabel: "Басты", icon: LayoutDashboard },
   { href: "/clubs", label: "Клубтар", mobileLabel: "Клубтар", icon: Users },
+  // Ортадағы негізгі әрекет — ерекшеленіп тұрады
+  { href: "/reading-plan", label: "Күнделікті оқу", mobileLabel: "Оқу", icon: Target, primary: true },
   { href: "/tracker", label: "Трекер", mobileLabel: "Трекер", icon: BookMarked },
-  { href: "/reading-plan", label: "Күнделікті оқу", mobileLabel: "Оқу", icon: Target },
   { href: "/analysis", label: "Пікір алмасу", mobileLabel: "Пікір", icon: BarChart3 },
 ];
 
@@ -47,17 +48,19 @@ export default function Navbar({ profile }: NavbarProps) {
 
         {/* Nav links */}
         <nav className="flex-1 space-y-1 p-3">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon, primary }) => {
             const active = pathname.startsWith(href);
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
                   active
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    ? "bg-primary-50 font-semibold text-primary-700"
+                    : primary
+                      ? "font-semibold text-primary-600 hover:bg-primary-50"
+                      : "font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
                 <Icon size={18} />
@@ -140,9 +143,40 @@ export default function Navbar({ profile }: NavbarProps) {
 
       {/* Mobile bottom nav */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex flex-col border-t border-gray-100 bg-white lg:hidden">
-        <div className="flex">
-          {navItems.map(({ href, mobileLabel, icon: Icon }) => {
+        <div className="flex items-end">
+          {navItems.map(({ href, mobileLabel, icon: Icon, primary }) => {
             const active = pathname.startsWith(href);
+
+            // Ортадағы негізгі батырма — көтеріңкі дөңгелек
+            if (primary) {
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex flex-1 flex-col items-center gap-1 pb-2 text-xs font-medium"
+                >
+                  <span
+                    className={cn(
+                      "-mt-6 flex h-14 w-14 items-center justify-center rounded-full ring-4 ring-white transition",
+                      active
+                        ? "bg-primary-600 text-white shadow-lg shadow-primary-600/30"
+                        : "bg-primary-50 text-primary-600 shadow-md"
+                    )}
+                  >
+                    <Icon size={24} />
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[10px]",
+                      active ? "font-semibold text-primary-600" : "text-primary-500"
+                    )}
+                  >
+                    {mobileLabel}
+                  </span>
+                </Link>
+              );
+            }
+
             return (
               <Link
                 key={href}
