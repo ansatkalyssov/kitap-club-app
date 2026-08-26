@@ -14,7 +14,9 @@ export default async function NewAnalysisPage({
   const user = await getUser();
   if (!user) redirect("/login");
   const profile = await getProfile();
-  if (!profile || profile.role === "reader") redirect("/analysis");
+  if (!profile || profile.role === "reader") redirect("/clubs");
+  // Пікір әрқашан нақты талқыға байланады
+  if (!sp.club || !sp.plan) redirect("/clubs");
   const supabase = await createClient();
 
   // Get clubs managed by this facilitator
@@ -27,10 +29,10 @@ export default async function NewAnalysisPage({
   return (
       <div className="page-container max-w-2xl">
         <Link
-          href="/analysis"
+          href={`/clubs/${sp.club}/plan/${sp.plan}`}
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
         >
-          <ArrowLeft size={14} /> Пікір алмасу
+          <ArrowLeft size={14} /> Талқыға оралу
         </Link>
         <div className="mb-6">
           <h1>Пікір ашу</h1>

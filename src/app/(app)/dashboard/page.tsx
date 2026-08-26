@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
-import { Users, BookMarked, Plus, Star, Calendar } from "lucide-react";
+import { Users, BookMarked, Plus, Star, Calendar, MessageSquare } from "lucide-react";
 import PushSubscribe from "@/components/PushSubscribe";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
@@ -57,6 +57,19 @@ export default async function DashboardPage() {
         .gte("meeting_date", today)
         .order("meeting_date", { ascending: true })
         .limit(1)
+    : { data: null };
+
+  // Клубтардағы соңғы пікір белсенділігі.
+  // Пікір енді жеке таб емес — талқының ішінде тұр, сондықтан жаңалықтан
+  // хабардар ететін жалғыз орын осы лента.
+  const { data: recentActivity } = clubIds.length
+    ? await supabase
+        .from("book_analyses")
+        .select("id, title, parent_id, club_id, club_plan_id, created_at, profiles(name), clubs(name), club_plans(books(title))")
+        .in("club_id", clubIds)
+        .neq("author_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(4)
     : { data: null };
 
   // Нақты оқылып жатқан трекерлер (current_page > 0)
@@ -294,6 +307,42 @@ export default async function DashboardPage() {
             )}
           </section>
         </div>
+      )}
+
+      {/* Клубтардағы соңғы белсенділік */}
+      {recentActivity && recentActivity.length > 0 && (
+        <section className="mt-5">
+          <div className="section-title">
+            <h2>Клубтарда не болып жатыр</h2>
+          </div>
+          <div className="space-y-2">
+            {(recentActivity as any[]).map((a) => {
+              const isReply = Boolean(a.parent_id);
+              const bookTitle = a.club_plans?.books?.title;
+              return (
+                <Link
+                  key={a.id}
+                  href={`/analysis/${a.parent_id ?? a.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-primary-200 hover:shadow-sm"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-500">
+                    <MessageSquare size={14} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-1 text-sm text-gray-900">
+                      <span className="font-semibold">{a.profiles?.name ?? "Оқырман"}</span>{" "}
+                      {isReply ? "пікір қалдырды" : `«${a.title}» талқысын ашты`}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-gray-400">
+                      {a.clubs?.name}
+                      {bookTitle && ` · ${bookTitle}`}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
       )}
     </div>
   );

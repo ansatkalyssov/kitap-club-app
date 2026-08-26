@@ -46,10 +46,10 @@ export default async function AnalysisDetailPage({
   return (
       <div className="page-container max-w-2xl">
         <Link
-          href="/analysis"
+          href={`/clubs/${thread.club_id}/plan/${thread.club_plan_id}`}
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
         >
-          <ArrowLeft size={14} /> Пікір алмасу
+          <ArrowLeft size={14} /> {book?.title ?? "Талқыға оралу"}
         </Link>
 
         {/* Thread header */}

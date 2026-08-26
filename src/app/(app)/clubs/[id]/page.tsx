@@ -46,6 +46,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import LeaveClubButton from "@/components/clubs/LeaveClubButton";
 import JoinClubButton from "@/components/clubs/JoinClubButton";
 import ShareClubButton from "@/components/clubs/ShareClubButton";
+import ThreadList from "@/components/analysis/ThreadList";
 
 export default async function ClubDetailPage({
   params,
@@ -167,14 +168,19 @@ export default async function ClubDetailPage({
     }
   }
 
-  // Discussion threads for this club (parent_id IS NULL = top-level threads)
+  // Пікірлер талқы (жоспар) бойынша топталады
   const { data: analyses } = await supabase
     .from("book_analyses")
-    .select("*, club_plans(books(title)), profiles(name)")
+    .select("id, title, created_at, club_plan_id, profiles(name)")
     .eq("club_id", id)
     .is("parent_id", null)
-    .order("created_at", { ascending: false })
-    .limit(5);
+    .order("created_at", { ascending: false });
+
+  const threadsByPlan: Record<string, any[]> = {};
+  (analyses || []).forEach((a) => {
+    if (!a.club_plan_id) return;
+    (threadsByPlan[a.club_plan_id] ||= []).push(a);
+  });
 
   // Reply counts per thread
   const threadIds = (analyses || []).map((a) => a.id);
@@ -390,6 +396,15 @@ export default async function ClubDetailPage({
                           <p className="mt-0.5 text-xs text-gray-400 italic">{plan.notes}</p>
                         )}
                       </div>
+                      {(isFacilitator || isMember) && (
+                        <Link
+                          href={`/clubs/${id}/plan/${plan.id}`}
+                          className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-400 transition hover:bg-gray-100 hover:text-primary-600"
+                        >
+                          <MessageSquare size={12} />
+                          {(threadsByPlan[plan.id] ?? []).length}
+                        </Link>
+                      )}
                       {isFacilitator && (
                         <Link
                           href={`/clubs/${id}/plan/${plan.id}/edit`}
@@ -408,21 +423,45 @@ export default async function ClubDetailPage({
                         Тарих ({pastPlans.length})
                         <span className="flex-1 border-t border-gray-100" />
                       </p>
-                      {pastPlans.map((plan: any) => (
-                        <div key={plan.id} className="mb-2 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 opacity-60">
-                          {plan.books?.cover_url && (
-                            <Image src={plan.books.cover_url} alt={plan.books.title} width={32} height={48} className="h-12 w-8 shrink-0 rounded-md object-cover border border-gray-200" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-700 text-sm line-clamp-1">
-                              {plan.books?.title ?? "—"}
-                            </p>
-                            {plan.meeting_date && (
-                              <p className="text-xs text-gray-400">{formatDateKz(plan.meeting_date)}</p>
+                      {pastPlans.map((plan: any) => {
+                        const count = (threadsByPlan[plan.id] ?? []).length;
+                        const row = (
+                          <>
+                            {plan.books?.cover_url && (
+                              <Image src={plan.books.cover_url} alt={plan.books.title} width={32} height={48} className="h-12 w-8 shrink-0 rounded-md object-cover border border-gray-200" />
                             )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-700 text-sm line-clamp-1">
+                                {plan.books?.title ?? "—"}
+                              </p>
+                              {plan.meeting_date && (
+                                <p className="text-xs text-gray-400">{formatDateKz(plan.meeting_date)}</p>
+                              )}
+                            </div>
+                            {count > 0 && (
+                              <span className="flex shrink-0 items-center gap-1 text-xs text-gray-400">
+                                <MessageSquare size={11} />
+                                {count}
+                              </span>
+                            )}
+                          </>
+                        );
+
+                        // Мүше архивтегі талқыны ашып, пікірлерін оқи алады
+                        return isFacilitator || isMember ? (
+                          <Link
+                            key={plan.id}
+                            href={`/clubs/${id}/plan/${plan.id}`}
+                            className="mb-2 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 transition hover:border-primary-200 hover:bg-white"
+                          >
+                            {row}
+                          </Link>
+                        ) : (
+                          <div key={plan.id} className="mb-2 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 opacity-60">
+                            {row}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -511,42 +550,32 @@ export default async function ClubDetailPage({
           </section>
         </div>
 
-        {/* Threads section — visible to facilitator and member */}
-        {(isFacilitator || isMember) && (
+        {/* Келесі талқының пікірлері — мүше мен жүргізушіге көрінеді */}
+        {(isFacilitator || isMember) && nearestPlan && (
           <div className="mt-5">
             <div className="section-title">
-              <h2>Пікір алмасу</h2>
-              {isFacilitator && (
-                <Link href={`/analysis/new?club=${id}`} className="btn-primary py-1.5 px-3 text-xs">
-                  <Plus size={14} /> Пікір ашу
-                </Link>
-              )}
+              <h2>Талқы пікірлері</h2>
+              <Link
+                href={`/clubs/${id}/plan/${nearestPlan.id}`}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
+              >
+                <MessageSquare size={13} /> Толық көру
+              </Link>
             </div>
-            {analyses && analyses.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {analyses.map((a: any) => (
-                  <Link key={a.id} href={`/analysis/${a.id}`}
-                    className="flex flex-col gap-2 rounded-2xl border border-gray-100 bg-white p-4 hover:border-primary-200 hover:shadow-sm transition"
-                  >
-                    <p className="font-semibold text-gray-900 text-sm line-clamp-2">{a.title}</p>
-                    {a.club_plans?.books?.title && (
-                      <p className="text-xs text-gray-400">{a.club_plans.books.title}</p>
-                    )}
-                    {a.meeting_date && (
-                      <p className="text-xs text-primary-600">{formatDateKz(a.meeting_date)}</p>
-                    )}
-                    <div className="flex items-center gap-1 text-xs text-gray-400 mt-auto pt-1 border-t border-gray-50">
-                      <MessageSquare size={11} />
-                      <span>{replyCountMap[a.id] || 0} пікір</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="card text-center py-8 text-sm text-gray-500">
-                Пікір жоқ. Кітап талқысынан кейін пікір ашыңыз.
-              </div>
-            )}
+
+            <div className="mb-3 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
+              <BookOpen size={13} className="shrink-0 text-primary-500" />
+              <p className="truncate text-xs font-medium text-gray-700">
+                {nearestPlan.books?.title ?? "Кітап белгіленбеген"}
+              </p>
+            </div>
+
+            <ThreadList
+              threads={(threadsByPlan[nearestPlan.id] ?? []).slice(0, 4)}
+              replyCounts={replyCountMap}
+              newHref={isFacilitator ? `/analysis/new?club=${id}&plan=${nearestPlan.id}` : undefined}
+              emptyText="Әзірге пікір жоқ. Кітапты оқып, ойыңызбен бөлісіңіз."
+            />
           </div>
         )}
       </div>
