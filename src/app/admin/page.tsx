@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Users, BookOpen, BarChart3, Shield, BookMarked, LogOut } from "lucide-react";
-import UserManagement from "@/components/admin/UserManagement";
-import ProgressBar from "@/components/ui/ProgressBar";
-import { calcProgress, daysUntil, formatDateKz } from "@/lib/utils";
+import { BookOpen, Shield, LogOut } from "lucide-react";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { getClubLeaderboard, levelFor } from "@/lib/points";
+import { monthBounds, kzDateStr } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 
 async function logoutAction() {
   "use server";
@@ -15,60 +17,194 @@ async function logoutAction() {
 
 export default async function AdminPage() {
   const adminDb = createAdminClient();
+  const today = kzDateStr();
+  const { start, end, label: monthLabel } = monthBounds();
 
-  // Stats
   const [
-    { count: userCount },
-    { count: clubCount },
-    { count: trackerCount },
-    { count: analysisCount },
+    { data: profiles },
+    { data: clubs },
+    { data: trackers },
+    { data: analyses },
+    { data: members },
+    { data: plans },
+    { data: events },
+    { data: logs },
+    rating,
   ] = await Promise.all([
-    adminDb.from("profiles").select("id", { count: "exact" }),
-    adminDb.from("clubs").select("id", { count: "exact" }).eq("is_active", true),
-    adminDb.from("book_trackers").select("id", { count: "exact" }),
-    adminDb.from("book_analyses").select("id", { count: "exact" }),
+    adminDb.from("profiles").select("*").order("created_at", { ascending: false }),
+    adminDb.from("clubs").select("*, cities(name)").order("created_at", { ascending: false }),
+    adminDb.from("book_trackers").select("id, user_id, is_completed, club_plan_id"),
+    adminDb
+      .from("book_analyses")
+      .select("id, title, parent_id, author_id, club_id, club_plan_id, created_at")
+      .order("created_at", { ascending: false }),
+    adminDb.from("club_members").select("club_id, user_id"),
+    adminDb.from("club_plans").select("id, club_id, book_id, meeting_date, books(title)"),
+    adminDb
+      .from("point_events")
+      .select("id, user_id, code, points, event_date, created_at")
+      .order("created_at", { ascending: false }),
+    adminDb.from("reading_logs").select("user_id, date, minutes_read"),
+    getClubLeaderboard(start, end),
   ]);
 
-  const { data: users } = await adminDb
-    .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const clubMap = new Map((clubs ?? []).map((c) => [c.id, c]));
+  const planMap = new Map((plans ?? []).map((p) => [p.id, p]));
 
-  const { data: clubs } = await adminDb
-    .from("clubs")
-    .select("*, cities(name), profiles(name), club_members(count)")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false });
-
-  const { data: allTrackers } = await adminDb
-    .from("book_trackers")
-    .select("*, profiles(id, name, email, role)")
-    .order("created_at", { ascending: false });
-
-  const trackersByUser: Record<string, any[]> = {};
-  const userMap: Record<string, any> = {};
-  (allTrackers || []).forEach((t) => {
-    if (!trackersByUser[t.user_id]) trackersByUser[t.user_id] = [];
-    trackersByUser[t.user_id].push(t);
-    if (!userMap[t.user_id]) {
-      userMap[t.user_id] = t.profiles || { id: t.user_id, name: null, email: "—", role: "reader" };
+  // Ұпайды пайдаланушы бойынша жинақтау
+  const pointsByUser = new Map<string, number>();
+  const monthPointsByUser = new Map<string, number>();
+  (events ?? []).forEach((e) => {
+    pointsByUser.set(e.user_id, (pointsByUser.get(e.user_id) ?? 0) + e.points);
+    if (e.event_date >= start) {
+      monthPointsByUser.set(e.user_id, (monthPointsByUser.get(e.user_id) ?? 0) + e.points);
     }
   });
-  const usersWithTrackers = Object.values(userMap);
+
+  // Соңғы белсенділік — streak есептеуден әлдеқайда арзан, әрі әкімге пайдалырақ
+  const lastActive = new Map<string, string>();
+  (logs ?? []).forEach((l) => {
+    const cur = lastActive.get(l.user_id);
+    if (!cur || l.date > cur) lastActive.set(l.user_id, l.date);
+  });
+
+  const clubsByUser = new Map<string, number>();
+  const membersByClub = new Map<string, number>();
+  (members ?? []).forEach((m) => {
+    clubsByUser.set(m.user_id, (clubsByUser.get(m.user_id) ?? 0) + 1);
+    membersByClub.set(m.club_id, (membersByClub.get(m.club_id) ?? 0) + 1);
+  });
+
+  const trackersByUser = new Map<string, { total: number; done: number }>();
+  (trackers ?? []).forEach((t) => {
+    const cur = trackersByUser.get(t.user_id) ?? { total: 0, done: 0 };
+    cur.total++;
+    if (t.is_completed) cur.done++;
+    trackersByUser.set(t.user_id, cur);
+  });
+
+  const threadsAll = (analyses ?? []).filter((a) => !a.parent_id);
+  const repliesAll = (analyses ?? []).filter((a) => a.parent_id);
+
+  const replyCount = new Map<string, number>();
+  repliesAll.forEach((r) => {
+    if (r.parent_id) replyCount.set(r.parent_id, (replyCount.get(r.parent_id) ?? 0) + 1);
+  });
+
+  const threadsByClub = new Map<string, number>();
+  threadsAll.forEach((t) => {
+    if (t.club_id) threadsByClub.set(t.club_id, (threadsByClub.get(t.club_id) ?? 0) + 1);
+  });
+
+  const plansByClub = new Map<string, number>();
+  (plans ?? []).forEach((p) => {
+    if (p.club_id) plansByClub.set(p.club_id, (plansByClub.get(p.club_id) ?? 0) + 1);
+  });
+
+  // Клуб бойынша айлық ұпай — рейтингтен алынады
+  const clubMonthPoints = new Map(rating.map((r) => [r.club_id, r.total_points]));
+
+  const readers = (profiles ?? []).map((p) => {
+    const tr = trackersByUser.get(p.id) ?? { total: 0, done: 0 };
+    const points = pointsByUser.get(p.id) ?? 0;
+    return {
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      role: p.role,
+      points,
+      monthPoints: monthPointsByUser.get(p.id) ?? 0,
+      level: levelFor(points).current.name,
+      clubs: clubsByUser.get(p.id) ?? 0,
+      trackers: tr.total,
+      completed: tr.done,
+      lastActive: lastActive.get(p.id) ?? null,
+      createdAt: p.created_at,
+    };
+  });
+
+  const facilitators = (profiles ?? [])
+    .filter((p) => p.role === "facilitator" || p.role === "admin")
+    .map((p) => {
+      const own = (clubs ?? []).filter((c) => c.facilitator_id === p.id);
+      return {
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        role: p.role,
+        points: pointsByUser.get(p.id) ?? 0,
+        clubs: own.map((c) => ({
+          id: c.id,
+          name: c.name,
+          members: membersByClub.get(c.id) ?? 0,
+          active: c.is_active,
+        })),
+      };
+    });
+
+  const clubRows = (clubs ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    city: (c.cities as any)?.name ?? null,
+    facilitator: c.facilitator_id ? profileMap.get(c.facilitator_id)?.name ?? "—" : "—",
+    members: membersByClub.get(c.id) ?? 0,
+    plans: plansByClub.get(c.id) ?? 0,
+    threads: threadsByClub.get(c.id) ?? 0,
+    monthPoints: clubMonthPoints.get(c.id) ?? 0,
+    active: c.is_active,
+  }));
+
+  const threadRows = threadsAll.slice(0, 100).map((t) => ({
+    id: t.id,
+    title: t.title,
+    author: t.author_id ? profileMap.get(t.author_id)?.name ?? "—" : "—",
+    club: t.club_id ? clubMap.get(t.club_id)?.name ?? "—" : "—",
+    book: t.club_plan_id ? ((planMap.get(t.club_plan_id)?.books as any)?.title ?? "—") : "—",
+    replies: replyCount.get(t.id) ?? 0,
+    createdAt: t.created_at,
+  }));
+
+  const eventRows = (events ?? []).slice(0, 150).map((e) => ({
+    id: e.id,
+    user: profileMap.get(e.user_id)?.name ?? profileMap.get(e.user_id)?.email ?? "—",
+    code: e.code,
+    points: e.points,
+    date: e.event_date,
+  }));
+
+  const stats = {
+    users: profiles?.length ?? 0,
+    readers: (profiles ?? []).filter((p) => p.role === "reader").length,
+    facilitators: (profiles ?? []).filter((p) => p.role === "facilitator").length,
+    admins: (profiles ?? []).filter((p) => p.role === "admin").length,
+    clubs: (clubs ?? []).filter((c) => c.is_active).length,
+    trackers: trackers?.length ?? 0,
+    trackersDone: (trackers ?? []).filter((t) => t.is_completed).length,
+    threads: threadsAll.length,
+    replies: repliesAll.length,
+    totalPoints: (events ?? []).reduce((s, e) => s + e.points, 0),
+    monthPoints: (events ?? []).filter((e) => e.event_date >= start).reduce((s, e) => s + e.points, 0),
+    activeToday: (logs ?? []).filter((l) => l.date === today).length,
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4 shadow-sm">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
             <BookOpen size={16} className="text-white" />
           </div>
-          <span className="font-bold text-primary-900 text-sm">Oqyrman</span>
-          <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-semibold text-primary-700">Админ</span>
+          <span className="text-sm font-bold text-primary-900">Oqyrman</span>
+          <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-semibold text-primary-700">
+            Админ
+          </span>
         </div>
         <form action={logoutAction}>
-          <button type="submit" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-gray-600 hover:bg-red-50 hover:text-red-600 transition">
+          <button
+            type="submit"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-gray-600 transition hover:bg-red-50 hover:text-red-600"
+          >
             <LogOut size={14} />
             Шығу
           </button>
@@ -82,129 +218,20 @@ export default async function AdminPage() {
           </div>
           <div>
             <h1>Админ панелі</h1>
-            <p className="text-sm text-gray-500">Жүйені басқару</p>
+            <p className="text-sm text-gray-500">{monthLabel} · барлық дерек</p>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Пайдаланушылар", value: userCount ?? 0, icon: Users, color: "bg-blue-50 text-blue-600" },
-            { label: "Клубтар", value: clubCount ?? 0, icon: BookOpen, color: "bg-primary-50 text-primary-600" },
-            { label: "Трекерлер", value: trackerCount ?? 0, icon: BookMarked, color: "bg-yellow-50 text-yellow-600" },
-            { label: "Анализдер", value: analysisCount ?? 0, icon: BarChart3, color: "bg-purple-50 text-purple-600" },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="card">
-              <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl ${color}`}>
-                <Icon size={18} />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{value}</p>
-              <p className="text-xs text-gray-500">{label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Readers & Trackers */}
-        <section className="mb-8">
-          <h2 className="mb-4">Оқырмандар және трекерлер</h2>
-          {usersWithTrackers.length > 0 ? (
-            <div className="space-y-4">
-              {usersWithTrackers.map((reader) => {
-                const userTrackers = trackersByUser[reader.id] || [];
-                const active = userTrackers.filter((t) => !t.is_completed);
-                const completed = userTrackers.filter((t) => t.is_completed);
-                return (
-                  <div key={reader.id} className="card">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold">
-                          {(reader.name || reader.email).charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{reader.name || "—"}</p>
-                          <p className="text-xs text-gray-500">{reader.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        {active.length > 0 && <span className="badge-green">{active.length} белсенді</span>}
-                        {completed.length > 0 && <span className="badge-gray">{completed.length} аяқталған</span>}
-                        {userTrackers.length === 0 && <span className="badge-gray">Трекер жоқ</span>}
-                      </div>
-                    </div>
-                    {userTrackers.length > 0 && (
-                      <div className="space-y-3">
-                        {userTrackers.map((t) => {
-                          const progress = calcProgress(t.current_page, t.total_pages);
-                          const days = daysUntil(t.deadline);
-                          return (
-                            <div key={t.id} className={`rounded-xl border p-4 ${t.is_completed ? "border-primary-100 bg-primary-50/50" : "border-gray-100 bg-gray-50"}`}>
-                              <div className="mb-2 flex items-start justify-between gap-2">
-                                <div>
-                                  <p className="font-medium text-gray-900 text-sm">{t.book_title}</p>
-                                  {t.book_author && <p className="text-xs text-gray-500">{t.book_author}</p>}
-                                </div>
-                                {t.is_completed ? (
-                                  <span className="badge-green shrink-0">Аяқталды ✓</span>
-                                ) : (
-                                  <span className={`badge shrink-0 ${days < 0 ? "bg-red-100 text-red-700" : days <= 7 ? "badge-yellow" : "badge-gray"}`}>
-                                    {days < 0 ? `${Math.abs(days)}к кешікті` : `${days} күн`}
-                                  </span>
-                                )}
-                              </div>
-                              <ProgressBar value={progress} size="sm" showLabel={false} />
-                              <div className="mt-1 flex justify-between text-xs text-gray-500">
-                                <span>{t.current_page} / {t.total_pages} бет</span>
-                                <span>{progress}% · Дедлайн: {formatDateKz(t.deadline)}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="card py-10 text-center text-gray-400 text-sm">Трекер жасаған пайдаланушы жоқ</div>
-          )}
-        </section>
-
-        {/* Users table */}
-        <section className="mb-8">
-          <h2 className="mb-4">Барлық пайдаланушылар</h2>
-          <UserManagement users={users || []} />
-        </section>
-
-        {/* Clubs table */}
-        <section>
-          <h2 className="mb-4">Клубтар</h2>
-          <div className="overflow-hidden rounded-2xl border border-gray-100">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-600">Клуб</th>
-                  <th className="px-4 py-3 font-medium text-gray-600">Жүргізуші</th>
-                  <th className="px-4 py-3 font-medium text-gray-600">Қала</th>
-                  <th className="px-4 py-3 font-medium text-gray-600">Мүше</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {(clubs as any[] || []).map((c) => (
-                  <tr key={c.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{c.profiles?.name || "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{c.cities?.name || "—"}</td>
-                    <td className="px-4 py-3"><span className="badge-green">{c.club_members?.[0]?.count ?? 0}</span></td>
-                  </tr>
-                ))}
-                {!clubs?.length && (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Клуб жоқ</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <AdminTabs
+          stats={stats}
+          readers={readers}
+          facilitators={facilitators}
+          clubs={clubRows}
+          threads={threadRows}
+          rating={rating}
+          events={eventRows}
+          profiles={profiles ?? []}
+        />
       </div>
     </div>
   );
