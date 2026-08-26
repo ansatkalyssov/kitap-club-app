@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Users, BookOpen } from "lucide-react";
+import { kzDateStr } from "@/lib/utils";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -62,7 +63,7 @@ export default async function PublicClubPage({
 
   if (!club) notFound();
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
   const nearestPlan =
     (plans || []).find((p) => !p.meeting_date || p.meeting_date >= today) ?? null;
 

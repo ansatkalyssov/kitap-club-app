@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { calcDailyPages } from "@/lib/utils";
+import { calcDailyPages, kzDateStr } from "@/lib/utils";
 import { RefreshCw, BookOpen, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -30,7 +30,7 @@ export default function CreateTrackerForm({ userId, prefill }: Props) {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
 
   const [form, setForm] = useState({
     book_title: prefill?.title || "",

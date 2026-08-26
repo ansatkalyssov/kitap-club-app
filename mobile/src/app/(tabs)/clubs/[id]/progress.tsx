@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { calcProgress, formatDateKz } from "@/lib/utils";
+import { calcProgress, formatDateKz, kzDateStr } from "@/lib/utils";
 import { Colors, Spacing, Radius } from "@/constants/theme";
 
 interface PlanRow {
@@ -61,7 +61,7 @@ export default function ClubProgressScreen() {
       }
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = kzDateStr();
     const { data: plans } = await supabase
       .from("club_plans")
       .select("id, end_date, books(title, author, page_count)")

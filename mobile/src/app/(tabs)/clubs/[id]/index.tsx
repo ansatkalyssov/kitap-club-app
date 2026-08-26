@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
 import { Club, ClubPlan, BookAnalysis } from "@/lib/types";
-import { formatDateKz, formatMonthKz, daysUntil } from "@/lib/utils";
+import { formatDateKz, formatMonthKz, daysUntil, kzDateStr } from "@/lib/utils";
 import JoinClubButton from "@/components/clubs/JoinClubButton";
 import LeaveClubButton from "@/components/clubs/LeaveClubButton";
 import { Colors, Spacing, Radius } from "@/constants/theme";
@@ -121,7 +121,7 @@ export default function ClubDetailScreen() {
 
   const isFacilitator = club.facilitator_id === userId;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
   const activePlans = plans.filter((p) => !p.end_date || p.end_date >= today);
   const pastPlans = plans.filter((p) => p.end_date && p.end_date < today);
   const nearestPlan =

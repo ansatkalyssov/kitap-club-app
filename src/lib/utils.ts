@@ -49,6 +49,40 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(" ");
 }
 
+// Қазақстан уақыты бойынша күнтізбелік күн (YYYY-MM-DD).
+// toISOString() қолдануға болмайды — ол UTC-ге аударады да, UTC+5-те
+// таңғы сағаттарда алдыңғы күнді береді. Серверде де (Vercel UTC-де
+// жүреді), браузерде де бірдей нәтиже шығуы үшін белдеу нақты бекітілген.
+export function kzDateStr(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Almaty" }).format(d);
+}
+
+// Ағымдағы айдың бірінші және соңғы күні (Қазақстан уақыты бойынша).
+// Клуб рейтингі айлық кесіндімен есептеледі.
+export function monthBounds(d: Date = new Date()): { start: string; end: string; label: string } {
+  const [y, m] = kzDateStr(d).split("-").map(Number);
+  const mm = String(m).padStart(2, "0");
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const MONTHS = [
+    "Қаңтар", "Ақпан", "Наурыз", "Сәуір", "Мамыр", "Маусым",
+    "Шілде", "Тамыз", "Қыркүйек", "Қазан", "Қараша", "Желтоқсан",
+  ];
+  return {
+    start: `${y}-${mm}-01`,
+    end: `${y}-${mm}-${String(lastDay).padStart(2, "0")}`,
+    label: `${MONTHS[m - 1]} ${y}`,
+  };
+}
+
+// YYYY-MM-DD жолына күн қосу/азайту. Ішінде UTC қолданылады —
+// бұл таза күнтізбелік арифметика, белдеу ығысуы әсер етпейді.
+export function addDays(dateStr: string, delta: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return dt.toISOString().split("T")[0];
+}
+
 export function calcReadingStreak(
   logs: { date: string; minutes_read: number }[],
   target: number
@@ -56,24 +90,21 @@ export function calcReadingStreak(
   if (!target) return 0;
 
   const logMap = new Map(logs.map((l) => [l.date, l]));
-  const getValue = (l: { minutes_read: number }) => l.minutes_read;
 
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-
-  const todayStr = d.toISOString().split("T")[0];
-  const todayLog = logMap.get(todayStr);
-  if (!todayLog || getValue(todayLog) < target) {
-    d.setDate(d.getDate() - 1);
+  // Бүгін әлі мақсатты орындамаса, тізбек үзілмейді — әлі кеш емес.
+  // Сондықтан санақ кешеден басталады.
+  let cursor = kzDateStr();
+  const todayLog = logMap.get(cursor);
+  if (!todayLog || todayLog.minutes_read < target) {
+    cursor = addDays(cursor, -1);
   }
 
   let streak = 0;
   while (true) {
-    const dateStr = d.toISOString().split("T")[0];
-    const log = logMap.get(dateStr);
-    if (log && getValue(log) >= target) {
+    const log = logMap.get(cursor);
+    if (log && log.minutes_read >= target) {
       streak++;
-      d.setDate(d.getDate() - 1);
+      cursor = addDays(cursor, -1);
     } else {
       break;
     }

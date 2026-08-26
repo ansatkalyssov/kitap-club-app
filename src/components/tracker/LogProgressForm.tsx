@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
 import { ReadingProgress } from "@/lib/types";
+import { kzDateStr } from "@/lib/utils";
+import { syncTrackerProgressPoints, syncBookCompletedPoints } from "@/app/actions/points";
+import { toastPoints } from "@/lib/pointsToast";
 
 interface Props {
   trackerId: string;
@@ -62,7 +65,7 @@ export default function LogProgressForm({ trackerId, currentPage, totalPages, to
         .eq("id", todayProgress.id);
       if (error) { toast.error("Сақталмады"); setLoading(false); return; }
     } else {
-      const today = new Date().toISOString().split("T")[0];
+      const today = kzDateStr();
       const { error } = await supabase
         .from("reading_progress")
         .insert({ tracker_id: trackerId, date: today, pages_read: pagesReadToday, note: note.trim() || null });
@@ -79,6 +82,11 @@ export default function LogProgressForm({ trackerId, currentPage, totalPages, to
     if (trackerError) { toast.error("Трекер жаңартылмады"); return; }
 
     toast.success(isCompleted ? "Кітапты аяқтадыңыз! 🎉" : "Прогрес сақталды!");
+
+    let earned = await syncTrackerProgressPoints(trackerId);
+    if (isCompleted) earned += await syncBookCompletedPoints(trackerId);
+    toastPoints(earned);
+
     router.push("/tracker");
     router.refresh();
   }

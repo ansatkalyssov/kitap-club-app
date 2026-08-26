@@ -1,174 +1,75 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getUser } from "@/lib/queries";
+import { Star, Flame, TrendingUp } from "lucide-react";
+import ProfileForm from "@/components/profile/ProfileForm";
+import ProgressBar from "@/components/ui/ProgressBar";
+import { getUserStats } from "@/lib/points";
+import { monthBounds } from "@/lib/utils";
 
-import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { RefreshCw, Camera } from "lucide-react";
-import Image from "next/image";
-import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
-import { updateProfile } from "@/app/actions/profile";
+export default async function ProfilePage() {
+  const user = await getUser();
+  if (!user) redirect("/login");
 
-export default function ProfilePage() {
-  const supabase = createClient();
-  const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { start, label } = monthBounds();
+  const stats = await getUserStats(user.id, start);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setEmail(user.email ?? "");
-      setUserId(user.id);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name, avatar_url")
-        .eq("id", user.id)
-        .single();
-      setName(profile?.name ?? "");
-      setAvatarUrl(profile?.avatar_url ?? null);
-      setFetching(false);
-    }
-    load();
-  }, []);
-
-  function handleAvatarFile(file: File) {
-    if (file.size > 3 * 1024 * 1024) {
-      toast.error("Сурет 3MB-тан аспауы керек");
-      return;
-    }
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
-  }
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Атыңызды енгізіңіз");
-      return;
-    }
-    setLoading(true);
-
-    let newAvatarUrl = avatarUrl;
-
-    if (avatarFile) {
-      const ext = avatarFile.name.split(".").pop();
-      const path = `${userId}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, avatarFile, { upsert: true });
-
-      if (uploadError) {
-        toast.error("Сурет жүктелмеді: " + uploadError.message);
-        setLoading(false);
-        return;
-      }
-
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
-      newAvatarUrl = publicUrl;
-    }
-
-    try {
-      await updateProfile({ name: name.trim(), avatar_url: newAvatarUrl });
-      toast.success("Профиль жаңартылды!");
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
-      toast.error("Сақталмады");
-    }
-    setLoading(false);
-  }
-
-  const displayAvatar = avatarPreview || avatarUrl;
-  const initials = name ? name.charAt(0).toUpperCase() : "?";
-
-  if (fetching) {
-    return (
-      <div className="page-container flex items-center justify-center py-20">
-        <RefreshCw size={20} className="animate-spin text-gray-400" />
-      </div>
-    );
-  }
+  // Келесі деңгейге дейінгі жол
+  const span = stats.nextLevel ? stats.nextLevel.min - stats.level.min : 0;
+  const done = stats.total - stats.level.min;
+  const toNext = stats.nextLevel ? stats.nextLevel.min - stats.total : 0;
+  const levelProgress = span > 0 ? Math.min(100, Math.round((done / span) * 100)) : 100;
 
   return (
     <div className="page-container max-w-md">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Профиль</h1>
-        <p className="mt-1 text-sm text-gray-500">Жеке ақпаратыңызды өзгертіңіз</p>
+        <p className="mt-1 text-sm text-gray-500">Жеке ақпаратыңыз бен нәтижеңіз</p>
       </div>
 
-      {/* Avatar section */}
-      <div className="mb-6 flex flex-col items-center gap-3">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-primary-700"
-          >
-            {displayAvatar ? (
-              <Image
-                src={displayAvatar}
-                alt={name}
-                fill
-                className="object-cover"
-                sizes="96px"
-              />
-            ) : (
-              <span className="text-3xl font-bold">{initials}</span>
-            )}
-            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition group-hover:opacity-100">
-              <Camera size={22} className="text-white" />
+      {/* Ұпай мен деңгей */}
+      <div className="card mb-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+              <Star size={20} />
             </div>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleAvatarFile(f);
-            }}
-          />
+            <div>
+              <p className="text-xl font-bold text-gray-900">{stats.total} ұпай</p>
+              <p className="text-xs font-medium text-primary-600">{stats.level.name}</p>
+            </div>
+          </div>
+          {stats.streak > 0 && (
+            <div className="flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-600">
+              <Flame size={15} />
+              {stats.streak} күн
+            </div>
+          )}
         </div>
-        <p className="text-xs text-gray-400">Суретті өзгерту үшін басыңыз</p>
+
+        {stats.nextLevel ? (
+          <>
+            <ProgressBar value={levelProgress} size="sm" />
+            <p className="mt-1.5 text-xs text-gray-500">
+              «{stats.nextLevel.name}» деңгейіне {toNext} ұпай қалды
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-gray-500">Ең жоғары деңгейге жеттіңіз</p>
+        )}
       </div>
 
-      <form onSubmit={handleSave} className="card space-y-4">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">Аты-жөні *</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Аты-жөніңізді енгізіңіз"
-            className="input"
-            required
-          />
+      {/* Осы айдағы үлес */}
+      <div className="card mb-6 flex items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
+          <TrendingUp size={16} />
         </div>
-
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">Email</label>
-          <input
-            value={email}
-            disabled
-            className="input bg-gray-50 text-gray-400 cursor-not-allowed"
-          />
-          <p className="mt-1 text-xs text-gray-400">Email өзгертілмейді</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-gray-900">{stats.monthPoints} ұпай</p>
+          <p className="text-xs text-gray-500">{label} айында жиналды</p>
         </div>
+      </div>
 
-        <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading && <RefreshCw size={16} className="animate-spin" />}
-          Сақтау
-        </button>
-      </form>
+      <ProfileForm />
     </div>
   );
 }

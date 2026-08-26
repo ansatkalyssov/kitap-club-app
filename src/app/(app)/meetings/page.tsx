@@ -3,13 +3,14 @@ import { redirect } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays } from "lucide-react";
+import { kzDateStr } from "@/lib/utils";
 
 export default async function MeetingsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
   const supabase = await createClient();
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
 
   // Parallel: memberships + managedClubs
   const [{ data: memberships }, { data: managedClubs }] = await Promise.all([

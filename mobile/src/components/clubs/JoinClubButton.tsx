@@ -3,6 +3,7 @@ import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, Alert } from "re
 import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { Colors, Spacing, Radius } from "@/constants/theme";
+import { kzDateStr } from "@/lib/utils";
 
 export default function JoinClubButton({
   clubId,
@@ -42,7 +43,7 @@ export default function JoinClubButton({
       .eq("club_id", clubId);
 
     if (plans && plans.length > 0) {
-      const today = new Date().toISOString().split("T")[0];
+      const today = kzDateStr();
 
       const { data: existingTrackers } = await supabase
         .from("book_trackers")

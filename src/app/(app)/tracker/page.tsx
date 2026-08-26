@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Plus, BookMarked, CheckCircle2, Users, User } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
 import EmptyState from "@/components/ui/EmptyState";
-import { calcProgress, calcDailyPages, daysUntil, formatDateKz } from "@/lib/utils";
+import { calcProgress, calcDailyPages, daysUntil, formatDateKz, kzDateStr } from "@/lib/utils";
 
 export default async function TrackerPage() {
   const user = await getUser();
@@ -19,7 +19,7 @@ export default async function TrackerPage() {
     .eq("user_id", user.id)
     .order("deadline", { ascending: true });
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
 
   const active = (trackers || []).filter(
     (t) => !t.is_completed && (!t.deadline || t.deadline >= today)

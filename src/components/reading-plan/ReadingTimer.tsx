@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Play, Pause, Square, RefreshCw, X } from "lucide-react";
 import toast from "react-hot-toast";
 import ProgressBar from "@/components/ui/ProgressBar";
+import { syncReadingPoints, syncBookCompletedPoints } from "@/app/actions/points";
+import { toastPoints } from "@/lib/pointsToast";
 
 interface Props {
   userId: string;
@@ -167,6 +169,9 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
     }
     toast.success(`${sessionMinutes} минут сақталды!`);
 
+    // Күндік мақсат орындалса — ұпай мен streak марапаты
+    toastPoints(await syncReadingPoints());
+
     // Fetch active trackers BEFORE refresh so state isn't disrupted
     const { data: activeTrackers } = await supabase
       .from("book_trackers")
@@ -209,6 +214,9 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
       return;
     }
     toast.success(isCompleted ? "Кітап аяқталды! 🎉" : "Трекер жаңартылды!");
+    if (isCompleted) {
+      toastPoints(await syncBookCompletedPoints(selectedTrackerId));
+    }
     setShowModal(false);
     router.refresh();
   }

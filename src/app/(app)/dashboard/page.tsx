@@ -3,10 +3,11 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
-import { Users, BookMarked, Plus, TrendingUp, Calendar } from "lucide-react";
+import { Users, BookMarked, Plus, Star, Calendar } from "lucide-react";
 import PushSubscribe from "@/components/PushSubscribe";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { calcProgress, daysUntil, formatDateKz } from "@/lib/utils";
+import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
+import { getUserStats } from "@/lib/points";
 import { BookTracker } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -17,7 +18,7 @@ export default async function DashboardPage() {
   if (!profile) redirect("/login");
 
   const supabase = await createClient();
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
 
   // Parallel: trackers + memberships + managedClubs + total tracker count
   const [{ data: trackers }, { data: memberships }, { data: managedClubs }, { count: totalTrackerCount }] = await Promise.all([
@@ -60,6 +61,8 @@ export default async function DashboardPage() {
 
   // Нақты оқылып жатқан трекерлер (current_page > 0)
   const inProgressTrackers = (trackers || []).filter((t) => t.current_page > 0);
+
+  const stats = await getUserStats(user.id, monthBounds().start);
 
   const isFacilitatorWithClubs =
     profile.role !== "reader" && managedClubs && managedClubs.length > 0;
@@ -169,13 +172,7 @@ export default async function DashboardPage() {
           { label: "Клубтар", value: memberships?.length ?? 0, icon: Users, href: "/clubs", color: "text-blue-600 bg-blue-50" },
           { label: "Трекерлер", value: totalTrackerCount ?? 0, icon: BookMarked, href: "/tracker", color: "text-primary-600 bg-primary-50" },
           { label: "Талқылар", value: upcomingMeetings?.length ?? 0, icon: Calendar, href: "/clubs", color: "text-yellow-600 bg-yellow-50" },
-          {
-            label: "Прогрес",
-            value: inProgressTrackers.length ? `${calcProgress(inProgressTrackers[0].current_page, inProgressTrackers[0].total_pages)}%` : "—",
-            icon: TrendingUp,
-            href: "/tracker",
-            color: "text-purple-600 bg-purple-50",
-          },
+          { label: "Ұпай", value: stats.total, icon: Star, href: "/profile", color: "text-purple-600 bg-purple-50" },
         ].map(({ label, value, icon: Icon, href, color }) => (
           <Link key={label} href={href} className="card hover:border-primary-200 transition">
             <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl ${color}`}>

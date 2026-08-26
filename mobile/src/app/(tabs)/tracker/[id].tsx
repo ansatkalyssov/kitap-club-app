@@ -9,7 +9,7 @@ import { Feather } from "@expo/vector-icons";
 import { supabase, supabaseUrl } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
 import { BookTracker, ReadingProgress } from "@/lib/types";
-import { calcProgress, calcDailyPages, daysUntil, formatDateKz } from "@/lib/utils";
+import { calcProgress, calcDailyPages, daysUntil, formatDateKz, kzDateStr } from "@/lib/utils";
 import { Colors, Spacing, Radius } from "@/constants/theme";
 import ProgressBar from "@/components/ui/ProgressBar";
 import LogProgressForm from "@/components/tracker/LogProgressForm";
@@ -173,7 +173,7 @@ export default function TrackerDetailScreen() {
   const progress = calcProgress(tracker.current_page, tracker.total_pages);
   const dailyPages = calcDailyPages(tracker.current_page, tracker.total_pages, tracker.deadline);
   const daysLeft = daysUntil(tracker.deadline);
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
   const todayProgress = history.find((p) => p.date === today) || null;
 
   return (

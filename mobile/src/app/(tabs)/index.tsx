@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
 import { ReadingGoal, ReadingLog } from "@/lib/types";
-import { calcReadingStreak, formatDateKz } from "@/lib/utils";
+import { calcReadingStreak, formatDateKz, kzDateStr } from "@/lib/utils";
 import { Colors, Spacing, Radius } from "@/constants/theme";
 import GoalForm from "@/components/reading-plan/GoalForm";
 import ReadingTimer from "@/components/reading-plan/ReadingTimer";
@@ -57,7 +57,7 @@ export default function ReadingPlanScreen() {
     );
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
   const todayLog = logs.find((l) => l.date === today) || null;
   const target = goal?.daily_minutes || 0;
   const streak = goal ? calcReadingStreak(logs, target) : 0;

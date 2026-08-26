@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { kzDateStr } from "@/lib/utils";
 
 async function sendToUser(userId: string, payload: { title: string; body: string; url?: string }) {
   const admin = createAdminClient();
@@ -39,10 +40,10 @@ export async function GET(req: NextRequest) {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+  const tomorrowStr = kzDateStr(tomorrow);
   const in3days = new Date(today);
   in3days.setDate(in3days.getDate() + 3);
-  const in3daysStr = in3days.toISOString().split("T")[0];
+  const in3daysStr = kzDateStr(in3days);
 
   // 1. Кездесу еске салу (ертең болатын)
   const { data: meetings } = await admin

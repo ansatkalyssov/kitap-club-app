@@ -4,6 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { ReadingProgress } from "@/lib/types";
 import { Colors, Spacing, Radius } from "@/constants/theme";
+import { kzDateStr } from "@/lib/utils";
 
 interface Props {
   trackerId: string;
@@ -18,7 +19,7 @@ export default function LogProgressForm({ trackerId, currentPage, totalPages, to
   const [pagesRead, setPagesRead] = useState(todayProgress?.pages_read?.toString() || "");
   const [note, setNote] = useState(todayProgress?.note || "");
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
 
   async function handleSubmit() {
     const pages = parseInt(pagesRead, 10);

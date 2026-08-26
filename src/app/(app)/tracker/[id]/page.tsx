@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle2, Calendar, BookOpen, Pencil } from "lucide-reac
 import ProgressBar from "@/components/ui/ProgressBar";
 import LogProgressForm from "@/components/tracker/LogProgressForm";
 import DeleteTrackerButton from "@/components/tracker/DeleteTrackerButton";
-import { calcProgress, calcDailyPages, daysUntil, formatDateKz } from "@/lib/utils";
+import { calcProgress, calcDailyPages, daysUntil, formatDateKz, kzDateStr } from "@/lib/utils";
 
 export default async function TrackerDetailPage({
   params,
@@ -40,7 +40,7 @@ export default async function TrackerDetailPage({
   const daysLeft = daysUntil(tracker.deadline);
 
   // Today's progress
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
   const todayProgress = progressHistory?.find((p) => p.date === today);
 
   return (

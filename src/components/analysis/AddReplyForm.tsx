@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { RefreshCw, Send } from "lucide-react";
 import toast from "react-hot-toast";
+import { syncAnalysisPoints } from "@/app/actions/points";
+import { toastPoints } from "@/lib/pointsToast";
 
 interface Props {
   threadId: string;
@@ -27,19 +29,25 @@ export default function AddReplyForm({ threadId, clubId, userId, userInitial }: 
       return;
     }
     setLoading(true);
-    const { error } = await supabase.from("book_analyses").insert({
-      parent_id: threadId,
-      club_id: clubId,
-      author_id: userId,
-      title: "",
-      content: content.trim(),
-    });
+    // club_plan_id ата-пікірден триггер арқылы мұраланады
+    const { data, error } = await supabase
+      .from("book_analyses")
+      .insert({
+        parent_id: threadId,
+        club_id: clubId,
+        author_id: userId,
+        title: "",
+        content: content.trim(),
+      })
+      .select("id")
+      .single();
     setLoading(false);
     if (error) {
       toast.error("Сақталмады: " + error.message);
       return;
     }
     toast.success("Пікір қосылды!");
+    toastPoints(await syncAnalysisPoints(data.id));
     setContent("");
     setFocused(false);
     router.refresh();

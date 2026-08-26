@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
 import { BookTracker } from "@/lib/types";
-import { calcProgress, calcDailyPages, daysUntil, formatDateKz } from "@/lib/utils";
+import { calcProgress, calcDailyPages, daysUntil, formatDateKz, kzDateStr } from "@/lib/utils";
 import { Colors, Spacing, Radius } from "@/constants/theme";
 import ProgressBar from "@/components/ui/ProgressBar";
 
@@ -56,7 +56,7 @@ export default function TrackerListScreen() {
     );
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
   const active = trackers.filter((t) => !t.is_completed && (!t.deadline || t.deadline >= today));
   const completed = trackers.filter((t) => t.is_completed || (t.deadline && t.deadline < today));
 

@@ -7,6 +7,7 @@ import { MONTHS_KZ } from "@/lib/constants";
 import { RefreshCw, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { createTrackersForMembers } from "@/app/actions/trackers";
+import { kzDateStr } from "@/lib/utils";
 
 interface Props {
   clubId: string;
@@ -126,11 +127,11 @@ export default function AddPlanForm({ clubId }: Props) {
     }
 
     // Дедлайнды анықтау (болмаса 6 ай кейін)
-    const today = new Date().toISOString().split("T")[0];
+    const today = kzDateStr();
     const sixMonthsLater = (() => {
       const d = new Date();
       d.setMonth(d.getMonth() + 6);
-      return d.toISOString().split("T")[0];
+      return kzDateStr(d);
     })();
     const deadline = form.end_date || form.meeting_date || sixMonthsLater;
 

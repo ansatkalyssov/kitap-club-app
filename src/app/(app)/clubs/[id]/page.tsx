@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare, Pencil } from "lucide-react";
-import { formatDateKz, formatMonthKz, calcProgress } from "@/lib/utils";
+import { formatDateKz, formatMonthKz, calcProgress, kzDateStr } from "@/lib/utils";
 import ProgressBar from "@/components/ui/ProgressBar";
 import LeaveClubButton from "@/components/clubs/LeaveClubButton";
 import JoinClubButton from "@/components/clubs/JoinClubButton";
@@ -65,7 +65,7 @@ export default async function ClubDetailPage({
       adminDb.from("club_plans").select("*, books(title, cover_url, author)").eq("club_id", id).order("meeting_date", { ascending: true, nullsFirst: false }).limit(3),
     ]);
     if (!club) notFound();
-    const today = new Date().toISOString().split("T")[0];
+    const today = kzDateStr();
     const nearestPlan = (plans || []).find((p) => !p.meeting_date || p.meeting_date >= today) ?? null;
     return (
       <div className="page-container max-w-lg">
@@ -127,7 +127,7 @@ export default async function ClubDetailPage({
   const isFacilitator = club.facilitator_id === user.id;
   const isMember = !!membership;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
   const activePlans = (plans || []).filter((p) => !p.meeting_date || p.meeting_date >= today);
   const pastPlans = (plans || []).filter((p) => p.meeting_date && p.meeting_date < today).reverse();
   const nearestPlan = activePlans[0] ?? null;

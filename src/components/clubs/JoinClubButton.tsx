@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { UserPlus, RefreshCw } from "lucide-react";
+import { kzDateStr } from "@/lib/utils";
+import { syncClubJoinPoints } from "@/app/actions/points";
+import { toastPoints } from "@/lib/pointsToast";
 
 interface Props {
   clubId: string;
@@ -43,7 +46,7 @@ export default function JoinClubButton({ clubId, userId, disabled, disabledReaso
       .eq("club_id", clubId);
 
     if (plans && plans.length > 0) {
-      const today = new Date().toISOString().split("T")[0];
+      const today = kzDateStr();
 
       // 3. Бар трекерлерді тексеру (дубликат болмасын)
       const { data: existingTrackers } = await supabase
@@ -68,7 +71,7 @@ export default function JoinClubButton({ clubId, userId, disabled, disabledReaso
           const deadline = plan.end_date || plan.meeting_date || (() => {
             const d = new Date();
             d.setMonth(d.getMonth() + 6);
-            return d.toISOString().split("T")[0];
+            return kzDateStr(d);
           })();
           return {
             user_id: userId,
@@ -95,6 +98,8 @@ export default function JoinClubButton({ clubId, userId, disabled, disabledReaso
     } else {
       toast.success("Клубқа тіркелдіңіз!");
     }
+
+    toastPoints(await syncClubJoinPoints(clubId));
 
     setLoading(false);
     router.refresh();

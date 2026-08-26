@@ -5,7 +5,7 @@ import { Target, Flame } from "lucide-react";
 import GoalForm from "@/components/reading-plan/GoalForm";
 import EditGoalSection from "@/components/reading-plan/EditGoalSection";
 import ReadingTimer from "@/components/reading-plan/ReadingTimer";
-import { calcReadingStreak, formatDateKz } from "@/lib/utils";
+import { calcReadingStreak, formatDateKz, kzDateStr } from "@/lib/utils";
 
 export default async function ReadingPlanPage() {
   const user = await getUser();
@@ -18,7 +18,7 @@ export default async function ReadingPlanPage() {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
 
   const { data: logs } = await supabase
     .from("reading_logs")

@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
-import { calcDailyPages } from "@/lib/utils";
+import { calcDailyPages, kzDateStr } from "@/lib/utils";
 import { Colors, Spacing, Radius } from "@/constants/theme";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -12,7 +12,7 @@ export default function CreateTrackerForm({ userId }: { userId: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
 
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");

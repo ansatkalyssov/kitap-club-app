@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Calendar, BookOpen, TrendingUp } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { calcProgress, formatDateKz } from "@/lib/utils";
+import { calcProgress, formatDateKz, kzDateStr } from "@/lib/utils";
 
 export default async function ClubProgressPage({
   params,
@@ -41,7 +41,7 @@ export default async function ClubProgressPage({
   if (!isFacilitator && !isMember) redirect(`/clubs/${id}`);
 
   const adminDb = createAdminClient();
-  const today = new Date().toISOString().split("T")[0];
+  const today = kzDateStr();
 
   // Барлық жоспарлар
   const { data: plans } = await adminDb

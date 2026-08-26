@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { MONTHS_KZ } from "@/lib/constants";
 import { RefreshCw, Plus, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { syncAnalysisPoints } from "@/app/actions/points";
+import { toastPoints } from "@/lib/pointsToast";
 
 interface Props {
   userId: string;
@@ -47,6 +49,11 @@ export default function CreateAnalysisForm({ userId, clubs, prefillClubId, prefi
       toast.error("Клубты таңдаңыз");
       return;
     }
+    // Әр пікір нақты талқыға (жоспарға) байланады
+    if (!selectedPlan) {
+      toast.error("Талқыны таңдаңыз");
+      return;
+    }
     if (!title.trim()) {
       toast.error("Талқы тақырыбын енгізіңіз");
       return;
@@ -59,7 +66,7 @@ export default function CreateAnalysisForm({ userId, clubs, prefillClubId, prefi
       .from("book_analyses")
       .insert({
         club_id: selectedClub,
-        club_plan_id: selectedPlan || null,
+        club_plan_id: selectedPlan,
         author_id: userId,
         title: title.trim(),
         content: content.trim() || null,
@@ -75,6 +82,7 @@ export default function CreateAnalysisForm({ userId, clubs, prefillClubId, prefi
       return;
     }
     toast.success("Пікір ашылды!");
+    toastPoints(await syncAnalysisPoints(data.id));
     router.push(`/analysis/${data.id}`);
     router.refresh();
   }

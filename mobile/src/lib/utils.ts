@@ -32,6 +32,21 @@ export function calcDailyPages(currentPage: number, totalPages: number, deadline
   return pagesLeft <= 0 ? 0 : Math.ceil(pagesLeft / daysLeft);
 }
 
+// Қазақстан уақыты бойынша күнтізбелік күн (YYYY-MM-DD).
+// toISOString() қолдануға болмайды — ол UTC-ге аударады да, UTC+5-те
+// таңғы сағаттарда алдыңғы күнді береді.
+export function kzDateStr(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Almaty" }).format(d);
+}
+
+// YYYY-MM-DD жолына күн қосу/азайту — таза күнтізбелік арифметика.
+export function addDays(dateStr: string, delta: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return dt.toISOString().split("T")[0];
+}
+
 export function calcReadingStreak(
   logs: { date: string; minutes_read: number }[],
   target: number
@@ -39,24 +54,20 @@ export function calcReadingStreak(
   if (!target) return 0;
 
   const logMap = new Map(logs.map((l) => [l.date, l]));
-  const getValue = (l: { minutes_read: number }) => l.minutes_read;
 
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-
-  const todayStr = d.toISOString().split("T")[0];
-  const todayLog = logMap.get(todayStr);
-  if (!todayLog || getValue(todayLog) < target) {
-    d.setDate(d.getDate() - 1);
+  // Бүгін әлі мақсатты орындамаса, тізбек үзілмейді — санақ кешеден басталады.
+  let cursor = kzDateStr();
+  const todayLog = logMap.get(cursor);
+  if (!todayLog || todayLog.minutes_read < target) {
+    cursor = addDays(cursor, -1);
   }
 
   let streak = 0;
   while (true) {
-    const dateStr = d.toISOString().split("T")[0];
-    const log = logMap.get(dateStr);
-    if (log && getValue(log) >= target) {
+    const log = logMap.get(cursor);
+    if (log && log.minutes_read >= target) {
       streak++;
-      d.setDate(d.getDate() - 1);
+      cursor = addDays(cursor, -1);
     } else {
       break;
     }

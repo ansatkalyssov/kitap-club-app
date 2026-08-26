@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, LayoutDashboard, Users, BookMarked, BarChart3, LogOut, Shield, Target, Settings } from "lucide-react";
+import { BookOpen, LayoutDashboard, Users, BookMarked, Trophy, LogOut, Shield, Target, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ const navItems = [
   // Ортадағы негізгі әрекет — ерекшеленіп тұрады
   { href: "/reading-plan", label: "Күнделікті оқу", mobileLabel: "Оқу", icon: Target, primary: true },
   { href: "/tracker", label: "Трекер", mobileLabel: "Трекер", icon: BookMarked },
-  { href: "/analysis", label: "Пікір алмасу", mobileLabel: "Пікір", icon: BarChart3 },
+  { href: "/rating", label: "Рейтинг", mobileLabel: "Рейтинг", icon: Trophy },
 ];
 
 export default function Navbar({ profile }: NavbarProps) {
