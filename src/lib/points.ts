@@ -1,7 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kzDateStr, addDays, calcReadingStreak } from "@/lib/utils";
-import type { Card } from "@/lib/cards";
 
 // =============================================
 // Ұпай ережелері
@@ -390,75 +389,6 @@ export async function getUserStats(userId: string, monthStart: string): Promise<
   const { current, next } = levelFor(total);
 
   return { total, monthPoints, streak, level: current, nextLevel: next };
-}
-
-// =============================================
-// Карточкалар
-// =============================================
-
-/**
- * Қолданушының карточкаларын ағымдағы күймен сәйкестендіреді:
- *   1. Бастау карточкасы — тіркелген соң бірден
- *   2. Межелік карточкалар — жиналған ұпайға қарай
- *
- * Идемпоттық user_cards.unique(user_id, card_id) арқылы қамтамасыз етіледі,
- * сондықтан әр бет ашылғанда шақырса да артық карточка берілмейді.
- *
- * @returns осы шақыруда жаңадан ашылған карточкалар
- */
-export async function syncCards(userId: string, total: number): Promise<Card[]> {
-  const admin = createAdminClient();
-
-  const [{ data: allCards }, { data: owned }] = await Promise.all([
-    admin.from("cards").select("*").eq("is_active", true).order("sort_order"),
-    admin.from("user_cards").select("card_id").eq("user_id", userId),
-  ]);
-
-  if (!allCards?.length) return [];
-
-  const ownedIds = new Set((owned ?? []).map((r) => r.card_id));
-
-  const eligible = allCards.filter((c) => {
-    if (ownedIds.has(c.id)) return false;
-    if (c.unlock_type === "starter") return true;
-    if (c.unlock_type === "threshold") return total >= (c.threshold ?? Infinity);
-    return false;
-  });
-
-  if (!eligible.length) return [];
-
-  const { error } = await admin.from("user_cards").insert(
-    eligible.map((c) => ({
-      user_id: userId,
-      card_id: c.id,
-      source: c.unlock_type,
-    }))
-  );
-
-  // 23505 = біреуі бұрын берілген, қалғанын қайта санаудың қажеті жоқ
-  if (error && error.code !== "23505") return [];
-
-  return eligible as Card[];
-}
-
-export type OwnedCard = Card & { unlocked_at: string | null; owned: boolean };
-
-/** Коллекция беті үшін: барлық карточка + иелену күйі */
-export async function getCollection(userId: string): Promise<OwnedCard[]> {
-  const admin = createAdminClient();
-
-  const [{ data: allCards }, { data: owned }] = await Promise.all([
-    admin.from("cards").select("*").eq("is_active", true).order("sort_order"),
-    admin.from("user_cards").select("card_id, unlocked_at").eq("user_id", userId),
-  ]);
-
-  const ownedMap = new Map((owned ?? []).map((r) => [r.card_id, r.unlocked_at]));
-
-  return (allCards ?? []).map((c) => ({
-    ...(c as Card),
-    owned: ownedMap.has(c.id),
-    unlocked_at: ownedMap.get(c.id) ?? null,
-  }));
 }
 
 export type ClubRankRow = {
