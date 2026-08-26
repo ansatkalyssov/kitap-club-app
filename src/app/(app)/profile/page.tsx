@@ -3,8 +3,10 @@ import { getUser } from "@/lib/queries";
 import { Star, Flame, TrendingUp } from "lucide-react";
 import ProfileForm from "@/components/profile/ProfileForm";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { getUserStats } from "@/lib/points";
+import BookCard from "@/components/cards/BookCard";
+import { getUserStats, syncCards, getCollection } from "@/lib/points";
 import { monthBounds } from "@/lib/utils";
+import Link from "next/link";
 
 export default async function ProfilePage() {
   const user = await getUser();
@@ -12,6 +14,12 @@ export default async function ProfilePage() {
 
   const { start, label } = monthBounds();
   const stats = await getUserStats(user.id, start);
+
+  // Ашылуға тиіс карточкаларды береді — тіркелген соң бастау карточкасы
+  // осы жерде беріледі, ұпай межесіне жеткендері де осында ашылады
+  await syncCards(user.id, stats.total);
+  const collection = await getCollection(user.id);
+  const owned = collection.filter((c) => c.owned);
 
   // Келесі деңгейге дейінгі жол
   const span = stats.nextLevel ? stats.nextLevel.min - stats.level.min : 0;
@@ -68,6 +76,33 @@ export default async function ProfilePage() {
           <p className="text-xs text-gray-500">{label} айында жиналды</p>
         </div>
       </div>
+
+      {/* Коллекция */}
+      {collection.length > 0 && (
+        <section className="mb-6">
+          <div className="section-title">
+            <h2>Коллекция</h2>
+            <Link
+              href="/cards"
+              className="text-xs font-medium text-primary-600 hover:text-primary-700"
+            >
+              {owned.length} / {collection.length} →
+            </Link>
+          </div>
+
+          {owned.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              {owned.slice(0, 2).map((c) => (
+                <BookCard key={c.id} card={c} />
+              ))}
+            </div>
+          ) : (
+            <div className="card py-6 text-center text-sm text-gray-500">
+              Кітап оқып, алғашқы карточкаңызды ашыңыз
+            </div>
+          )}
+        </section>
+      )}
 
       <ProfileForm />
     </div>
