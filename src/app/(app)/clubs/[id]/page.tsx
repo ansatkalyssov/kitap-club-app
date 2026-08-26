@@ -132,6 +132,13 @@ export default async function ClubDetailPage({
   const activePlans = (plans || []).filter((p) => !p.meeting_date || p.meeting_date >= today);
   const pastPlans = (plans || []).filter((p) => p.meeting_date && p.meeting_date < today).reverse();
   const nearestPlan = activePlans[0] ?? null;
+  const otherActivePlans = activePlans
+    .filter((p: any) => p.id !== nearestPlan?.id)
+    .sort((a: any, b: any) => {
+      const ak = a.meeting_date ?? `${a.year}-${String(a.month).padStart(2, "0")}-99`;
+      const bk = b.meeting_date ?? `${b.year}-${String(b.month).padStart(2, "0")}-99`;
+      return ak.localeCompare(bk);
+    });
 
   // Facilitator OR member: get members with their progress (adminDb — RLS айналып өтеді)
   let membersWithProgress: any[] = [];
@@ -365,32 +372,17 @@ export default async function ClubDetailPage({
 
             {/* Collapsible full plan list */}
             {plans && plans.length > 0 ? (
-              <details className="group">
-                <summary className="cursor-pointer list-none">
-                  <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition select-none">
+              <div>
+                {otherActivePlans.length > 0 && (
+                  <p className="mb-2 flex items-center gap-2 text-xs text-gray-400">
                     <span className="flex-1 border-t border-gray-100" />
-                    <span className="flex items-center gap-1 shrink-0">
-                      Толық жоспар
-                      <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
-                        {activePlans.filter((p: any) => p.id !== nearestPlan?.id).length + pastPlans.length}
-                      </span>
-                      <svg className="h-3.5 w-3.5 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </span>
+                    Келесі жоспарлар ({otherActivePlans.length})
                     <span className="flex-1 border-t border-gray-100" />
-                  </div>
-                </summary>
+                  </p>
+                )}
 
-                <div className="mt-2 space-y-2">
-                  {[...activePlans]
-                  .filter((p: any) => p.id !== nearestPlan?.id)
-                  .sort((a: any, b: any) => {
-                    const ak = a.meeting_date ?? `${a.year}-${String(a.month).padStart(2,"0")}-99`;
-                    const bk = b.meeting_date ?? `${b.year}-${String(b.month).padStart(2,"0")}-99`;
-                    return ak.localeCompare(bk);
-                  })
-                  .map((plan: any) => (
+                <div className="space-y-2">
+                  {otherActivePlans.map((plan: any) => (
                     <div key={plan.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3">
                       {plan.books?.cover_url && (
                         <Image src={plan.books.cover_url} alt={plan.books.title} width={44} height={64} className="h-16 w-11 shrink-0 rounded-lg object-cover border border-gray-200 shadow-sm" />
@@ -440,56 +432,11 @@ export default async function ClubDetailPage({
                     </div>
                   ))}
 
-                  {pastPlans.length > 0 && (
-                    <div className="pt-1">
-                      <p className="mb-2 flex items-center gap-2 text-xs text-gray-400">
-                        <span className="flex-1 border-t border-gray-100" />
-                        Тарих ({pastPlans.length})
-                        <span className="flex-1 border-t border-gray-100" />
-                      </p>
-                      {pastPlans.map((plan: any) => {
-                        const count = (threadsByPlan[plan.id] ?? []).length;
-                        const row = (
-                          <>
-                            {plan.books?.cover_url && (
-                              <Image src={plan.books.cover_url} alt={plan.books.title} width={32} height={48} className="h-12 w-8 shrink-0 rounded-md object-cover border border-gray-200" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-700 text-sm line-clamp-1">
-                                {plan.books?.title ?? "—"}
-                              </p>
-                              {plan.meeting_date && (
-                                <p className="text-xs text-gray-400">{formatDateKz(plan.meeting_date)}</p>
-                              )}
-                            </div>
-                            {count > 0 && (
-                              <span className="flex shrink-0 items-center gap-1 text-xs text-gray-400">
-                                <MessageSquare size={11} />
-                                {count}
-                              </span>
-                            )}
-                          </>
-                        );
-
-                        // Мүше архивтегі талқыны ашып, пікірлерін оқи алады
-                        return isFacilitator || isMember ? (
-                          <Link
-                            key={plan.id}
-                            href={`/clubs/${id}/plan/${plan.id}`}
-                            className="mb-2 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 transition hover:border-primary-200 hover:bg-white"
-                          >
-                            {row}
-                          </Link>
-                        ) : (
-                          <div key={plan.id} className="mb-2 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 opacity-60">
-                            {row}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  {otherActivePlans.length === 0 && !nearestPlan && (
+                    <p className="py-4 text-center text-sm text-gray-400">Алдағы жоспар жоқ</p>
                   )}
                 </div>
-              </details>
+              </div>
             ) : (
               <div className="card text-center py-8 text-sm text-gray-500">
                 Жоспар жоқ
@@ -506,6 +453,59 @@ export default async function ClubDetailPage({
             </section>
           )}
         </div>
+
+        {/* Архив — мерзімі өткен талқылар, беттің ең түбінде */}
+        {pastPlans.length > 0 && (
+          <section className="mt-8">
+            <p className="mb-3 flex items-center gap-2 text-xs text-gray-400">
+              <span className="flex-1 border-t border-gray-100" />
+              Архив ({pastPlans.length})
+              <span className="flex-1 border-t border-gray-100" />
+            </p>
+
+            <div className="space-y-2">
+              {pastPlans.map((plan: any) => {
+                const count = (threadsByPlan[plan.id] ?? []).length;
+                const row = (
+                  <>
+                    {plan.books?.cover_url && (
+                      <Image src={plan.books.cover_url} alt={plan.books.title} width={32} height={48} className="h-12 w-8 shrink-0 rounded-md object-cover border border-gray-200" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-sm font-medium text-gray-700">
+                        {plan.books?.title ?? "—"}
+                      </p>
+                      {plan.meeting_date && (
+                        <p className="text-xs text-gray-400">{formatDateKz(plan.meeting_date)}</p>
+                      )}
+                    </div>
+                    {count > 0 && (
+                      <span className="flex shrink-0 items-center gap-1 text-xs text-gray-400">
+                        <MessageSquare size={11} />
+                        {count}
+                      </span>
+                    )}
+                  </>
+                );
+
+                // Мүше архивтегі талқыны ашып, үлгерім мен пікірлерін көре алады
+                return isFacilitator || isMember ? (
+                  <Link
+                    key={plan.id}
+                    href={`/clubs/${id}/plan/${plan.id}`}
+                    className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 transition hover:border-primary-200 hover:bg-white"
+                  >
+                    {row}
+                  </Link>
+                ) : (
+                  <div key={plan.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 opacity-60">
+                    {row}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
   );
 }
