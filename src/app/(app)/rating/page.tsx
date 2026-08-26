@@ -30,7 +30,7 @@ export default async function RatingPage() {
   return (
     <div className="page-container">
       <div className="mb-6">
-        <h1>Рейтинг</h1>
+        <h1>Рейтиң</h1>
         <p className="mt-0.5 text-sm text-gray-500">
           Клубтардың {label} айындағы оқу белсенділігі
         </p>
@@ -39,7 +39,7 @@ export default async function RatingPage() {
       {ranked.length === 0 ? (
         <EmptyState
           icon={Trophy}
-          title="Рейтинг әлі бос"
+          title="Рейтиң әлі бос"
           description="Осы айда ешкім ұпай жинамаған. Кітап оқып, бірінші болыңыз!"
           action={
             <Link href="/reading-plan" className="btn-primary">
@@ -125,7 +125,7 @@ export default async function RatingPage() {
       )}
 
       <p className="mt-8 text-center text-xs text-gray-400">
-        Рейтинг мүшелердің оқудан жинаған ұпайынан құралады.
+        Рейтиң мүшелердің оқудан жинаған ұпайынан құралады.
         <br />
         Әр айдың басында нөлден басталады.
       </p>

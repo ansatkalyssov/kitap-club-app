@@ -19,7 +19,7 @@ const navItems = [
   // Ортадағы негізгі әрекет — ерекшеленіп тұрады
   { href: "/reading-plan", label: "Күнделікті оқу", mobileLabel: "Оқу", icon: Target, primary: true },
   { href: "/tracker", label: "Трекер", mobileLabel: "Трекер", icon: BookMarked },
-  { href: "/rating", label: "Рейтинг", mobileLabel: "Рейтинг", icon: Trophy },
+  { href: "/rating", label: "Рейтиң", mobileLabel: "Рейтиң", icon: Trophy },
 ];
 
 export default function Navbar({ profile }: NavbarProps) {
