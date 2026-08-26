@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare, Pencil } from "lucide-react";
+import { MapPin, Users, Calendar, BookOpen, Plus, ArrowLeft, TrendingUp, MessageSquare, Pencil, ChevronRight } from "lucide-react";
 import { formatDateKz, formatMonthKz, calcProgress, kzDateStr } from "@/lib/utils";
 import ProgressBar from "@/components/ui/ProgressBar";
 import LeaveClubButton from "@/components/clubs/LeaveClubButton";
@@ -293,13 +293,11 @@ export default async function ClubDetailPage({
                 diffDays === 0 ? "Бүгін!" :
                 diffDays === 1 ? "Ертең" :
                 `${diffDays} күн`;
-              const topMembers = membersWithProgress.slice(0, 3);
               const planThreads = threadsByPlan[nearestPlan.id] ?? [];
+              const canOpen = isFacilitator || isMember;
 
-              return (
-                <div className={`mb-4 overflow-hidden rounded-2xl border shadow-sm ${
-                  isClose ? "border-primary-200 bg-primary-50/50" : "border-gray-100 bg-white"
-                }`}>
+              const card = (
+                <>
                   {/* Талқы туралы */}
                   <div className="flex items-center gap-3 p-4">
                     {/* Date block */}
@@ -324,105 +322,44 @@ export default async function ClubDetailPage({
                         <p className="mt-0.5 text-xs text-primary-600">📍 {nearestPlan.meeting_location}</p>
                       )}
                     </div>
-                    {/* Countdown + edit */}
+                    {/* Countdown */}
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <span className={`text-xs font-bold ${
                         diffDays === 0 ? "text-primary-600" : isClose ? "text-yellow-600" : "text-gray-400"
                       }`}>
                         {countdownLabel}
                       </span>
-                      {isFacilitator && (
-                        <Link
-                          href={`/clubs/${id}/plan/${nearestPlan.id}/edit`}
-                          className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </Link>
-                      )}
+                      {canOpen && <ChevronRight size={16} className="text-gray-300" />}
                     </div>
                   </div>
 
-                  {(isFacilitator || isMember) && (
-                    <>
-                      {/* Оқырмандар үлгерімі */}
-                      <div className="border-t border-gray-100 bg-white/70 px-4 py-3">
-                        <div className="mb-2.5 flex items-center justify-between">
-                          <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
-                            <TrendingUp size={13} className="text-primary-500" />
-                            Оқырмандар үлгерімі
-                          </p>
-                          <Link
-                            href={`/clubs/${id}/progress`}
-                            className="text-xs font-medium text-primary-600 hover:text-primary-700"
-                          >
-                            Толық көру →
-                          </Link>
-                        </div>
-
-                        {topMembers.length > 0 ? (
-                          <div className="space-y-2.5">
-                            {topMembers.map((m: any) => (
-                              <div key={m.user_id} className="flex items-center gap-2.5">
-                                <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700">
-                                  {m.profiles?.avatar_url ? (
-                                    <Image src={m.profiles.avatar_url} alt={m.profiles.name || ""} fill className="object-cover" sizes="28px" />
-                                  ) : (
-                                    (m.profiles?.name || m.profiles?.email || "?").charAt(0).toUpperCase()
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="truncate text-xs text-gray-700">
-                                      {m.profiles?.name || m.profiles?.email}
-                                    </p>
-                                    <span className="shrink-0 text-[11px] text-gray-400">
-                                      {m.progress !== null ? `${m.currentPage}/${m.totalPages}` : "—"}
-                                    </span>
-                                  </div>
-                                  {m.progress !== null ? (
-                                    <ProgressBar value={m.progress} size="sm" />
-                                  ) : (
-                                    <p className="text-[10px] text-gray-400">Трекер жоқ</p>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                            {membersWithProgress.length > 3 && (
-                              <p className="pt-0.5 text-[11px] text-gray-400">
-                                және тағы {membersWithProgress.length - 3} оқырман
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-400">Оқырман жоқ</p>
-                        )}
-                      </div>
-
-                      {/* Пікір алмасу */}
-                      <div className="border-t border-gray-100 bg-white/70 px-4 py-3">
-                        <div className="mb-2.5 flex items-center justify-between">
-                          <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
-                            <MessageSquare size={13} className="text-primary-500" />
-                            Пікір алмасу ({planThreads.length})
-                          </p>
-                          <Link
-                            href={`/clubs/${id}/plan/${nearestPlan.id}`}
-                            className="text-xs font-medium text-primary-600 hover:text-primary-700"
-                          >
-                            Толық көру →
-                          </Link>
-                        </div>
-
-                        <ThreadList
-                          threads={planThreads.slice(0, 3)}
-                          replyCounts={replyCountMap}
-                          newHref={isFacilitator ? `/analysis/new?club=${id}&plan=${nearestPlan.id}` : undefined}
-                          emptyText="Әзірге пікір жоқ. Кітапты оқып, ойыңызбен бөлісіңіз."
-                        />
-                      </div>
-                    </>
+                  {/* Ішінде не бар — қысқа қорытынды */}
+                  {canOpen && (
+                    <div className="flex items-center gap-4 border-t border-gray-100 bg-white/70 px-4 py-2.5">
+                      <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <TrendingUp size={13} className="text-primary-500" />
+                        {membersWithProgress.length} оқырман
+                      </span>
+                      <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <MessageSquare size={13} className="text-primary-500" />
+                        {planThreads.length} пікір
+                      </span>
+                      <span className="ml-auto text-xs font-medium text-primary-600">Ашу →</span>
+                    </div>
                   )}
-                </div>
+                </>
+              );
+
+              const shell = `mb-4 block overflow-hidden rounded-2xl border shadow-sm transition ${
+                isClose ? "border-primary-200 bg-primary-50/50" : "border-gray-100 bg-white"
+              } ${canOpen ? "hover:border-primary-300 hover:shadow-md" : ""}`;
+
+              return canOpen ? (
+                <Link href={`/clubs/${id}/plan/${nearestPlan.id}`} className={shell}>
+                  {card}
+                </Link>
+              ) : (
+                <div className={shell}>{card}</div>
               );
             })()}
 

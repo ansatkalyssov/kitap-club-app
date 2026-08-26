@@ -4,9 +4,10 @@ import { redirect, notFound } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Calendar, MapPin, BookOpen, Pencil } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, BookOpen, Pencil, TrendingUp, MessageSquare } from "lucide-react";
 import ThreadList from "@/components/analysis/ThreadList";
-import { formatDateKz, formatMonthKz, kzDateStr } from "@/lib/utils";
+import ProgressBar from "@/components/ui/ProgressBar";
+import { formatDateKz, formatMonthKz, kzDateStr, calcProgress } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,35 @@ export default async function PlanDiscussionPage({
     (replies ?? []).forEach((r) => {
       if (r.parent_id) replyCounts[r.parent_id] = (replyCounts[r.parent_id] ?? 0) + 1;
     });
+  }
+
+  // Осы кітап бойынша оқырмандар үлгерімі
+  const { data: members } = await adminDb
+    .from("club_members")
+    .select("user_id, profiles(name, email, avatar_url)")
+    .eq("club_id", id);
+
+  let membersWithProgress: any[] = [];
+  if (members?.length) {
+    const { data: trackers } = await adminDb
+      .from("book_trackers")
+      .select("user_id, current_page, total_pages, is_completed")
+      .eq("club_plan_id", planId)
+      .in("user_id", members.map((m) => m.user_id));
+
+    const trackerMap = Object.fromEntries((trackers ?? []).map((t) => [t.user_id, t]));
+
+    membersWithProgress = members
+      .map((m) => {
+        const t = trackerMap[m.user_id];
+        return {
+          ...m,
+          progress: t ? calcProgress(t.current_page, t.total_pages) : null,
+          currentPage: t?.current_page ?? 0,
+          totalPages: t?.total_pages ?? 0,
+        };
+      })
+      .sort((a, b) => (b.progress ?? -1) - (a.progress ?? -1));
   }
 
   const isPast = Boolean(plan.meeting_date && plan.meeting_date < kzDateStr());
@@ -135,9 +165,65 @@ export default async function PlanDiscussionPage({
         )}
       </div>
 
+      {/* Оқырмандар үлгерімі */}
+      <div className="section-title">
+        <h2 className="flex items-center gap-2">
+          <TrendingUp size={16} className="text-primary-500" />
+          Оқырмандар үлгерімі
+        </h2>
+        <Link
+          href={`/clubs/${id}/progress`}
+          className="text-xs font-medium text-primary-600 hover:text-primary-700"
+        >
+          Толық көру →
+        </Link>
+      </div>
+
+      {membersWithProgress.length > 0 ? (
+        <div className="card mb-6 space-y-3">
+          {membersWithProgress.map((m: any) => (
+            <div key={m.user_id} className="flex items-center gap-3">
+              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+                {m.profiles?.avatar_url ? (
+                  <Image
+                    src={m.profiles.avatar_url}
+                    alt={m.profiles.name || ""}
+                    fill
+                    className="object-cover"
+                    sizes="32px"
+                  />
+                ) : (
+                  (m.profiles?.name || m.profiles?.email || "?").charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm text-gray-800">
+                    {m.profiles?.name || m.profiles?.email}
+                  </p>
+                  <span className="shrink-0 text-xs text-gray-400">
+                    {m.progress !== null ? `${m.currentPage}/${m.totalPages} бет` : "—"}
+                  </span>
+                </div>
+                {m.progress !== null ? (
+                  <ProgressBar value={m.progress} size="sm" />
+                ) : (
+                  <p className="mt-0.5 text-xs text-gray-400">Трекер жоқ</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card mb-6 py-6 text-center text-sm text-gray-500">Оқырман жоқ</div>
+      )}
+
       {/* Пікірлер */}
       <div className="section-title">
-        <h2>Пікірлер ({threads?.length ?? 0})</h2>
+        <h2 className="flex items-center gap-2">
+          <MessageSquare size={16} className="text-primary-500" />
+          Пікір алмасу ({threads?.length ?? 0})
+        </h2>
       </div>
 
       <ThreadList
