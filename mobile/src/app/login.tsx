@@ -85,6 +85,8 @@ export default function LoginScreen() {
     }
     const fullName = lastName.trim() ? `${name.trim()} ${lastName.trim()}` : name.trim();
     await supabase.from("profiles").upsert({ id: user.id, email: user.email!, name: fullName });
+    // Supabase панеліндегі Users тізімі метадеректен оқиды
+    await supabase.auth.updateUser({ data: { full_name: fullName } });
     await refreshProfile();
     setLoading(false);
     router.replace("/(tabs)");

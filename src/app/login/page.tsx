@@ -200,6 +200,12 @@ function LoginForm() {
       email: user.email!,
       name: fullName,
     });
+
+    // Атты auth метадеректеріне де жазамыз. Қолданба profiles кестесінен
+    // оқиды, бірақ Supabase панеліндегі Users тізімі тек метадеректі
+    // көрсетеді — онсыз поштамен тіркелгендер сызықша болып тұрады.
+    await supabase.auth.updateUser({ data: { full_name: fullName } });
+
     setLoading(false);
     router.push(next);
     router.refresh();

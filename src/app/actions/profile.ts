@@ -15,5 +15,9 @@ export async function updateProfile(data: { name: string; avatar_url: string | n
 
   if (error) throw error;
 
+  // Supabase панеліндегі Users тізімі тек метадеректі көрсетеді,
+  // сондықтан атты сонда да жаңартамыз
+  await supabase.auth.updateUser({ data: { full_name: data.name } });
+
   revalidatePath("/", "layout");
 }
