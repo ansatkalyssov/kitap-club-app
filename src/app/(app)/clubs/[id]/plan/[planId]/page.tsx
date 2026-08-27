@@ -43,7 +43,8 @@ export default async function PlanDiscussionPage({
 
   const isFacilitator = club.facilitator_id === user.id;
   const isMember = Boolean(membership);
-  if (!isFacilitator && !isMember) redirect(`/clubs/${id}`);
+  // Талқы бәріне ашық — қосылмаған оқырман да үлгерім мен пікірлерді көреді.
+  // Жазу құқығы бұрынғыдай мүшелер мен жүргізушіде ғана.
 
   // Осы талқының пікірлері
   const { data: threads } = await supabase
@@ -225,6 +226,15 @@ export default async function PlanDiscussionPage({
           Пікір алмасу ({threads?.length ?? 0})
         </h2>
       </div>
+
+      {!isFacilitator && !isMember && (
+        <Link
+          href={`/clubs/${id}`}
+          className="mb-3 flex items-center justify-center gap-1.5 rounded-xl bg-primary-50 px-4 py-2.5 text-xs font-medium text-primary-700 transition hover:bg-primary-100"
+        >
+          Талқыға қатысу үшін клубқа қосылыңыз →
+        </Link>
+      )}
 
       <ThreadList
         threads={(threads ?? []) as any}

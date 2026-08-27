@@ -301,7 +301,8 @@ export default async function ClubDetailPage({
                 diffDays === 1 ? "Ертең" :
                 `${diffDays} күн`;
               const planThreads = threadsByPlan[nearestPlan.id] ?? [];
-              const canOpen = isFacilitator || isMember;
+              // Клуб мазмұны бәріне ашық — тіркелмеген оқырман да көреді
+              const canOpen = true;
 
               const card = (
                 <>
@@ -412,15 +413,13 @@ export default async function ClubDetailPage({
                           <p className="mt-0.5 text-xs text-gray-400 italic">{plan.notes}</p>
                         )}
                       </div>
-                      {(isFacilitator || isMember) && (
-                        <Link
-                          href={`/clubs/${id}/plan/${plan.id}`}
-                          className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-400 transition hover:bg-gray-100 hover:text-primary-600"
-                        >
-                          <MessageSquare size={12} />
-                          {(threadsByPlan[plan.id] ?? []).length}
-                        </Link>
-                      )}
+                      <Link
+                        href={`/clubs/${id}/plan/${plan.id}`}
+                        className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-400 transition hover:bg-gray-100 hover:text-primary-600"
+                      >
+                        <MessageSquare size={12} />
+                        {(threadsByPlan[plan.id] ?? []).length}
+                      </Link>
                       {isFacilitator && (
                         <Link
                           href={`/clubs/${id}/plan/${plan.id}/edit`}
@@ -444,14 +443,6 @@ export default async function ClubDetailPage({
             )}
           </section>
 
-          {/* Клубқа қосылмағандарға */}
-          {!isFacilitator && !isMember && (
-            <section>
-              <div className="card py-8 text-center text-sm text-gray-500">
-                Талқыны және оқырмандар үлгерімін көру үшін клубқа қосылыңыз
-              </div>
-            </section>
-          )}
         </div>
 
         {/* Архив — мерзімі өткен талқылар, беттің ең түбінде */}
@@ -488,8 +479,8 @@ export default async function ClubDetailPage({
                   </>
                 );
 
-                // Мүше архивтегі талқыны ашып, үлгерім мен пікірлерін көре алады
-                return isFacilitator || isMember ? (
+                // Архивтегі талқы бәріне ашық — үлгерімі мен пікірлері сақталған
+                return (
                   <Link
                     key={plan.id}
                     href={`/clubs/${id}/plan/${plan.id}`}
@@ -497,10 +488,6 @@ export default async function ClubDetailPage({
                   >
                     {row}
                   </Link>
-                ) : (
-                  <div key={plan.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 opacity-60">
-                    {row}
-                  </div>
                 );
               })}
             </div>
