@@ -38,7 +38,13 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(`${origin}/login`);
+    // Сессия серверде орнамады. Мұның екі себебі болады:
+    //  1) токен URL хэшінде келді (#access_token=...) — оны сервер көрмейді
+    //  2) хат басқа браузерде ашылды — PKCE кілті жоқ
+    // Екеуін де клиентте ғана шешуге болады, сондықтан сол жаққа жібереміз.
+    // Браузер хэш бөлігін қайта бағыттау кезінде сақтап қалады.
+    const q = next ? `?next=${encodeURIComponent(next)}` : "";
+    return NextResponse.redirect(`${origin}/auth/finish${q}`);
   }
 
   // Пароль ауыстыру flow — reset-password бетіне жібереміз
