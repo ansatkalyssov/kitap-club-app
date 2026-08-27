@@ -55,7 +55,7 @@ export default async function AnalysisDetailPage({
         {/* Thread header */}
         <div className="mb-6 rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50/60 to-white p-5 shadow-sm">
           <div className="mb-1 flex items-start justify-between gap-3">
-            <h1 className="text-xl font-bold text-gray-900 leading-snug">{thread.title}</h1>
+            <h1 className="text-lg font-bold leading-snug text-gray-900">{thread.title}</h1>
             {thread.author_id === user.id && (
               <div className="flex items-center gap-2 shrink-0">
                 <Link
@@ -74,42 +74,26 @@ export default async function AnalysisDetailPage({
             )}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-            <span className="font-medium text-primary-600">{clubs?.name}</span>
+          {/* Автор мен күні — қай талқыда тұрғаны бет тақырыбынан белгілі,
+              сондықтан клуб пен кітап қайталанбайды */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700">
+              {((thread.profiles as any)?.name || "?").charAt(0).toUpperCase()}
+            </div>
+            <span>{(thread.profiles as any)?.name}</span>
+            <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium text-primary-700">
+              автор
+            </span>
             {thread.meeting_date && (
               <>
                 <span className="text-gray-300">·</span>
-                <span className="flex items-center gap-1 text-gray-500">
+                <span className="flex items-center gap-1">
                   <Calendar size={12} />
                   {formatDateKz(thread.meeting_date)}
                 </span>
               </>
             )}
           </div>
-
-          {/* Thread author */}
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold text-[11px]">
-              {((thread.profiles as any)?.name || "?").charAt(0).toUpperCase()}
-            </div>
-            <span>{(thread.profiles as any)?.name}</span>
-            <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium text-primary-700">жүргізуші</span>
-          </div>
-
-          {/* Book */}
-          {book && (
-            <div className="mt-4 flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm border border-gray-100">
-              <BookOpen size={18} className="shrink-0 text-primary-500" />
-              <div>
-                <p className="font-semibold text-gray-900 text-sm">{book.title}</p>
-                <div className="flex gap-2 text-xs text-gray-400">
-                  {book.author && <span>{book.author}</span>}
-                  {book.page_count && <span>· {book.page_count} бет</span>}
-                  {clubPlan && <span>· {formatMonthKz(clubPlan.month, clubPlan.year)}</span>}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Thread content / description */}
           {thread.content && (
