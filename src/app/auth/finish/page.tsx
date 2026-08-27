@@ -54,9 +54,12 @@ function Finish() {
         });
         window.history.replaceState(null, "", window.location.pathname);
       } else {
-        // 3. token_hash түрінде келсе — клиентте растаймыз
+        // 3. token_hash түрінде келсе — клиентте растаймыз.
+        // Бұл жол құрылғыға тәуелсіз: PKCE кілті талап етілмейді.
         const tokenHash = pick("token_hash");
         const type = pick("type");
+        const code = pick("code");
+
         if (tokenHash && type) {
           const { error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
@@ -64,6 +67,19 @@ function Finish() {
           });
           if (error) {
             setReason("Растау сілтемесі жарамсыз болып шықты.");
+            setDetail(error.message);
+            setFailed(true);
+            return;
+          }
+          window.history.replaceState(null, "", window.location.pathname);
+        } else if (code) {
+          // PKCE кілті браузерде сақталады — серверде болмауы мүмкін,
+          // сондықтан айырбасты клиентте қайталап көреміз
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            setReason(
+              "Растау аяқталмады. Сілтеме тіркелген құрылғыдан басқа жерде ашылған болуы мүмкін."
+            );
             setDetail(error.message);
             setFailed(true);
             return;

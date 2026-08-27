@@ -43,8 +43,10 @@ export async function GET(request: NextRequest) {
     //  2) хат басқа браузерде ашылды — PKCE кілті жоқ
     // Екеуін де клиентте ғана шешуге болады, сондықтан сол жаққа жібереміз.
     // Браузер хэш бөлігін қайта бағыттау кезінде сақтап қалады.
-    const q = next ? `?next=${encodeURIComponent(next)}` : "";
-    return NextResponse.redirect(`${origin}/auth/finish${q}`);
+    // Бүкіл параметрді қоса жіберу керек — әйтпесе клиентте де ештеңе
+    // қалмайды. Хэш бөлігін браузердің өзі сақтап қалады.
+    const forward = new URLSearchParams(searchParams);
+    return NextResponse.redirect(`${origin}/auth/finish?${forward.toString()}`);
   }
 
   // Пароль ауыстыру flow — reset-password бетіне жібереміз
