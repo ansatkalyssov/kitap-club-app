@@ -405,7 +405,7 @@ function LoginForm() {
           {step === "name" && (
             <form onSubmit={handleSetName} className="space-y-3">
               <p className="text-sm text-gray-500">
-                Қолданбада қалай аталғыңызды енгізіңіз
+                Қолданбада көрінетін аты-жөніңіз
               </p>
               <input
                 type="text"

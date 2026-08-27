@@ -175,7 +175,7 @@ export default function LoginScreen() {
             </>
           ) : (
             <>
-              <Text style={styles.hint}>Қолданбада қалай аталғыңызды енгізіңіз</Text>
+              <Text style={styles.hint}>Қолданбада көрінетін аты-жөніңіз</Text>
               <View style={styles.inputWrap}>
                 <TextInput
                   placeholder="Аты — Мысалы: Айгүл"
