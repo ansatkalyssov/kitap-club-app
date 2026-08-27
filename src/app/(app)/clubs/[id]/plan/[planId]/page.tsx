@@ -49,10 +49,13 @@ export default async function PlanDiscussionPage({
   // Осы талқының пікірлері
   const { data: threads } = await supabase
     .from("book_analyses")
-    .select("id, title, created_at, profiles(name)")
+    .select("id, title, created_at, author_id, profiles(name)")
     .eq("club_plan_id", planId)
     .is("parent_id", null)
     .order("created_at", { ascending: false });
+
+  // Бір адам — бір талқыға бір пікір
+  const myThreadId = (threads ?? []).find((t) => t.author_id === user.id)?.id ?? null;
 
   const threadIds = (threads ?? []).map((t) => t.id);
   const replyCounts: Record<string, number> = {};
@@ -239,7 +242,10 @@ export default async function PlanDiscussionPage({
       <ThreadList
         threads={(threads ?? []) as any}
         replyCounts={replyCounts}
-        newHref={isFacilitator ? `/analysis/new?club=${id}&plan=${planId}` : undefined}
+        myThreadId={myThreadId}
+        newHref={
+          isFacilitator || isMember ? `/analysis/new?club=${id}&plan=${planId}` : undefined
+        }
         emptyText={
           isPast
             ? "Бұл талқыда пікір жазылмаған"

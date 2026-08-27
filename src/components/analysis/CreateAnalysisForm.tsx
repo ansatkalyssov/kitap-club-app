@@ -78,6 +78,12 @@ export default function CreateAnalysisForm({ userId, clubs, prefillClubId, prefi
 
     setLoading(false);
     if (error) {
+      // Бір адам — бір талқыға бір пікір (дерекқордағы бірегей индекс)
+      if (error.code === "23505") {
+        toast.error("Бұл талқыда пікіріңіз бұрын жазылған. Оны өңдеуге болады.");
+        router.push(`/clubs/${selectedClub}/plan/${selectedPlan}`);
+        return;
+      }
       toast.error("Сақталмады: " + error.message);
       return;
     }

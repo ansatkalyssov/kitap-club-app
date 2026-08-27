@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { getUser, getProfile } from "@/lib/queries";
+import { getUser } from "@/lib/queries";
 import CreateAnalysisForm from "@/components/analysis/CreateAnalysisForm";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -13,18 +13,39 @@ export default async function NewAnalysisPage({
   const sp = await searchParams;
   const user = await getUser();
   if (!user) redirect("/login");
-  const profile = await getProfile();
-  if (!profile || profile.role === "reader") redirect("/clubs");
   // Пікір әрқашан нақты талқыға байланады
   if (!sp.club || !sp.plan) redirect("/clubs");
   const supabase = await createClient();
 
-  // Get clubs managed by this facilitator
-  const { data: clubs } = await supabase
-    .from("clubs")
-    .select("id, name, club_plans(id, month, year, books(title))")
-    .eq("facilitator_id", user.id)
-    .eq("is_active", true);
+  // Пікірді клуб мүшесі де, жүргізуші де аша алады
+  const [{ data: club }, { data: membership }, { data: existing }] = await Promise.all([
+    supabase
+      .from("clubs")
+      .select("id, name, facilitator_id, club_plans(id, month, year, books(title))")
+      .eq("id", sp.club)
+      .single(),
+    supabase
+      .from("club_members")
+      .select("id")
+      .eq("club_id", sp.club)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("book_analyses")
+      .select("id")
+      .eq("club_plan_id", sp.plan)
+      .eq("author_id", user.id)
+      .is("parent_id", null)
+      .maybeSingle(),
+  ]);
+
+  if (!club) redirect("/clubs");
+  if (club.facilitator_id !== user.id && !membership) redirect(`/clubs/${sp.club}`);
+
+  // Бір адам — бір талқыға бір пікір. Бұрын жазған болса, соған апарамыз.
+  if (existing) redirect(`/analysis/${existing.id}`);
+
+  const clubs = [club];
 
   return (
       <div className="page-container max-w-2xl">
