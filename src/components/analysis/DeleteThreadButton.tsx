@@ -41,9 +41,9 @@ export default function DeleteThreadButton({ threadId, backHref }: Props) {
       disabled={deleting}
       aria-label="Өшіру"
       title="Өшіру"
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-500 transition hover:bg-red-50 disabled:opacity-50"
+      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 text-red-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
     >
-      {deleting ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+      {deleting ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
     </button>
   );
 }

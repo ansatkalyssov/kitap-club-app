@@ -62,9 +62,9 @@ export default async function AnalysisDetailPage({
                   href={`/analysis/${id}/edit`}
                   aria-label="Өңдеу"
                   title="Өңдеу"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-gray-700"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 shadow-sm transition hover:bg-gray-50 hover:text-gray-600"
                 >
-                  <Pencil size={14} />
+                  <Pencil size={12} />
                 </Link>
                 <DeleteThreadButton
                   threadId={id}
