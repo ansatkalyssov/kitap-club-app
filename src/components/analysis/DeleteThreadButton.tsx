@@ -8,9 +8,11 @@ import toast from "react-hot-toast";
 
 interface Props {
   threadId: string;
+  /** Өшірген соң қайда ораламыз — әдетте талқы беті */
+  backHref?: string;
 }
 
-export default function DeleteThreadButton({ threadId }: Props) {
+export default function DeleteThreadButton({ threadId, backHref }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [deleting, setDeleting] = useState(false);
@@ -28,7 +30,7 @@ export default function DeleteThreadButton({ threadId }: Props) {
       return;
     }
     toast.success("Талқы өшірілді");
-    router.push("/analysis");
+    router.push(backHref ?? "/clubs");
     router.refresh();
   }
 
@@ -37,10 +39,11 @@ export default function DeleteThreadButton({ threadId }: Props) {
       type="button"
       onClick={handleDelete}
       disabled={deleting}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 disabled:opacity-50 transition"
+      aria-label="Өшіру"
+      title="Өшіру"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-500 transition hover:bg-red-50 disabled:opacity-50"
     >
-      {deleting ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
-      Өшіру
+      {deleting ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
     </button>
   );
 }

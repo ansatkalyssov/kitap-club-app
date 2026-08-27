@@ -60,11 +60,16 @@ export default async function AnalysisDetailPage({
               <div className="flex items-center gap-2 shrink-0">
                 <Link
                   href={`/analysis/${id}/edit`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50"
+                  aria-label="Өңдеу"
+                  title="Өңдеу"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-gray-700"
                 >
-                  <Pencil size={13} /> Өңдеу
+                  <Pencil size={14} />
                 </Link>
-                <DeleteThreadButton threadId={id} />
+                <DeleteThreadButton
+                  threadId={id}
+                  backHref={`/clubs/${thread.club_id}/plan/${thread.club_plan_id}`}
+                />
               </div>
             )}
           </div>
