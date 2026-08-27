@@ -41,6 +41,14 @@ function LoginForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  // Тост 4 секундта жоғалады — форма қатесі үшін аз. Сондықтан
+  // хабарлама форманың үстінде тұрақты тұрады, өріс өзгергенде кетеді.
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function fail(msg: string) {
+    setFormError(msg);
+    toast.error(msg);
+  }
 
   // Google арқылы кіру
   async function handleGoogle() {
@@ -58,17 +66,23 @@ function LoginForm() {
   // Кіру
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !password) return;
+    setFormError(null);
+    // Бұрын мұнда үнсіз return тұрған. Браузер парольді автотолтырғанда
+    // React күйі жаңармай қалады да, батырма басылып, ештеңе болмайды.
+    if (!email || !password) {
+      fail("Email мен парольді енгізіңіз");
+      return;
+    }
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       if (error.message.includes("Invalid login credentials")) {
-        toast.error("Email немесе пароль қате");
+        fail("Мұндай аккаунт жоқ немесе пароль қате. Тіркелуге көріңіз.");
       } else if (error.message.toLowerCase().includes("email not confirmed")) {
         setStep("verify-email");
       } else {
-        toast.error(error.message);
+        fail(error.message);
       }
       return;
     }
@@ -84,9 +98,13 @@ function LoginForm() {
   // Тіркелу
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !password) return;
+    setFormError(null);
+    if (!email || !password) {
+      fail("Email мен парольді енгізіңіз");
+      return;
+    }
     if (password.length < 6) {
-      toast.error("Пароль кемінде 6 таңба болуы керек");
+      fail("Пароль кемінде 6 таңба болуы керек");
       return;
     }
     setLoading(true);
@@ -98,10 +116,10 @@ function LoginForm() {
     setLoading(false);
     if (error) {
       if (error.message.includes("already registered")) {
-        toast.error("Бұл email тіркелген. Кіруге көріңіз");
+        fail("Бұл email тіркелген. Кіруге көріңіз");
         setMode("login");
       } else {
-        toast.error(error.message);
+        fail(error.message);
       }
       return;
     }
@@ -250,6 +268,12 @@ function LoginForm() {
                 onSubmit={mode === "login" ? handleLogin : handleRegister}
                 className="space-y-3"
               >
+                {formError && (
+                  <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {formError}
+                  </div>
+                )}
+
                 {/* Email */}
                 <div className="relative">
                   <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -257,7 +281,7 @@ function LoginForm() {
                     type="email"
                     placeholder="Email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); setFormError(null); }}
                     className="input pl-10"
                     autoComplete="email"
                     required
@@ -271,7 +295,7 @@ function LoginForm() {
                     type={showPassword ? "text" : "password"}
                     placeholder="Пароль"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => { setPassword(e.target.value); setFormError(null); }}
                     className="input pl-10 pr-10"
                     autoComplete={mode === "login" ? "current-password" : "new-password"}
                     minLength={6}
