@@ -78,7 +78,7 @@ function LoginForm() {
     setLoading(false);
     if (error) {
       if (error.message.includes("Invalid login credentials")) {
-        fail("Мұндай аккаунт жоқ немесе пароль қате. Тіркелуге көріңіз.");
+        fail("Мұндай аккаунт жоқ немесе қате пароль енгіздіңіз. Алдымен тіркеліңіз");
       } else if (error.message.toLowerCase().includes("email not confirmed")) {
         setStep("verify-email");
       } else {
