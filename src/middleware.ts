@@ -17,8 +17,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  // Auth callback & public routes — middleware-ді өткізіп жіберу
+  // Auth callback & public routes — middleware-ді өткізіп жіберу.
+  // /api маршруттары өз авторизациясын өзі жасайды: push-send CRON_SECRET
+  // тексереді, push-subscribe getUser() шақырады. Мұнда сессия талап етсек,
+  // cron логин бетіне бағытталып, ешқашан жүрмейді.
   if (
+    pathname.startsWith("/api") ||
     pathname.startsWith("/auth") ||
     pathname === "/" ||
     pathname === "/login" ||
