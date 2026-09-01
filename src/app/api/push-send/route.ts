@@ -96,18 +96,31 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 2. Дедлайн 3 күн қалды
+  // 2. Дедлайн 3 күн қалды.
+  // Бір адамға бір хабар: бір күні бітетін бірнеше трекері болса,
+  // бөлек-бөлек емес, жинақталып жіберіледі.
   const { data: trackers } = await admin
     .from("book_trackers")
-    .select("*")
+    .select("id, user_id, book_title")
     .eq("is_completed", false)
     .eq("deadline", in3daysStr);
 
-  for (const tracker of trackers || []) {
-    await sendToUser(tracker.user_id, {
+  const dueByUser = new Map<string, { id: string; title: string }[]>();
+  for (const t of trackers || []) {
+    const list = dueByUser.get(t.user_id) ?? [];
+    list.push({ id: t.id, title: t.book_title });
+    dueByUser.set(t.user_id, list);
+  }
+
+  for (const [userId, books] of Array.from(dueByUser.entries())) {
+    await sendToUser(userId, {
       title: "Дедлайн жақындады",
-      body: `«${tracker.book_title}» кітабын оқуға 3 күн қалды`,
-      url: `/tracker/${tracker.id}`,
+      body:
+        books.length === 1
+          ? `«${books[0].title}» кітабын оқуға 3 күн қалды`
+          : `${books.length} кітаптың дедлайнына 3 күн қалды`,
+      // Бір кітап болса — сол трекерге, бірнешеу болса тізімге
+      url: books.length === 1 ? `/tracker/${books[0].id}` : "/tracker",
     }, report);
   }
 
