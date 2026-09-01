@@ -205,9 +205,11 @@ export async function GET(req: NextRequest) {
     }
 
     notified.add(goal.user_id);
+    // iOS хабарламаға «from Oqyrman» деген жолды өзі қосады, сондықтан
+    // title-де қосымша қолданба атын жазудың қажеті жоқ — қайталанады.
     await sendToUser(goal.user_id, {
-      title: "Oqyrman",
-      body: `Бүгінгі кітап оқу мақсатыңызды орындаңыз - ${target} минут`,
+      title: `Бүгінгі кітап оқу мақсатыңызды орындаңыз - ${target} минут`,
+      body: "",
       url: "/reading-plan",
     }, report);
   }
