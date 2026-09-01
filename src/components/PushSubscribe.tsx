@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
 import toast from "react-hot-toast";
 
+/** VAPID кілтін base64url-дан Uint8Array-ге айналдырады — Safari талабы */
+function urlBase64ToUint8Array(base64: string): BufferSource {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const normalized = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(normalized);
+  const buffer = new ArrayBuffer(raw.length);
+  const view = new Uint8Array(buffer);
+  for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
+  return view;
+}
+
 export default function PushSubscribe() {
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,69 +30,85 @@ export default function PushSubscribe() {
     }
   }, []);
 
-  async function toggle() {
+  async function unsubscribe() {
     setLoading(true);
     try {
       const reg = await navigator.serviceWorker.ready;
-
-      if (subscribed) {
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          await sub.unsubscribe();
-          await fetch("/api/push-subscribe", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ endpoint: sub.endpoint }),
-          });
-        }
-        setSubscribed(false);
-        toast.success("Хабарландырулар өшірілді");
-      } else {
-        // iOS-та web push тек «Басты экранға» қосылған кезде жұмыс істейді
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const isStandalone =
-          window.matchMedia("(display-mode: standalone)").matches ||
-          (navigator as any).standalone === true;
-
-        if (isIOS && !isStandalone) {
-          toast.error(
-            "Айфонда алдымен сайтты басты экранға қосу керек: Бөлісу → Басты экранға қосу",
-            { duration: 7000 }
-          );
-          setLoading(false);
-          return;
-        }
-
-        // Бұрын бөгелген болса, браузер қайта сұрамай бірден denied қайтарады
-        if (Notification.permission === "denied") {
-          toast.error(
-            "Хабарландыру бөгелген. Адрес жолағындағы құлып белгісін басып, Хабарландыру рұқсатын қосыңыз.",
-            { duration: 7000 }
-          );
-          setLoading(false);
-          return;
-        }
-
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-          toast.error("Рұқсат берілмеді. Қайта көріңіз.");
-          setLoading(false);
-          return;
-        }
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-        });
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
         await fetch("/api/push-subscribe", {
-          method: "POST",
+          method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sub),
+          body: JSON.stringify({ endpoint: sub.endpoint }),
         });
-        setSubscribed(true);
-        toast.success("Хабарландырулар қосылды!");
       }
+      setSubscribed(false);
+      toast.success("Хабарландырулар өшірілді");
     } catch {
       toast.error("Қате орын алды");
+    }
+    setLoading(false);
+  }
+
+  async function toggle() {
+    if (subscribed) return unsubscribe();
+
+    // iOS-та web push тек «Басты экранға» қосылған қосымшада жұмыс істейді
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone === true;
+
+    if (isIOS && !isStandalone) {
+      toast.error(
+        "Айфонда алдымен сайтты басты экранға қосыңыз: Бөлісу → Басты экранға қосу. Сосын сол белгішеден ашыңыз.",
+        { duration: 8000 }
+      );
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      toast.error(
+        isIOS
+          ? "Хабарландыру бөгелген. Параметрлер → Хабарландырулар → Oqyrman ішінен қосыңыз."
+          : "Хабарландыру бөгелген. Адрес жолағындағы құлып белгісінен рұқсат беріңіз.",
+        { duration: 8000 }
+      );
+      return;
+    }
+
+    // Рұқсатты кез келген await-тен БҰРЫН сұраймыз. iOS Safari рұқсатты
+    // тікелей басу әрекетінен ғана береді — арасында await болса,
+    // әрекет тізбегі үзіліп, сұрау автоматты түрде қабылданбайды.
+    let permission: NotificationPermission = Notification.permission;
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") {
+      toast.error("Рұқсат берілмеді");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        // Safari жол емес, Uint8Array талап етеді
+        applicationServerKey: urlBase64ToUint8Array(
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+        ),
+      });
+      await fetch("/api/push-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sub),
+      });
+      setSubscribed(true);
+      toast.success("Хабарландырулар қосылды!");
+    } catch (e) {
+      toast.error("Жазылу сәтсіз: " + (e as Error).message);
     }
     setLoading(false);
   }
