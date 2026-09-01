@@ -7,6 +7,7 @@ import { BookOpen, LayoutDashboard, Users, BookMarked, Trophy, LogOut, Shield, T
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { unsubscribePush } from "@/lib/pushUnsubscribe";
 import toast from "react-hot-toast";
 
 interface NavbarProps {
@@ -28,6 +29,7 @@ export default function Navbar({ profile }: NavbarProps) {
   const supabase = createClient();
 
   async function handleLogout() {
+    await unsubscribePush();
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();

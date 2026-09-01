@@ -25,8 +25,13 @@ async function sendToUser(userId: string, payload: { title: string; body: string
 }
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (secret !== process.env.CRON_SECRET) {
+  // Vercel Cron "Authorization: Bearer <CRON_SECRET>" жібереді.
+  // x-cron-secret қолмен тексеру үшін қалдырылған.
+  const expected = process.env.CRON_SECRET;
+  const bearer = req.headers.get("authorization")?.replace("Bearer ", "");
+  const custom = req.headers.get("x-cron-secret");
+
+  if (!expected || (bearer !== expected && custom !== expected)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -45,19 +50,27 @@ export async function GET(req: NextRequest) {
   in3days.setDate(in3days.getDate() + 3);
   const in3daysStr = kzDateStr(in3days);
 
-  // 1. Кездесу еске салу (ертең болатын)
-  const { data: meetings } = await admin
-    .from("meetings")
-    .select("*, clubs(name), club_members(user_id)")
-    .gte("meeting_date", tomorrowStr)
-    .lt("meeting_date", tomorrowStr + "T23:59:59");
+  // 1. Талқы еске салу (ертең болатын).
+  // Талқы күні бөлек кесте емес, club_plans.meeting_date бағанында тұр.
+  const { data: plans } = await admin
+    .from("club_plans")
+    .select("id, club_id, clubs(name), books(title)")
+    .eq("meeting_date", tomorrowStr);
 
-  for (const meeting of meetings || []) {
-    for (const member of meeting.clubs?.club_members || []) {
+  for (const plan of plans || []) {
+    const { data: members } = await admin
+      .from("club_members")
+      .select("user_id")
+      .eq("club_id", plan.club_id);
+
+    const bookTitle = (plan.books as any)?.title;
+    for (const member of members || []) {
       await sendToUser(member.user_id, {
-        title: "📚 Кездесу ертең!",
-        body: `"${meeting.clubs?.name}" клубының кездесуі ертең өтеді`,
-        url: `/clubs/${meeting.club_id}`,
+        title: "Талқы ертең",
+        body: bookTitle
+          ? `«${bookTitle}» — ${(plan.clubs as any)?.name} клубында ертең талқыланады`
+          : `${(plan.clubs as any)?.name} клубының талқысы ертең өтеді`,
+        url: `/clubs/${plan.club_id}/plan/${plan.id}`,
       });
     }
   }
@@ -71,26 +84,43 @@ export async function GET(req: NextRequest) {
 
   for (const tracker of trackers || []) {
     await sendToUser(tracker.user_id, {
-      title: "⏰ Дедлайн жақындады!",
-      body: `"${tracker.book_title}" кітабын оқуға 3 күн қалды`,
+      title: "Дедлайн жақындады",
+      body: `«${tracker.book_title}» кітабын оқуға 3 күн қалды`,
       url: `/tracker/${tracker.id}`,
     });
   }
 
-  // 3. Күнделікті трекер еске салу (барлық белсенді оқырмандарға)
-  const { data: activeTrackers } = await admin
-    .from("book_trackers")
-    .select("user_id, book_title")
-    .eq("is_completed", false);
+  // 3. Күнделікті еске салу — тек мақсатын әлі орындамағандарға.
+  // Бүгін оқып қойған адамға «Бүгін оқыдыңыз ба?» деп жіберу — қажетсіз шу.
+  const todayStr = kzDateStr(today);
+
+  const [{ data: goals }, { data: todayLogs }, { data: activeTrackers }] = await Promise.all([
+    admin.from("reading_goals").select("user_id, daily_minutes").eq("reminder_enabled", true),
+    admin.from("reading_logs").select("user_id, minutes_read").eq("date", todayStr),
+    admin.from("book_trackers").select("user_id, book_title").eq("is_completed", false),
+  ]);
+
+  const minutesToday = new Map((todayLogs || []).map((l) => [l.user_id, l.minutes_read]));
+  const bookByUser = new Map<string, string>();
+  for (const t of activeTrackers || []) {
+    if (!bookByUser.has(t.user_id)) bookByUser.set(t.user_id, t.book_title);
+  }
 
   const notified = new Set<string>();
-  for (const t of activeTrackers || []) {
-    if (notified.has(t.user_id)) continue;
-    notified.add(t.user_id);
-    await sendToUser(t.user_id, {
-      title: "📖 Бүгін оқыдыңыз ба?",
-      body: `"${t.book_title}" — бүгінгі прогресті жазуды ұмытпаңыз`,
-      url: "/tracker",
+  for (const goal of goals || []) {
+    const target = goal.daily_minutes ?? 0;
+    if (!target) continue;
+    if ((minutesToday.get(goal.user_id) ?? 0) >= target) continue;
+    if (notified.has(goal.user_id)) continue;
+
+    notified.add(goal.user_id);
+    const book = bookByUser.get(goal.user_id);
+    await sendToUser(goal.user_id, {
+      title: "Бүгін оқыдыңыз ба?",
+      body: book
+        ? `«${book}» сізді күтіп тұр. Бүгінгі мақсат — ${target} минут.`
+        : `Бүгінгі мақсат — ${target} минут.`,
+      url: "/reading-plan",
     });
   }
 
