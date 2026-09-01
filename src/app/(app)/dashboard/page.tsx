@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Users, BookMarked, Plus, Star, Calendar, MessageSquare } from "lucide-react";
 import PushSubscribe from "@/components/PushSubscribe";
+import PushReminderHint from "@/components/PushReminderHint";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
 import { getUserStats } from "@/lib/points";
@@ -76,6 +77,12 @@ export default async function DashboardPage() {
   const inProgressTrackers = (trackers || []).filter((t) => t.current_page > 0);
 
   const stats = await getUserStats(user.id, monthBounds().start);
+
+  const { data: goal } = await supabase
+    .from("reading_goals")
+    .select("reminder_enabled")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   const isFacilitatorWithClubs =
     profile.role !== "reader" && managedClubs && managedClubs.length > 0;
@@ -178,6 +185,8 @@ export default async function DashboardPage() {
         </div>
         <PushSubscribe />
       </div>
+
+      <PushReminderHint reminderEnabled={Boolean(goal?.reminder_enabled)} />
 
       {/* Quick stats */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

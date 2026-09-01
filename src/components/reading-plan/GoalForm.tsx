@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import { ReadingGoal } from "@/lib/types";
+import {
+  isPushSupported,
+  requestPushPermission,
+  subscribePush,
+  type PushResult,
+} from "@/lib/push";
 
 interface Props {
   userId: string;
@@ -30,6 +36,12 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
       return;
     }
 
+    // Рұқсатты сақтаудан БҰРЫН сұраймыз: iOS рұқсатты тікелей басу
+    // әрекетінен ғана береді, арасында await болса қабылданбайды.
+    // Рұқсат бұрын берілген болса, функция бірден ok қайтарады.
+    const pushAsked: PushResult | null =
+      reminderEnabled && isPushSupported() ? await requestPushPermission() : null;
+
     setLoading(true);
 
     const { error } = await supabase.from("reading_goals").upsert(
@@ -52,6 +64,16 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
     }
 
     toast.success("Жоспар сақталды!");
+
+    // Рұқсат алынған соң жазылымды жасаймыз
+    if (pushAsked?.ok) {
+      const res = await subscribePush();
+      if (res.ok) toast.success("Еске салғыш қосылды", { icon: "🔔" });
+      else toast.error("Еске салғыш қосылмады: " + res.reason, { duration: 6000 });
+    } else if (pushAsked && !pushAsked.ok) {
+      toast.error(pushAsked.reason, { duration: 8000 });
+    }
+
     onSaved?.();
     router.refresh();
   }
@@ -102,7 +124,9 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
         <label className="flex cursor-pointer items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-700">Еске салғыш</p>
-            <p className="mt-0.5 text-xs text-gray-400">Мобильді қосымша шыққанда іске қосылады</p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Мақсатты орындамасаңыз кешке хабарландыру келеді
+            </p>
           </div>
           <input
             type="checkbox"

@@ -7,7 +7,7 @@ import { BookOpen, LayoutDashboard, Users, BookMarked, Trophy, LogOut, Shield, T
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { unsubscribePush } from "@/lib/pushUnsubscribe";
+import { unsubscribePush } from "@/lib/push";
 import toast from "react-hot-toast";
 
 interface NavbarProps {
