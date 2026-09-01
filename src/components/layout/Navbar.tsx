@@ -7,7 +7,6 @@ import { BookOpen, LayoutDashboard, Users, BookMarked, Trophy, LogOut, Shield, T
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { unsubscribePush } from "@/lib/push";
 import toast from "react-hot-toast";
 
 interface NavbarProps {
@@ -29,7 +28,9 @@ export default function Navbar({ profile }: NavbarProps) {
   const supabase = createClient();
 
   async function handleLogout() {
-    await unsubscribePush();
+    // Жазылым әдейі сақталады: шыққан адам еске салуды алып тұрып,
+    // хабарландыру арқылы қайта оралады. Өшіру — бөлек әрекет, ол
+    // дашбордтағы «Хабарландыру қосылған» батырмасы арқылы жасалады.
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
