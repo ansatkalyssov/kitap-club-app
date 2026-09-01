@@ -100,11 +100,15 @@ export default function PushSubscribe() {
           process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
         ),
       });
-      await fetch("/api/push-subscribe", {
+      const res = await fetch("/api/push-subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(sub),
       });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(error ?? "сервер қатесі");
+      }
       setSubscribed(true);
       toast.success("Хабарландырулар қосылды!");
     } catch (e) {

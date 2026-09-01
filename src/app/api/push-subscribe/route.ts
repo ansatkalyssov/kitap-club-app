@@ -10,12 +10,18 @@ export async function POST(req: NextRequest) {
   const subscription = await req.json();
   const admin = createAdminClient();
 
-  await admin.from("push_subscriptions").upsert({
+  // Қатені тексермесек, кесте жоқ болса да "қосылды" деп жауап береміз
+  // де, қолданушы жазылдым деп ойлап қалады.
+  const { error } = await admin.from("push_subscriptions").upsert({
     user_id: user.id,
     endpoint: subscription.endpoint,
     p256dh: subscription.keys.p256dh,
     auth: subscription.keys.auth,
   }, { onConflict: "endpoint" });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
