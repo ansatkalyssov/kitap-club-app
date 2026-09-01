@@ -27,8 +27,24 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { endpoint } = await req.json();
   const admin = createAdminClient();
-  await admin.from("push_subscriptions").delete().eq("endpoint", endpoint);
+
+  // user_id шарты міндетті: endpoint құпия сөз емес, оны білу иесі екенін
+  // дәлелдемейді. Онсыз кез келген адам бөтен жазылымды өшіре алар еді.
+  const { error } = await admin
+    .from("push_subscriptions")
+    .delete()
+    .eq("endpoint", endpoint)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
   return NextResponse.json({ ok: true });
 }
