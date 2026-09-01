@@ -78,20 +78,34 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, mode: "test", ...report });
   }
 
-  // Сағаттық режим (?mode=hourly): әркімнің өз reminder_time сағатын
-  // құрметтейді. Күндік режимде (параметрсіз) бәріне бірдей жіберіледі.
-  const hourly = req.nextUrl.searchParams.get("mode") === "hourly";
-  const nowHour = Number(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Asia/Almaty",
-      hour: "2-digit",
-      hour12: false,
-    }).format(new Date())
-  );
+  // Терезе режимі: ?window=<минут> — cron сол аралықпен шақырылады, ал код
+  // уақыты дәл сол терезеге түскендерге ғана жібереді. Мысалы 15 минуттық
+  // cron-да 19:50 қойған адам 19:45–20:00 шақыруында хабар алады.
+  // ?mode=hourly — ескі баптаудың баламасы, 60 минуттық терезе.
+  // Параметрсіз шақыру — күндік режим, бәріне бірдей.
+  const sp = req.nextUrl.searchParams;
+  const windowMin =
+    Number(sp.get("window")) || (sp.get("mode") === "hourly" ? 60 : 0);
 
-  // Талқы мен дедлайн хабарлары күнге байланған, сағатқа емес. Сағаттық
-  // шақыруда оларды бір-ақ рет жіберу керек, әйтпесе күніне 24 рет кетеді.
-  const sendDateBased = !hourly || nowHour === 19;
+  const [nowH, nowM] = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Almaty",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(new Date())
+    .split(":")
+    .map(Number);
+  const nowMin = nowH * 60 + nowM;
+
+  /** Белгіленген уақыт ағымдағы терезеге түсе ме (түн ортасынан өтуді ескереді) */
+  const inWindow = (targetMin: number) =>
+    (nowMin - targetMin + 1440) % 1440 < windowMin;
+
+  // Талқы мен дедлайн хабарлары күнге байланған, уақытқа емес. Терезе
+  // режимінде оларды тәулігіне бір рет — 19:00 терезесінде — жіберeміз,
+  // әйтпесе әр шақыруда қайталанар еді.
+  const sendDateBased = windowMin === 0 || inWindow(19 * 60);
 
   const admin = createAdminClient();
   const today = new Date();
@@ -186,10 +200,13 @@ export async function GET(req: NextRequest) {
     if ((minutesToday.get(goal.user_id) ?? 0) >= target) continue;
     if (notified.has(goal.user_id)) continue;
 
-    // Сағаттық режимде тек уақыты келгендерге. reminder_time — "19:50:00"
-    if (hourly) {
-      const goalHour = Number(String(goal.reminder_time ?? "").slice(0, 2));
-      if (!Number.isFinite(goalHour) || goalHour !== nowHour) continue;
+    // Терезе режимінде тек уақыты дәл келгендерге. reminder_time — "19:50:00"
+    if (windowMin > 0) {
+      const [gh, gm] = String(goal.reminder_time ?? "")
+        .split(":")
+        .map(Number);
+      if (!Number.isFinite(gh) || !Number.isFinite(gm)) continue;
+      if (!inWindow(gh * 60 + gm)) continue;
     }
 
     notified.add(goal.user_id);
