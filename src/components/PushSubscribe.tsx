@@ -37,9 +37,34 @@ export default function PushSubscribe() {
         setSubscribed(false);
         toast.success("Хабарландырулар өшірілді");
       } else {
+        // iOS-та web push тек «Басты экранға» қосылған кезде жұмыс істейді
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isStandalone =
+          window.matchMedia("(display-mode: standalone)").matches ||
+          (navigator as any).standalone === true;
+
+        if (isIOS && !isStandalone) {
+          toast.error(
+            "Айфонда алдымен сайтты басты экранға қосу керек: Бөлісу → Басты экранға қосу",
+            { duration: 7000 }
+          );
+          setLoading(false);
+          return;
+        }
+
+        // Бұрын бөгелген болса, браузер қайта сұрамай бірден denied қайтарады
+        if (Notification.permission === "denied") {
+          toast.error(
+            "Хабарландыру бөгелген. Адрес жолағындағы құлып белгісін басып, Хабарландыру рұқсатын қосыңыз.",
+            { duration: 7000 }
+          );
+          setLoading(false);
+          return;
+        }
+
         const permission = await Notification.requestPermission();
         if (permission !== "granted") {
-          toast.error("Хабарландыруға рұқсат берілмеді");
+          toast.error("Рұқсат берілмеді. Қайта көріңіз.");
           setLoading(false);
           return;
         }
