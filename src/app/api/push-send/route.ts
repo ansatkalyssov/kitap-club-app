@@ -62,6 +62,22 @@ export async function GET(req: NextRequest) {
 
   const report: Report = { attempted: 0, delivered: 0, errors: [] };
 
+  // Сынақ режимі: ?test=<user_id> — сүзгілерді айналып өтіп, сол адамға
+  // бірден хабар жібереді. Жеткізу тізбегін тексеру үшін.
+  const testUser = req.nextUrl.searchParams.get("test");
+  if (testUser) {
+    await sendToUser(
+      testUser,
+      {
+        title: "Сынақ хабарламасы",
+        body: "Хабарландыру жүйесі жұмыс істеп тұр",
+        url: "/dashboard",
+      },
+      report
+    );
+    return NextResponse.json({ ok: true, mode: "test", ...report });
+  }
+
   const admin = createAdminClient();
   const today = new Date();
   const tomorrow = new Date(today);
