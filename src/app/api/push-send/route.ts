@@ -174,24 +174,19 @@ export async function GET(req: NextRequest) {
   }
 
   // 3. Күнделікті еске салу — тек мақсатын әлі орындамағандарға.
-  // Бүгін оқып қойған адамға «Бүгін оқыдыңыз ба?» деп жіберу — қажетсіз шу.
+  // Бүгін оқып қойған адамды мазалаудың қажеті жоқ.
   const todayStr = kzDateStr(today);
 
-  const [{ data: goals }, { data: todayLogs }, { data: activeTrackers }] = await Promise.all([
+  const [{ data: goals }, { data: todayLogs }] = await Promise.all([
     admin
       .from("reading_goals")
       .select("user_id, daily_minutes, reminder_time")
       .eq("reminder_enabled", true),
     admin.from("reading_logs").select("user_id, minutes_read").eq("date", todayStr),
-    admin.from("book_trackers").select("user_id, book_title").eq("is_completed", false),
   ]);
 
 
   const minutesToday = new Map((todayLogs || []).map((l) => [l.user_id, l.minutes_read]));
-  const bookByUser = new Map<string, string>();
-  for (const t of activeTrackers || []) {
-    if (!bookByUser.has(t.user_id)) bookByUser.set(t.user_id, t.book_title);
-  }
 
   const notified = new Set<string>();
   for (const goal of goals || []) {
@@ -210,12 +205,9 @@ export async function GET(req: NextRequest) {
     }
 
     notified.add(goal.user_id);
-    const book = bookByUser.get(goal.user_id);
     await sendToUser(goal.user_id, {
-      title: "Бүгін оқыдыңыз ба?",
-      body: book
-        ? `«${book}» сізді күтіп тұр. Бүгінгі мақсат — ${target} минут.`
-        : `Бүгінгі мақсат — ${target} минут.`,
+      title: "Oqyrman",
+      body: `Бүгінгі кітап оқу мақсатыңызды орындаңыз - ${target} минут`,
       url: "/reading-plan",
     }, report);
   }
