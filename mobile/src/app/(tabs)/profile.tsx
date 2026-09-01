@@ -3,7 +3,6 @@ import { Feather } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
 import { Colors, Spacing, Radius } from "@/constants/theme";
-import { cancelDailyReminder } from "@/lib/notifications";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Админ",
@@ -17,17 +16,7 @@ export default function ProfileScreen() {
   function handleLogout() {
     Alert.alert("Шығу", "Аккаунттан шығуды қалайсыз ба?", [
       { text: "Жоқ", style: "cancel" },
-      {
-        text: "Шығу",
-        style: "destructive",
-        onPress: async () => {
-          // Еске салғыш телефонның өзінде жоспарланады, сондықтан шығу оны
-          // өшірмейді. Тазаламасақ, ортақ құрылғыда келесі адам алдыңғының
-          // оқу еске салғышын көреді.
-          await cancelDailyReminder().catch(() => {});
-          await supabase.auth.signOut();
-        },
-      },
+      { text: "Шығу", style: "destructive", onPress: () => supabase.auth.signOut() },
     ]);
   }
 
