@@ -5,7 +5,17 @@ import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kzDateStr } from "@/lib/utils";
 
-async function sendToUser(userId: string, payload: { title: string; body: string; url?: string }) {
+// Жіберу нәтижесі жиналып отырады — әйтпесе қате үнсіз жоғалады да,
+// жауап хабар жеткендей әсер қалдырады. Есеп әр сұрауда жаңадан
+// жасалады: модуль деңгейінде тұрса, serverless данасы қайта
+// пайдаланылғанда сандар жиналып кетер еді.
+type Report = { attempted: number; delivered: number; errors: string[] };
+
+async function sendToUser(
+  userId: string,
+  payload: { title: string; body: string; url?: string },
+  report: Report
+) {
   const admin = createAdminClient();
   const { data: subs } = await admin
     .from("push_subscriptions")
@@ -13,13 +23,22 @@ async function sendToUser(userId: string, payload: { title: string; body: string
     .eq("user_id", userId);
 
   for (const sub of subs || []) {
+    report.attempted++;
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify(payload)
       );
-    } catch {
-      await admin.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+      report.delivered++;
+    } catch (e: any) {
+      const status = e?.statusCode;
+      report.errors.push(`${status ?? "?"}: ${e?.body || e?.message || "белгісіз"}`);
+
+      // Тек шынымен өлген жазылымды өшіреміз. Бұрын кез келген қатеде
+      // өшіріліп, жарамды жазылымдар да жоғалып кететін.
+      if (status === 404 || status === 410) {
+        await admin.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+      }
     }
   }
 }
@@ -40,6 +59,8 @@ export async function GET(req: NextRequest) {
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
     process.env.VAPID_PRIVATE_KEY!
   );
+
+  const report: Report = { attempted: 0, delivered: 0, errors: [] };
 
   const admin = createAdminClient();
   const today = new Date();
@@ -71,7 +92,7 @@ export async function GET(req: NextRequest) {
           ? `«${bookTitle}» — ${(plan.clubs as any)?.name} клубында ертең талқыланады`
           : `${(plan.clubs as any)?.name} клубының талқысы ертең өтеді`,
         url: `/clubs/${plan.club_id}/plan/${plan.id}`,
-      });
+      }, report);
     }
   }
 
@@ -87,7 +108,7 @@ export async function GET(req: NextRequest) {
       title: "Дедлайн жақындады",
       body: `«${tracker.book_title}» кітабын оқуға 3 күн қалды`,
       url: `/tracker/${tracker.id}`,
-    });
+    }, report);
   }
 
   // 3. Күнделікті еске салу — тек мақсатын әлі орындамағандарға.
@@ -121,8 +142,14 @@ export async function GET(req: NextRequest) {
         ? `«${book}» сізді күтіп тұр. Бүгінгі мақсат — ${target} минут.`
         : `Бүгінгі мақсат — ${target} минут.`,
       url: "/reading-plan",
-    });
+    }, report);
   }
 
-  return NextResponse.json({ ok: true, sent: notified.size });
+  return NextResponse.json({
+    ok: true,
+    users: notified.size,
+    attempted: report.attempted,
+    delivered: report.delivered,
+    errors: report.errors.slice(0, 5),
+  });
 }
