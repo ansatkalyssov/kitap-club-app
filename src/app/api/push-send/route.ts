@@ -78,6 +78,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, mode: "test", ...report });
   }
 
+  // Сағаттық режим (?mode=hourly): әркімнің өз reminder_time сағатын
+  // құрметтейді. Күндік режимде (параметрсіз) бәріне бірдей жіберіледі.
+  const hourly = req.nextUrl.searchParams.get("mode") === "hourly";
+  const nowHour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Almaty",
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date())
+  );
+
+  // Талқы мен дедлайн хабарлары күнге байланған, сағатқа емес. Сағаттық
+  // шақыруда оларды бір-ақ рет жіберу керек, әйтпесе күніне 24 рет кетеді.
+  const sendDateBased = !hourly || nowHour === 19;
+
   const admin = createAdminClient();
   const today = new Date();
   const tomorrow = new Date(today);
@@ -89,10 +104,12 @@ export async function GET(req: NextRequest) {
 
   // 1. Талқы еске салу (ертең болатын).
   // Талқы күні бөлек кесте емес, club_plans.meeting_date бағанында тұр.
-  const { data: plans } = await admin
-    .from("club_plans")
-    .select("id, club_id, clubs(name), books(title)")
-    .eq("meeting_date", tomorrowStr);
+  const { data: plans } = sendDateBased
+    ? await admin
+        .from("club_plans")
+        .select("id, club_id, clubs(name), books(title)")
+        .eq("meeting_date", tomorrowStr)
+    : { data: null };
 
   for (const plan of plans || []) {
     const { data: members } = await admin
@@ -115,11 +132,13 @@ export async function GET(req: NextRequest) {
   // 2. Дедлайн 3 күн қалды.
   // Бір адамға бір хабар: бір күні бітетін бірнеше трекері болса,
   // бөлек-бөлек емес, жинақталып жіберіледі.
-  const { data: trackers } = await admin
-    .from("book_trackers")
-    .select("id, user_id, book_title")
-    .eq("is_completed", false)
-    .eq("deadline", in3daysStr);
+  const { data: trackers } = sendDateBased
+    ? await admin
+        .from("book_trackers")
+        .select("id, user_id, book_title")
+        .eq("is_completed", false)
+        .eq("deadline", in3daysStr)
+    : { data: null };
 
   const dueByUser = new Map<string, { id: string; title: string }[]>();
   for (const t of trackers || []) {
@@ -145,10 +164,14 @@ export async function GET(req: NextRequest) {
   const todayStr = kzDateStr(today);
 
   const [{ data: goals }, { data: todayLogs }, { data: activeTrackers }] = await Promise.all([
-    admin.from("reading_goals").select("user_id, daily_minutes").eq("reminder_enabled", true),
+    admin
+      .from("reading_goals")
+      .select("user_id, daily_minutes, reminder_time")
+      .eq("reminder_enabled", true),
     admin.from("reading_logs").select("user_id, minutes_read").eq("date", todayStr),
     admin.from("book_trackers").select("user_id, book_title").eq("is_completed", false),
   ]);
+
 
   const minutesToday = new Map((todayLogs || []).map((l) => [l.user_id, l.minutes_read]));
   const bookByUser = new Map<string, string>();
@@ -162,6 +185,12 @@ export async function GET(req: NextRequest) {
     if (!target) continue;
     if ((minutesToday.get(goal.user_id) ?? 0) >= target) continue;
     if (notified.has(goal.user_id)) continue;
+
+    // Сағаттық режимде тек уақыты келгендерге. reminder_time — "19:50:00"
+    if (hourly) {
+      const goalHour = Number(String(goal.reminder_time ?? "").slice(0, 2));
+      if (!Number.isFinite(goalHour) || goalHour !== nowHour) continue;
+    }
 
     notified.add(goal.user_id);
     const book = bookByUser.get(goal.user_id);
