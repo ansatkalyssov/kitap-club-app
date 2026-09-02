@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import { kzDateStr, addDays, calcReadingStreak } from "@/lib/utils";
 
 // =============================================
@@ -389,6 +390,56 @@ export async function getUserStats(userId: string, monthStart: string): Promise<
   const { current, next } = levelFor(total);
 
   return { total, monthPoints, streak, level: current, nextLevel: next };
+}
+
+export type ReaderRow = {
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
+  role: string;
+  total_points: number;
+  finished_books: number;
+  active_books: number;
+  clubs: number;
+  current_book: string | null;
+  current_author: string | null;
+  current_cover: string | null;
+  current_progress: number | null;
+};
+
+/**
+ * Барлық оқырман — кім не оқып жатқанымен.
+ * SECURITY DEFINER функциясы тек рұқсат етілген өрістерді қайтарады:
+ * жеке ескертпелер мен күнделікті журнал сұрауға кірмейді.
+ */
+export async function getReaders(): Promise<ReaderRow[]> {
+  // Қолданушы клиентімен шақырылады: функция ішінде auth.uid() тексеріледі,
+  // ал service_role кілтінде ол бос болады да, ештеңе қайтпайды.
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.rpc("readers_directory");
+  if (error) return [];
+  return (data ?? []) as ReaderRow[];
+}
+
+export type ReaderBook = {
+  tracker_id: string;
+  book_title: string;
+  book_author: string | null;
+  cover_url: string | null;
+  total_pages: number;
+  current_page: number;
+  progress: number;
+  is_completed: boolean;
+  deadline: string | null;
+  club_name: string | null;
+};
+
+/** Бір оқырманның сөресі — оқыған және оқып жатқан кітаптары */
+export async function getReaderBooks(userId: string): Promise<ReaderBook[]> {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.rpc("reader_books", { target: userId });
+  if (error) return [];
+  return (data ?? []) as ReaderBook[];
 }
 
 export type ClubRankRow = {

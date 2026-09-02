@@ -5,15 +5,67 @@ import Link from "next/link";
 import Image from "next/image";
 import { Trophy, Users, BookOpen } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
-import { getClubLeaderboard } from "@/lib/points";
+import ReaderList from "@/components/readers/ReaderList";
+import { getClubLeaderboard, getReaders } from "@/lib/points";
 import { monthBounds } from "@/lib/utils";
 
-export default async function RatingPage() {
+function Header({ tab, label }: { tab: string; label: string }) {
+  const tabs = [
+    { key: "clubs", label: "Клубтар", href: "/rating" },
+    { key: "readers", label: "Оқырмандар", href: "/rating?tab=readers" },
+  ];
+
+  return (
+    <>
+      <div className="mb-4">
+        <h1>Рейтиң</h1>
+        <p className="mt-0.5 text-sm text-gray-500">
+          {tab === "readers"
+            ? "Кім не оқып жатыр"
+            : `Клубтардың ${label} айындағы оқу белсенділігі`}
+        </p>
+      </div>
+
+      <div className="mb-5 flex gap-1.5">
+        {tabs.map((t) => (
+          <Link
+            key={t.key}
+            href={t.href}
+            className={`rounded-xl px-3.5 py-2 text-sm font-medium transition ${
+              tab === t.key
+                ? "bg-primary-600 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export default async function RatingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const user = await getUser();
   if (!user) redirect("/login");
   const supabase = await createClient();
 
   const { start, end, label } = monthBounds();
+  const tab = (await searchParams).tab === "readers" ? "readers" : "clubs";
+
+  if (tab === "readers") {
+    const readers = await getReaders();
+    return (
+      <div className="page-container">
+        <Header tab={tab} label={label} />
+        <ReaderList readers={readers} />
+      </div>
+    );
+  }
 
   const [rows, { data: memberships }] = await Promise.all([
     getClubLeaderboard(start, end),
@@ -29,12 +81,7 @@ export default async function RatingPage() {
 
   return (
     <div className="page-container">
-      <div className="mb-6">
-        <h1>Рейтиң</h1>
-        <p className="mt-0.5 text-sm text-gray-500">
-          Клубтардың {label} айындағы оқу белсенділігі
-        </p>
-      </div>
+      <Header tab={tab} label={label} />
 
       {ranked.length === 0 ? (
         <EmptyState
