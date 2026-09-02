@@ -1,7 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, CheckCircle2 } from "lucide-react";
-import ProgressBar from "@/components/ui/ProgressBar";
 import type { ReaderRow } from "@/lib/points";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -22,10 +20,10 @@ export default function ReaderList({ readers }: { readers: ReaderRow[] }) {
         <Link
           key={r.user_id}
           href={`/readers/${r.user_id}`}
-          className="card flex items-start gap-3 transition hover:border-primary-200"
+          className="card flex items-center gap-3 transition hover:border-primary-200"
         >
           <span
-            className={`mt-0.5 w-5 shrink-0 text-center text-sm font-bold ${
+            className={`w-5 shrink-0 text-center text-sm font-bold ${
               i < 3 ? "text-primary-600" : "text-gray-300"
             }`}
           >
@@ -49,31 +47,17 @@ export default function ReaderList({ readers }: { readers: ReaderRow[] }) {
                 </span>
               )}
             </div>
-
-            {r.current_book ? (
-              <>
-                <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-600">
-                  <BookOpen size={12} className="shrink-0 text-primary-500" />
-                  <span className="truncate">{r.current_book}</span>
-                </p>
-                {r.current_progress !== null && (
-                  <div className="mt-1.5">
-                    <ProgressBar value={r.current_progress} size="sm" />
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="mt-1 text-xs text-gray-400">Қазір кітап оқымайды</p>
-            )}
-
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400">
-              <span className="flex items-center gap-1">
-                <CheckCircle2 size={11} />
-                {r.finished_books} кітап
-              </span>
-              <span>{r.total_points} ұпай</span>
-              {r.clubs > 0 && <span>{r.clubs} клуб</span>}
+            <p className="mt-0.5 text-xs text-gray-400">
+              {r.finished_books} кітап
+              {r.clubs > 0 && ` · ${r.clubs} клуб`}
             </p>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <p className="text-lg font-bold leading-none text-primary-600">
+              {r.total_points}
+            </p>
+            <p className="mt-0.5 text-[10px] text-gray-400">ұпай</p>
           </div>
         </Link>
       ))}
