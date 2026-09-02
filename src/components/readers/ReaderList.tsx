@@ -2,11 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import type { ReaderRow } from "@/lib/points";
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Админ",
-  facilitator: "Жүргізуші",
-};
-
 export default function ReaderList({ readers }: { readers: ReaderRow[] }) {
   if (readers.length === 0) {
     return (
@@ -39,14 +34,7 @@ export default function ReaderList({ readers }: { readers: ReaderRow[] }) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="truncate font-semibold text-gray-900">{r.name ?? "Оқырман"}</p>
-              {ROLE_LABELS[r.role] && (
-                <span className="shrink-0 rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-medium text-primary-700">
-                  {ROLE_LABELS[r.role]}
-                </span>
-              )}
-            </div>
+            <p className="truncate font-semibold text-gray-900">{r.name ?? "Оқырман"}</p>
             <p className="mt-0.5 text-xs text-gray-400">
               {r.finished_books} кітап
               {r.clubs > 0 && ` · ${r.clubs} клуб`}
