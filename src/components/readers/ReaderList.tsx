@@ -18,12 +18,20 @@ export default function ReaderList({ readers }: { readers: ReaderRow[] }) {
 
   return (
     <div className="space-y-2">
-      {readers.map((r) => (
+      {readers.map((r, i) => (
         <Link
           key={r.user_id}
           href={`/readers/${r.user_id}`}
           className="card flex items-start gap-3 transition hover:border-primary-200"
         >
+          <span
+            className={`mt-0.5 w-5 shrink-0 text-center text-sm font-bold ${
+              i < 3 ? "text-primary-600" : "text-gray-300"
+            }`}
+          >
+            {i + 1}
+          </span>
+
           <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
             {r.avatar_url ? (
               <Image src={r.avatar_url} alt={r.name ?? ""} fill className="object-cover" sizes="40px" />

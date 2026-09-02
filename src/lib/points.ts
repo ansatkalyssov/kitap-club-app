@@ -418,7 +418,15 @@ export async function getReaders(): Promise<ReaderRow[]> {
   const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("readers_directory");
   if (error) return [];
-  return (data ?? []) as ReaderRow[];
+
+  // Функцияда да ORDER BY бар, бірақ PostgreSQL оны сыртқы сұрауда
+  // сақтауға кепілдік бермейді — сондықтан ретті осында бекітеміз.
+  return ((data ?? []) as ReaderRow[]).sort(
+    (a, b) =>
+      b.total_points - a.total_points ||
+      b.finished_books - a.finished_books ||
+      (a.name ?? "").localeCompare(b.name ?? "")
+  );
 }
 
 export type ReaderBook = {
