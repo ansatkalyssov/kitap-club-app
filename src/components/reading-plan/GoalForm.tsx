@@ -19,13 +19,33 @@ interface Props {
   onSaved?: () => void;
 }
 
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const MINUTES = ["00", "15", "30", "45"];
+
+/**
+ * Уақытты ең жақын ширекке келтіреді.
+ * Хабарландыру cron-ы 15 минут сайын жүреді, сондықтан 19:50 деп қойған
+ * адам бәрібір 20:00-де алады. Таңдауды сол қадамға сәйкестендіреміз.
+ */
+function snapTo15(time: string): string {
+  const [h, m] = (time || "20:00").split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return "20:00";
+  const q = Math.round(m / 15) * 15;
+  const hour = q === 60 ? (h + 1) % 24 : h;
+  const min = q === 60 ? 0 : q;
+  return `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
 export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [minutes, setMinutes] = useState(existingGoal?.daily_minutes?.toString() || "30");
   const [reminderEnabled, setReminderEnabled] = useState(existingGoal?.reminder_enabled ?? true);
-  const [reminderTime, setReminderTime] = useState(existingGoal?.reminder_time?.slice(0, 5) || "20:00");
+  const [reminderTime, setReminderTime] = useState(
+    snapTo15(existingGoal?.reminder_time?.slice(0, 5) || "20:00")
+  );
+  const [reminderHour, reminderMinute] = reminderTime.split(":");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -136,12 +156,35 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
           />
         </label>
         {reminderEnabled && (
-          <input
-            type="time"
-            value={reminderTime}
-            onChange={(e) => setReminderTime(e.target.value)}
-            className="input mt-3"
-          />
+          <div className="mt-3 flex items-center gap-2">
+            <select
+              value={reminderHour}
+              onChange={(e) => setReminderTime(`${e.target.value}:${reminderMinute}`)}
+              className="input flex-1"
+              aria-label="Сағат"
+            >
+              {HOURS.map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
+
+            <span className="text-gray-400">:</span>
+
+            <select
+              value={reminderMinute}
+              onChange={(e) => setReminderTime(`${reminderHour}:${e.target.value}`)}
+              className="input flex-1"
+              aria-label="Минут"
+            >
+              {MINUTES.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
 
