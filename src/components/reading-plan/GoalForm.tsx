@@ -145,7 +145,7 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
           <div>
             <p className="text-sm font-medium text-gray-700">Еске салғыш</p>
             <p className="mt-0.5 text-xs text-gray-400">
-              Хабарландыру күн сайын таңдаған уақытыңызда келеді
+              Мақсатты орындамаған жағдайда, таңдаған уақытыңызда еске саламыз
             </p>
           </div>
           <input
