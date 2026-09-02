@@ -205,10 +205,11 @@ export async function GET(req: NextRequest) {
     }
 
     notified.add(goal.user_id);
-    // Тақырып бос: iOS «from Oqyrman» деген жолды өзі қосады, ал оның
-    // үстіне тағы қолданба атын жазсақ, ат екі рет көрінеді.
+    // iOS хабарламаны үш жолмен көрсетеді: title, «from <манифест name>»,
+    // body. Тақырып бос болса, оның орнына қолданба аты түседі — сондықтан
+    // бос қалдырмай, мағыналы мәтін жазамыз.
     await sendToUser(goal.user_id, {
-      title: "",
+      title: "Еске салу ⏰",
       body: `Бүгінгі кітап оқу мақсатыңызды орындаңыз - ${target} минут`,
       url: "/reading-plan",
     }, report);
