@@ -159,7 +159,7 @@ export default async function DashboardPage() {
         <div className="min-w-0 flex-1">
           {/* Клуб аты мен күн санағы бір жолда — санақ ортада қалып қоймайды */}
           <div className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 items-start gap-2">
               {plan.clubs?.emblem_url ? (
                 <Image
                   src={plan.clubs.emblem_url}
@@ -173,7 +173,9 @@ export default async function DashboardPage() {
                   {(plan.clubs?.name ?? "?").charAt(0)}
                 </div>
               )}
-              <p className="truncate font-semibold text-gray-900">{plan.clubs?.name}</p>
+              <p className="font-semibold leading-snug text-gray-900">
+                {plan.clubs?.name}
+              </p>
             </div>
 
             <span className={`shrink-0 text-xs font-semibold ${isClose ? "text-yellow-600" : "text-gray-400"}`}>
@@ -181,7 +183,7 @@ export default async function DashboardPage() {
             </span>
           </div>
 
-          <p className="mt-1 truncate text-sm text-gray-600">
+          <p className="mt-1.5 text-sm font-medium text-gray-800">
             {plan.books?.title ?? "Кітап белгіленбеген"}
           </p>
           {plan.meeting_location && (
