@@ -47,6 +47,8 @@ import LeaveClubButton from "@/components/clubs/LeaveClubButton";
 import JoinClubButton from "@/components/clubs/JoinClubButton";
 import ShareClubButton from "@/components/clubs/ShareClubButton";
 import ThreadList from "@/components/analysis/ThreadList";
+import ClubReaderList from "@/components/readers/ClubReaderList";
+import { getClubReaders } from "@/lib/points";
 
 export default async function ClubDetailPage({
   params,
@@ -174,6 +176,8 @@ export default async function ClubDetailPage({
         .sort((a, b) => (b.progress ?? -1) - (a.progress ?? -1));
     }
   }
+
+  const clubReaders = await getClubReaders(id);
 
   // Пікірлер талқы (жоспар) бойынша топталады
   const { data: analyses } = await supabase
@@ -444,6 +448,20 @@ export default async function ClubDetailPage({
           </section>
 
         </div>
+
+        {/* Клуб оқырмандары — ұпай бойынша */}
+        <section className="mt-5">
+          <div className="section-title">
+            <h2>Оқырмандар ({clubReaders.length})</h2>
+            <Link
+              href="/rating?tab=readers"
+              className="text-xs font-medium text-primary-600 hover:text-primary-700"
+            >
+              Жалпы рейтиң →
+            </Link>
+          </div>
+          <ClubReaderList readers={clubReaders} currentUserId={user.id} />
+        </section>
 
         {/* Архив — мерзімі өткен талқылар, беттің ең түбінде */}
         {pastPlans.length > 0 && (

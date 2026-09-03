@@ -450,6 +450,28 @@ export async function getReaderBooks(userId: string): Promise<ReaderBook[]> {
   return (data ?? []) as ReaderBook[];
 }
 
+export type ClubReader = {
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
+  total_points: number;
+  finished_books: number;
+};
+
+/** Клуб мүшелері — жалпы ұпай бойынша сұрыпталған */
+export async function getClubReaders(clubId: string): Promise<ClubReader[]> {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.rpc("club_readers", { target_club: clubId });
+  if (error) return [];
+
+  return ((data ?? []) as ClubReader[]).sort(
+    (a, b) =>
+      b.total_points - a.total_points ||
+      b.finished_books - a.finished_books ||
+      (a.name ?? "").localeCompare(b.name ?? "")
+  );
+}
+
 export type ClubRankRow = {
   club_id: string;
   club_name: string;
