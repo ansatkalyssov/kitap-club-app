@@ -63,6 +63,29 @@ export async function middleware(request: NextRequest) {
   // supabaseResponse ішіне жазылады.
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Safari (iOS) JavaScript арқылы жазылған cookie-дің мерзімін 7 күнмен
+  // шектейді (ITP). Supabase-тің браузер клиенті токенді жаңартқанда
+  // cookie-ді дәл солай — document.cookie арқылы жазады. Сондықтан адам
+  // қолданбаны бір апта ашпаса, cookie өшіп, сессия ұшып кетеді.
+  //
+  // HTTP Set-Cookie арқылы жазылған cookie бұл шектеуге түспейді. Сол үшін
+  // әр сұраныста auth cookie-лерін серверден қайта жазып, мерзімін
+  // жаңартып отырамыз.
+  if (user) {
+    const already = new Set(supabaseResponse.cookies.getAll().map((c) => c.name));
+    for (const c of request.cookies.getAll()) {
+      if (already.has(c.name)) continue;
+      if (!/^sb-.+-auth-token(\.\d+)?$/.test(c.name)) continue;
+      supabaseResponse.cookies.set(c.name, c.value, {
+        path: "/",
+        sameSite: "lax",
+        httpOnly: false,
+        secure: request.nextUrl.protocol === "https:",
+        maxAge: 60 * 60 * 24 * 365,
+      });
+    }
+  }
+
   if (!user && !isPublic) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
