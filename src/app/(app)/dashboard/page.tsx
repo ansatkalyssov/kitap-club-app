@@ -53,7 +53,7 @@ export default async function DashboardPage() {
   const { data: upcomingMeetings } = clubIds.length
     ? await supabase
         .from("club_plans")
-        .select("id, meeting_date, meeting_location, books(title), clubs(id, name)")
+        .select("id, meeting_date, meeting_location, books(title), clubs(id, name, emblem_url)")
         .in("club_id", clubIds)
         .gte("meeting_date", today)
         .order("meeting_date", { ascending: true })
@@ -156,12 +156,29 @@ export default async function DashboardPage() {
           <span className={`mt-1 text-[10px] ${isClose ? "text-primary-100" : "text-primary-400"}`}>{weekday}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-gray-900 line-clamp-1">
+          <div className="flex items-center gap-2">
+            {plan.clubs?.emblem_url ? (
+              <Image
+                src={plan.clubs.emblem_url}
+                alt={plan.clubs.name}
+                width={22}
+                height={22}
+                className="h-[22px] w-[22px] shrink-0 rounded-md border border-gray-100 object-cover"
+              />
+            ) : (
+              <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-primary-100 text-[10px] font-bold text-primary-700">
+                {(plan.clubs?.name ?? "?").charAt(0)}
+              </div>
+            )}
+            <p className="line-clamp-1 font-semibold text-gray-900">
+              {plan.clubs?.name}
+            </p>
+          </div>
+          <p className="mt-1 line-clamp-1 text-sm text-gray-600">
             {plan.books?.title ?? "Кітап белгіленбеген"}
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">{plan.clubs?.name}</p>
           {plan.meeting_location && (
-            <p className="mt-1 text-xs text-primary-600">📍 {plan.meeting_location}</p>
+            <p className="mt-0.5 text-xs text-primary-600">📍 {plan.meeting_location}</p>
           )}
         </div>
         <span className={`shrink-0 text-xs font-semibold ${isClose ? "text-yellow-600" : "text-gray-400"}`}>
