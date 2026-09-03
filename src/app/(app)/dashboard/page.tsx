@@ -154,7 +154,7 @@ export default async function DashboardPage() {
         {/* Түбіртек — күні */}
         <div
           className={`flex w-[76px] shrink-0 flex-col items-center justify-center px-2 py-5 text-white ${
-            isClose ? "bg-primary-600" : "bg-primary-500"
+            isClose ? "bg-primary-700" : "bg-primary-600"
           }`}
         >
           <span className="text-3xl font-extrabold leading-none">{day}</span>
@@ -166,12 +166,27 @@ export default async function DashboardPage() {
 
         {/* Шақыру */}
         <div className="min-w-0 flex-1 border-l-2 border-dashed border-primary-100 p-4">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary-500">
-              Шақыру
-            </span>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {plan.clubs?.emblem_url ? (
+                <Image
+                  src={plan.clubs.emblem_url}
+                  alt={plan.clubs.name}
+                  width={24}
+                  height={24}
+                  className="h-6 w-6 shrink-0 rounded-md border border-gray-100 object-cover"
+                />
+              ) : (
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-100 text-[10px] font-bold text-primary-700">
+                  {(plan.clubs?.name ?? "?").charAt(0)}
+                </div>
+              )}
+              <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-gray-700">
+                {plan.clubs?.name}
+              </p>
+            </div>
             <span
-              className={`shrink-0 text-xs font-semibold ${
+              className={`shrink-0 pt-0.5 text-xs font-semibold ${
                 isClose ? "text-yellow-600" : "text-gray-400"
               }`}
             >
@@ -179,31 +194,12 @@ export default async function DashboardPage() {
             </span>
           </div>
 
-          <div className="mt-2 flex items-center gap-2">
-            {plan.clubs?.emblem_url ? (
-              <Image
-                src={plan.clubs.emblem_url}
-                alt={plan.clubs.name}
-                width={24}
-                height={24}
-                className="h-6 w-6 shrink-0 rounded-md border border-gray-100 object-cover"
-              />
-            ) : (
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-100 text-[10px] font-bold text-primary-700">
-                {(plan.clubs?.name ?? "?").charAt(0)}
-              </div>
-            )}
-            <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-gray-900">
-              {plan.clubs?.name}
-            </p>
-          </div>
-
-          <p className="mt-2 font-medium leading-snug text-gray-900">
+          <p className="mt-2.5 text-lg font-bold leading-tight text-gray-900">
             {plan.books?.title ?? "Кітап белгіленбеген"}
           </p>
 
           {plan.meeting_location && (
-            <p className="mt-1 text-xs leading-snug text-primary-600">
+            <p className="mt-1.5 text-xs leading-snug text-primary-600">
               📍 {plan.meeting_location}
             </p>
           )}
