@@ -148,42 +148,48 @@ export default async function DashboardPage() {
     return (
       <Link
         href={`/clubs/${plan.clubs?.id}`}
-        className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:border-primary-200 hover:shadow-md transition"
+        className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary-200 hover:shadow-md"
       >
         <div className={`flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 ${isClose ? "bg-primary-600 text-white" : "bg-primary-50 text-primary-700"}`}>
           <span className="text-2xl font-extrabold leading-none">{day}</span>
           <span className="mt-0.5 text-xs font-medium tracking-wide">{month}</span>
           <span className={`mt-1 text-[10px] ${isClose ? "text-primary-100" : "text-primary-400"}`}>{weekday}</span>
         </div>
+
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            {plan.clubs?.emblem_url ? (
-              <Image
-                src={plan.clubs.emblem_url}
-                alt={plan.clubs.name}
-                width={22}
-                height={22}
-                className="h-[22px] w-[22px] shrink-0 rounded-md border border-gray-100 object-cover"
-              />
-            ) : (
-              <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-primary-100 text-[10px] font-bold text-primary-700">
-                {(plan.clubs?.name ?? "?").charAt(0)}
-              </div>
-            )}
-            <p className="line-clamp-1 font-semibold text-gray-900">
-              {plan.clubs?.name}
-            </p>
+          {/* Клуб аты мен күн санағы бір жолда — санақ ортада қалып қоймайды */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              {plan.clubs?.emblem_url ? (
+                <Image
+                  src={plan.clubs.emblem_url}
+                  alt={plan.clubs.name}
+                  width={22}
+                  height={22}
+                  className="h-[22px] w-[22px] shrink-0 rounded-md border border-gray-100 object-cover"
+                />
+              ) : (
+                <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-primary-100 text-[10px] font-bold text-primary-700">
+                  {(plan.clubs?.name ?? "?").charAt(0)}
+                </div>
+              )}
+              <p className="truncate font-semibold text-gray-900">{plan.clubs?.name}</p>
+            </div>
+
+            <span className={`shrink-0 text-xs font-semibold ${isClose ? "text-yellow-600" : "text-gray-400"}`}>
+              {diffDays === 0 ? "Бүгін!" : diffDays === 1 ? "Ертең" : `${diffDays} күн`}
+            </span>
           </div>
-          <p className="mt-1 line-clamp-1 text-sm text-gray-600">
+
+          <p className="mt-1 truncate text-sm text-gray-600">
             {plan.books?.title ?? "Кітап белгіленбеген"}
           </p>
           {plan.meeting_location && (
-            <p className="mt-0.5 text-xs text-primary-600">📍 {plan.meeting_location}</p>
+            <p className="mt-0.5 truncate text-xs text-primary-600">
+              📍 {plan.meeting_location}
+            </p>
           )}
         </div>
-        <span className={`shrink-0 text-xs font-semibold ${isClose ? "text-yellow-600" : "text-gray-400"}`}>
-          {diffDays === 0 ? "Бүгін!" : diffDays === 1 ? "Ертең" : `${diffDays} күн`}
-        </span>
       </Link>
     );
   }
