@@ -146,48 +146,64 @@ export default async function DashboardPage() {
     const isClose = diffDays <= 3;
 
     return (
+      // Билет тәрізді: сол жақта жыртылатын түбіртек, оң жақта шақыру
       <Link
         href={`/clubs/${plan.clubs?.id}`}
-        className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+        className="flex overflow-hidden rounded-2xl border border-primary-100 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md"
       >
-        <div className={`flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 ${isClose ? "bg-primary-600 text-white" : "bg-primary-50 text-primary-700"}`}>
-          <span className="text-2xl font-extrabold leading-none">{day}</span>
-          <span className="mt-0.5 text-xs font-medium tracking-wide">{month}</span>
-          <span className={`mt-1 text-[10px] ${isClose ? "text-primary-100" : "text-primary-400"}`}>{weekday}</span>
+        {/* Түбіртек — күні */}
+        <div
+          className={`flex w-[76px] shrink-0 flex-col items-center justify-center px-2 py-5 text-white ${
+            isClose ? "bg-primary-600" : "bg-primary-500"
+          }`}
+        >
+          <span className="text-3xl font-extrabold leading-none">{day}</span>
+          <span className="mt-1 text-xs font-semibold uppercase tracking-wider">
+            {month}
+          </span>
+          <span className="mt-0.5 text-[10px] text-primary-100">{weekday}</span>
         </div>
 
-        <div className="min-w-0 flex-1">
-          {/* Клуб аты мен күн санағы бір жолда — санақ ортада қалып қоймайды */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 items-start gap-2">
-              {plan.clubs?.emblem_url ? (
-                <Image
-                  src={plan.clubs.emblem_url}
-                  alt={plan.clubs.name}
-                  width={22}
-                  height={22}
-                  className="h-[22px] w-[22px] shrink-0 rounded-md border border-gray-100 object-cover"
-                />
-              ) : (
-                <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-primary-100 text-[10px] font-bold text-primary-700">
-                  {(plan.clubs?.name ?? "?").charAt(0)}
-                </div>
-              )}
-              <p className="font-semibold leading-snug text-gray-900">
-                {plan.clubs?.name}
-              </p>
-            </div>
-
-            <span className={`shrink-0 text-xs font-semibold ${isClose ? "text-yellow-600" : "text-gray-400"}`}>
+        {/* Шақыру */}
+        <div className="min-w-0 flex-1 border-l-2 border-dashed border-primary-100 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary-500">
+              Шақыру
+            </span>
+            <span
+              className={`shrink-0 text-xs font-semibold ${
+                isClose ? "text-yellow-600" : "text-gray-400"
+              }`}
+            >
               {diffDays === 0 ? "Бүгін!" : diffDays === 1 ? "Ертең" : `${diffDays} күн`}
             </span>
           </div>
 
-          <p className="mt-1.5 text-sm font-medium text-gray-800">
+          <div className="mt-2 flex items-center gap-2">
+            {plan.clubs?.emblem_url ? (
+              <Image
+                src={plan.clubs.emblem_url}
+                alt={plan.clubs.name}
+                width={24}
+                height={24}
+                className="h-6 w-6 shrink-0 rounded-md border border-gray-100 object-cover"
+              />
+            ) : (
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-100 text-[10px] font-bold text-primary-700">
+                {(plan.clubs?.name ?? "?").charAt(0)}
+              </div>
+            )}
+            <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-gray-900">
+              {plan.clubs?.name}
+            </p>
+          </div>
+
+          <p className="mt-2 font-medium leading-snug text-gray-900">
             {plan.books?.title ?? "Кітап белгіленбеген"}
           </p>
+
           {plan.meeting_location && (
-            <p className="mt-0.5 truncate text-xs text-primary-600">
+            <p className="mt-1 text-xs leading-snug text-primary-600">
               📍 {plan.meeting_location}
             </p>
           )}
