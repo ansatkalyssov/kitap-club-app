@@ -17,22 +17,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  // Auth callback & public routes — middleware-ді өткізіп жіберу.
-  // /api маршруттары өз авторизациясын өзі жасайды: push-send CRON_SECRET
-  // тексереді, push-subscribe getUser() шақырады. Мұнда сессия талап етсек,
-  // cron логин бетіне бағытталып, ешқашан жүрмейді.
-  if (
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/auth") ||
-    pathname === "/" ||
-    pathname === "/login" ||
-    /^\/clubs\/[^/]+$/.test(pathname) ||
-    /^\/c\/[^/]+$/.test(pathname)
-  ) {
+  // /api және /auth — Supabase-ке мүлдем тиіспейміз.
+  // /api маршруттары өз авторизациясын өзі жасайды (push-send CRON_SECRET
+  // тексереді, push-subscribe getUser() шақырады), ал /auth/callback
+  // сессияны өзі орнатады — оған араласу ағынды бұзады.
+  if (pathname.startsWith("/api") || pathname.startsWith("/auth")) {
     return NextResponse.next({ request });
   }
 
-  // Басқа маршруттар — Supabase auth тексеру
+  // Ашық беттер: кірмеген адам да көре алады.
+  const isPublic =
+    pathname === "/" ||
+    pathname === "/login" ||
+    /^\/clubs\/[^/]+$/.test(pathname) ||
+    /^\/c\/[^/]+$/.test(pathname);
+
+  // Ашық болса да Supabase клиентін жасаймыз. Себебі токенді жаңартатын
+  // жалғыз орын — осы. Бұрын ашық беттер клиентсіз өтетін де, адам бас
+  // беттен немесе клуб бетінен кірсе, токен жаңармай ескіріп қалатын.
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -56,9 +58,12 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // Бұл шақыру екі жұмыс істейді: токенді тексереді және мерзімі
+  // жақындаса жаңартады. Жаңа cookie жоғарыдағы setAll арқылы
+  // supabaseResponse ішіне жазылады.
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user && !isPublic) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
