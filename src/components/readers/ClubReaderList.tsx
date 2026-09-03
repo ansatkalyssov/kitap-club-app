@@ -6,9 +6,12 @@ import type { ClubReader } from "@/lib/points";
 export default function ClubReaderList({
   readers,
   currentUserId,
+  clubId,
 }: {
   readers: ClubReader[];
   currentUserId: string;
+  /** Оқырман бетінен осы клубқа қайта оралу үшін */
+  clubId: string;
 }) {
   if (readers.length === 0) {
     return (
@@ -23,7 +26,7 @@ export default function ClubReaderList({
         return (
           <Link
             key={r.user_id}
-            href={`/readers/${r.user_id}`}
+            href={`/readers/${r.user_id}?from=/clubs/${clubId}`}
             className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
               isMe
                 ? "border-primary-200 bg-primary-50/50"

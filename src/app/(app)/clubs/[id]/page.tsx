@@ -460,7 +460,7 @@ export default async function ClubDetailPage({
               Жалпы рейтиң →
             </Link>
           </div>
-          <ClubReaderList readers={clubReaders} currentUserId={user.id} />
+          <ClubReaderList readers={clubReaders} currentUserId={user.id} clubId={id} />
         </section>
 
         {/* Архив — мерзімі өткен талқылар, беттің ең түбінде */}

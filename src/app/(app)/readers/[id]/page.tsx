@@ -13,15 +13,31 @@ export const dynamic = "force-dynamic";
 
 export default async function ReaderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const { from } = await searchParams;
   const user = await getUser();
   if (!user) redirect("/login");
 
   const supabase = await createClient();
   const adminDb = createAdminClient();
+
+  // Қайдан келгені URL арқылы беріледі. Сыртқы адреске сілтеп кетпеу үшін
+  // тек ішкі жол қабылданады.
+  const safeFrom = from?.startsWith("/") && !from.startsWith("//") ? from : null;
+  const fromClub = safeFrom?.match(/^\/clubs\/([0-9a-f-]{36})$/i)?.[1] ?? null;
+
+  const { data: backClub } = fromClub
+    ? await adminDb.from("clubs").select("name").eq("id", fromClub).single()
+    : { data: null };
+
+  const back = safeFrom
+    ? { href: safeFrom, label: backClub?.name ?? "Артқа" }
+    : { href: "/rating?tab=readers", label: "Оқырмандар" };
 
   const [{ data: profile }, books, points, { data: memberships }] = await Promise.all([
     supabase.from("profiles").select("id, name, avatar_url, role").eq("id", id).single(),
@@ -40,10 +56,10 @@ export default async function ReaderPage({
   return (
     <div className="page-container max-w-xl">
       <Link
-        href="/rating?tab=readers"
+        href={back.href}
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
       >
-        <ArrowLeft size={14} /> Оқырмандар
+        <ArrowLeft size={14} /> {back.label}
       </Link>
 
       {/* Оқырман */}
