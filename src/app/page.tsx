@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
-import { BookOpen, Users, BarChart3, BookMarked, ArrowRight } from "lucide-react";
+import { Users, BarChart3, BookMarked, ArrowRight } from "lucide-react";
 
 export default async function LandingPage({
   searchParams,
@@ -40,9 +41,13 @@ export default async function LandingPage({
         <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/5" />
         <div className="relative mx-auto max-w-2xl">
           <div className="mb-6 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur">
-              <BookOpen size={32} className="text-white" />
-            </div>
+            <Image
+              src="/icon-192.png"
+              alt="Oqyrman"
+              width={64}
+              height={64}
+              className="h-16 w-16 rounded-2xl shadow-lg"
+            />
           </div>
           <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl">
             Oqyrman

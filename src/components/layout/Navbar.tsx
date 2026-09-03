@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, LayoutDashboard, Users, BookMarked, Trophy, LogOut, Shield, Target, Settings } from "lucide-react";
+import { LayoutDashboard, Users, BookMarked, Trophy, LogOut, Shield, Target, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -43,9 +43,7 @@ export default function Navbar({ profile }: NavbarProps) {
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-gray-100 bg-white lg:flex">
         {/* Logo */}
         <div className="flex h-16 items-center gap-2.5 border-b border-gray-100 px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
-            <BookOpen size={16} className="text-white" />
-          </div>
+          <Image src="/icon-192.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" />
           <span className="font-bold text-primary-900 text-sm">Oqyrman</span>
         </div>
 
@@ -121,9 +119,7 @@ export default function Navbar({ profile }: NavbarProps) {
       {/* Mobile top bar */}
       <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4 lg:hidden">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-600">
-            <BookOpen size={14} className="text-white" />
-          </div>
+          <Image src="/icon-192.png" alt="" width={28} height={28} className="h-7 w-7 rounded-lg" />
           <span className="font-bold text-primary-900 text-sm">Oqyrman</span>
         </div>
         <div className="flex items-center gap-2">

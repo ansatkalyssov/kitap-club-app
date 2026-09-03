@@ -218,7 +218,7 @@ function LoginForm() {
         <div className="mb-8 text-center">
           <div className="mb-3 flex justify-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-primary-200">
-              <Image src="/favicon.svg" alt="Oqyrman" width={56} height={56} />
+              <Image src="/icon-192.png" alt="Oqyrman" width={56} height={56} className="rounded-xl" />
             </div>
           </div>
           <h1 className="text-2xl font-bold text-primary-900">Oqyrman</h1>
