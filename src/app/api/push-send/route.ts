@@ -20,13 +20,17 @@ type Report = { attempted: number; delivered: number; errors: string[] };
  * келіп қалуы мүмкін. Мерзімі өткен еске салудың пайдасы жоқ — сондықтан
  * оны жеткізгеннен гөрі жоғалтқан дұрыс.
  *
+ * Topic (RFC 8030) қолданылмайды: Apple оны `BadWebPushTopic` деп
+ * қабылдамайды да, бүкіл хабар 400-мен қайтады. iPhone-ға жіберудің
+ * жалғыз жолы — topic-сіз жіберу.
+ *
  * @returns жеткізілген құрылғы саны
  */
 async function sendToUser(
   userId: string,
   payload: { title: string; body: string; url?: string },
   report: Report,
-  opts: { ttl: number; topic?: string } = { ttl: 3 * 60 * 60 }
+  opts: { ttl: number } = { ttl: 3 * 60 * 60 }
 ): Promise<number> {
   const admin = createAdminClient();
   const { data: subs } = await admin
@@ -41,9 +45,7 @@ async function sendToUser(
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify(payload),
-        // topic — «бір тақырыптағы» ескі хабарды жаңасы ауыстырады,
-        // сондықтан кезекте бірнеше еске салу жиналып қалмайды.
-        { TTL: opts.ttl, urgency: "high", ...(opts.topic ? { topic: opts.topic } : {}) }
+        { TTL: opts.ttl, urgency: "high" }
       );
       report.delivered++;
       ok++;
@@ -241,7 +243,7 @@ export async function GET(req: NextRequest) {
       title: "Еске салу ⏰",
       body: `Бүгінгі кітап оқу мақсатыңызды орындаңыз - ${target} минут`,
       url: "/reading-plan",
-    }, report, { ttl: MAX_LATE_MIN * 60, topic: "daily-reminder" });
+    }, report, { ttl: MAX_LATE_MIN * 60 });
 
     // Жеткізілмесе белгілемейміз — келесі cron қайта талпынады
     // (жоғарыдағы MAX_LATE_MIN шегінде).
