@@ -47,6 +47,13 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
   );
   const [reminderHour, reminderMinute] = reminderTime.split(":");
 
+  // Сақталмаған өзгеріс бар ма
+  const dirty = existingGoal
+    ? minutes !== String(existingGoal.daily_minutes ?? "") ||
+      reminderEnabled !== (existingGoal.reminder_enabled ?? true) ||
+      reminderTime !== snapTo15(existingGoal.reminder_time?.slice(0, 5) || "20:00")
+    : false;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -59,8 +66,20 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
     // Рұқсатты сақтаудан БҰРЫН сұраймыз: iOS рұқсатты тікелей басу
     // әрекетінен ғана береді, арасында await болса қабылданбайды.
     // Рұқсат бұрын берілген болса, функция бірден ok қайтарады.
-    const pushAsked: PushResult | null =
-      reminderEnabled && isPushSupported() ? await requestPushPermission() : null;
+    //
+    // try/catch міндетті: Notification.requestPermission() кейбір
+    // браузерде қате лақтырады. Бұрын ол қате бүкіл handleSubmit-ті
+    // үзіп тастайтын да, мақсат сақталмай, ешқандай хабар да
+    // шықпайтын — адам уақытын өзгерттім деп ойлап, шын мәнінде
+    // ескі уақыт сақталып қала беретін.
+    let pushAsked: PushResult | null = null;
+    if (reminderEnabled && isPushSupported()) {
+      try {
+        pushAsked = await requestPushPermission();
+      } catch {
+        pushAsked = { ok: false, reason: "Хабарландыру рұқсатын сұрау мүмкін болмады" };
+      }
+    }
 
     setLoading(true);
 
@@ -85,11 +104,16 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
 
     toast.success("Жоспар сақталды!");
 
-    // Рұқсат алынған соң жазылымды жасаймыз
+    // Рұқсат алынған соң жазылымды жасаймыз. Мұндағы қате мақсаттың
+    // сақталуына әсер етпеуі керек — ол жоғарыда сақталып қойды.
     if (pushAsked?.ok) {
-      const res = await subscribePush();
-      if (res.ok) toast.success("Еске салғыш қосылды", { icon: "🔔" });
-      else toast.error("Еске салғыш қосылмады: " + res.reason, { duration: 6000 });
+      try {
+        const res = await subscribePush();
+        if (res.ok) toast.success("Еске салғыш қосылды", { icon: "🔔" });
+        else toast.error("Еске салғыш қосылмады: " + res.reason, { duration: 6000 });
+      } catch {
+        toast.error("Еске салғыш қосылмады", { duration: 6000 });
+      }
     } else if (pushAsked && !pushAsked.ok) {
       toast.error(pushAsked.reason, { duration: 8000 });
     }
@@ -187,6 +211,14 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
           </div>
         )}
       </div>
+
+      {/* Тізімнен таңдаған бойда сақталып қалады деп ойлайтындар көп.
+          Сондықтан өзгеріс болса, батырманы басу керегін анық айтамыз. */}
+      {dirty && (
+        <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-center text-sm font-medium text-amber-700">
+          Өзгерістер әлі сақталған жоқ — «Жаңарту» батырмасын басыңыз
+        </p>
+      )}
 
       <button type="submit" disabled={loading} className="btn-primary w-full">
         {loading && <RefreshCw size={16} className="animate-spin" />}
