@@ -11,25 +11,42 @@ import { kzDateStr } from "@/lib/utils";
 // пайдаланылғанда сандар жиналып кетер еді.
 type Report = { attempted: number; delivered: number; errors: string[] };
 
+/**
+ * Хабарды адамның барлық құрылғысына жібереді.
+ *
+ * TTL міндетті түрде беріледі. Ол болмаса web-push әдепкі бойынша 4 апта
+ * қояды: телефон офлайн болса, Apple/Google хабарды ұстап тұрып, келесі
+ * қосылғанда жеткізеді. Сондықтан кешкі 19:00-дегі еске салу таңғы 7:00-де
+ * келіп қалуы мүмкін. Мерзімі өткен еске салудың пайдасы жоқ — сондықтан
+ * оны жеткізгеннен гөрі жоғалтқан дұрыс.
+ *
+ * @returns жеткізілген құрылғы саны
+ */
 async function sendToUser(
   userId: string,
   payload: { title: string; body: string; url?: string },
-  report: Report
-) {
+  report: Report,
+  opts: { ttl: number; topic?: string } = { ttl: 3 * 60 * 60 }
+): Promise<number> {
   const admin = createAdminClient();
   const { data: subs } = await admin
     .from("push_subscriptions")
     .select("*")
     .eq("user_id", userId);
 
+  let ok = 0;
   for (const sub of subs || []) {
     report.attempted++;
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify(payload)
+        JSON.stringify(payload),
+        // topic — «бір тақырыптағы» ескі хабарды жаңасы ауыстырады,
+        // сондықтан кезекте бірнеше еске салу жиналып қалмайды.
+        { TTL: opts.ttl, urgency: "high", ...(opts.topic ? { topic: opts.topic } : {}) }
       );
       report.delivered++;
+      ok++;
     } catch (e: any) {
       const status = e?.statusCode;
       report.errors.push(`${status ?? "?"}: ${e?.body || e?.message || "белгісіз"}`);
@@ -41,6 +58,7 @@ async function sendToUser(
       }
     }
   }
+  return ok;
 }
 
 export async function GET(req: NextRequest) {
@@ -139,7 +157,7 @@ export async function GET(req: NextRequest) {
           ? `«${bookTitle}» — ${(plan.clubs as any)?.name} клубында ертең талқыланады`
           : `${(plan.clubs as any)?.name} клубының талқысы ертең өтеді`,
         url: `/clubs/${plan.club_id}/plan/${plan.id}`,
-      }, report);
+      }, report, { ttl: 12 * 60 * 60 });
     }
   }
 
@@ -170,7 +188,7 @@ export async function GET(req: NextRequest) {
           : `${books.length} кітаптың дедлайнына 3 күн қалды`,
       // Бір кітап болса — сол трекерге, бірнешеу болса тізімге
       url: books.length === 1 ? `/tracker/${books[0].id}` : "/tracker",
-    }, report);
+    }, report, { ttl: 12 * 60 * 60 });
   }
 
   // 3. Күнделікті еске салу — тек мақсатын әлі орындамағандарға.
@@ -180,13 +198,16 @@ export async function GET(req: NextRequest) {
   const [{ data: goals }, { data: todayLogs }] = await Promise.all([
     admin
       .from("reading_goals")
-      .select("user_id, daily_minutes, reminder_time")
+      .select("user_id, daily_minutes, reminder_time, last_reminder_date")
       .eq("reminder_enabled", true),
     admin.from("reading_logs").select("user_id, minutes_read").eq("date", todayStr),
   ]);
 
 
   const minutesToday = new Map((todayLogs || []).map((l) => [l.user_id, l.minutes_read]));
+
+  // Еске салуды кешіктіріп жіберуге болатын ең ұзақ мерзім.
+  const MAX_LATE_MIN = 3 * 60;
 
   const notified = new Set<string>();
   for (const goal of goals || []) {
@@ -195,24 +216,41 @@ export async function GET(req: NextRequest) {
     if ((minutesToday.get(goal.user_id) ?? 0) >= target) continue;
     if (notified.has(goal.user_id)) continue;
 
-    // Терезе режимінде тек уақыты дәл келгендерге. reminder_time — "19:50:00"
+    // Бүгін жіберіліп қойған болса — қайталамаймыз.
+    if (goal.last_reminder_date === todayStr) continue;
+
+    // Бұрын мұнда 15 минуттық "терезе" тұрған: уақыт дәл сол аралыққа
+    // түспесе, хабар мүлдем жіберілмейтін. Cron бір рет өтіп кетсе,
+    // адам сол күні еске салуды алмай қалатын. Енді уақыты жеткен соң
+    // жібереміз де, "бүгін жіберілді" деп белгілеп қоямыз — кезекті cron
+    // кешіксе де, еске салу жоғалмайды.
     if (windowMin > 0) {
       const [gh, gm] = String(goal.reminder_time ?? "")
         .split(":")
         .map(Number);
       if (!Number.isFinite(gh) || !Number.isFinite(gm)) continue;
-      if (!inWindow(gh * 60 + gm)) continue;
+      const late = nowMin - (gh * 60 + gm);
+      if (late < 0 || late > MAX_LATE_MIN) continue;
     }
 
     notified.add(goal.user_id);
     // iOS хабарламаны үш жолмен көрсетеді: title, «from <манифест name>»,
     // body. Тақырып бос болса, оның орнына қолданба аты түседі — сондықтан
     // бос қалдырмай, мағыналы мәтін жазамыз.
-    await sendToUser(goal.user_id, {
+    const delivered = await sendToUser(goal.user_id, {
       title: "Еске салу ⏰",
       body: `Бүгінгі кітап оқу мақсатыңызды орындаңыз - ${target} минут`,
       url: "/reading-plan",
-    }, report);
+    }, report, { ttl: MAX_LATE_MIN * 60, topic: "daily-reminder" });
+
+    // Жеткізілмесе белгілемейміз — келесі cron қайта талпынады
+    // (жоғарыдағы MAX_LATE_MIN шегінде).
+    if (delivered > 0) {
+      await admin
+        .from("reading_goals")
+        .update({ last_reminder_date: todayStr })
+        .eq("user_id", goal.user_id);
+    }
   }
 
   return NextResponse.json({
