@@ -29,6 +29,7 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     pathname === "/" ||
     pathname === "/login" ||
+    pathname === "/ornatu" ||
     /^\/clubs\/[^/]+$/.test(pathname) ||
     /^\/c\/[^/]+$/.test(pathname);
 

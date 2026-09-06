@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Mail, Lock, Eye, EyeOff, RefreshCw } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 function GoogleIcon() {
@@ -436,6 +437,16 @@ function LoginForm() {
             </form>
           )}
         </div>
+
+        {/* Оқырмандардың көбінде хабарландыру жазылымы жоқ — себебі сайтты
+            басты экранға қосу керегін білмейді. Сілтемені жаңа адам бірінші
+            көретін жерге қоямыз. */}
+        <Link
+          href="/ornatu"
+          className="mt-5 block text-center text-xs text-gray-400 transition hover:text-primary-600"
+        >
+          Телефонның басты экранына қалай қосамын?
+        </Link>
       </div>
     </main>
   );
