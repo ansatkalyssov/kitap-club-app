@@ -5,6 +5,7 @@ import { Target, Flame } from "lucide-react";
 import GoalForm from "@/components/reading-plan/GoalForm";
 import EditGoalSection from "@/components/reading-plan/EditGoalSection";
 import ReadingTimer from "@/components/reading-plan/ReadingTimer";
+import PushReminderHint from "@/components/PushReminderHint";
 import { calcReadingStreak, formatDateKz, kzDateStr } from "@/lib/utils";
 
 export default async function ReadingPlanPage() {
@@ -42,6 +43,8 @@ export default async function ReadingPlanPage() {
           <GoalForm userId={user.id} />
         ) : (
           <div className="space-y-5">
+            <PushReminderHint reminderEnabled={Boolean(goal.reminder_enabled)} />
+
             {/* Goal summary + streak */}
             <div className="card flex items-center justify-between">
               <div className="flex items-center gap-3">

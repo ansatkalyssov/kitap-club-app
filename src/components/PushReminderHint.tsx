@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, X } from "lucide-react";
+import Link from "next/link";
+import { Bell, X, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   isPushSupported,
   hasPushSubscription,
   requestPushPermission,
   subscribePush,
+  needsHomeScreen,
 } from "@/lib/push";
 
 const DISMISS_KEY = "push_hint_dismissed";
@@ -22,13 +24,19 @@ interface Props {
  * жазылым жоқ. Басқа жағдайда мүлдем шықпайды — қажетсіз сұрау адамды
  * «бөгеу» батырмасына итермелейді, ал одан кейін арна біржола жабылады.
  */
+/**
+ * "homescreen" — iPhone, басты экранға қосылмаған: рұқсат сұрау мүмкін
+ *   емес, нұсқаулыққа сілтейміз.
+ * "permission" — жазылым жоқ, бірақ рұқсат сұрауға болады.
+ */
+type Mode = "none" | "homescreen" | "permission";
+
 export default function PushReminderHint({ reminderEnabled }: Props) {
-  const [show, setShow] = useState(false);
+  const [mode, setMode] = useState<Mode>("none");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!reminderEnabled || !isPushSupported()) return;
-    if (Notification.permission === "denied") return;
+    if (!reminderEnabled) return;
 
     let dismissed = 0;
     try {
@@ -36,7 +44,21 @@ export default function PushReminderHint({ reminderEnabled }: Props) {
     } catch {}
     if (dismissed >= 2) return;
 
-    hasPushSubscription().then((has) => setShow(!has));
+    // Бұл тексеру isPushSupported()-тен бұрын тұруы керек: iOS Safari-де
+    // PushManager бар көрінеді, бірақ standalone режимінен тыс жазылым
+    // жасалмайды. Әйтпесе адамға ешқашан көмектеспейтін «Рұқсат беру»
+    // батырмасын көрсетер едік.
+    if (needsHomeScreen()) {
+      setMode("homescreen");
+      return;
+    }
+
+    if (!isPushSupported() || typeof Notification === "undefined") return;
+    if (Notification.permission === "denied") return;
+
+    hasPushSubscription().then((has) => {
+      if (!has) setMode("permission");
+    });
   }, [reminderEnabled]);
 
   function dismiss() {
@@ -44,7 +66,7 @@ export default function PushReminderHint({ reminderEnabled }: Props) {
       const n = Number(localStorage.getItem(DISMISS_KEY) ?? 0);
       localStorage.setItem(DISMISS_KEY, String(n + 1));
     } catch {}
-    setShow(false);
+    setMode("none");
   }
 
   async function enable() {
@@ -59,37 +81,53 @@ export default function PushReminderHint({ reminderEnabled }: Props) {
     setLoading(false);
 
     if (res.ok) {
-      setShow(false);
+      setMode("none");
       toast.success("Еске салғыш қосылды", { icon: "🔔" });
     } else {
       toast.error("Қосылмады: " + res.reason, { duration: 6000 });
     }
   }
 
-  if (!show) return null;
+  if (mode === "none") return null;
 
   return (
-    <div className="mb-5 flex items-center gap-3 rounded-2xl border border-primary-100 bg-primary-50/60 px-4 py-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-primary-600">
-        <Bell size={16} />
+    <div className="mb-5 rounded-2xl border border-primary-100 bg-primary-50/60 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-primary-600">
+          <Bell size={16} />
+        </div>
+
+        <p className="min-w-0 flex-1 text-sm text-gray-700">
+          {mode === "homescreen"
+            ? "Хабарландыру келуі үшін сайтты телефонның басты экранына қосу керек"
+            : "Еске салғышыңыз қосулы, бірақ бұл құрылғыда хабарландыруға рұқсат берілмеген"}
+        </p>
+
+        {mode === "permission" && (
+          <button
+            onClick={enable}
+            disabled={loading}
+            className="btn-primary shrink-0 px-3 py-1.5 text-xs disabled:opacity-50"
+          >
+            Рұқсат беру
+          </button>
+        )}
+
+        <button
+          onClick={dismiss}
+          aria-label="Жабу"
+          className="shrink-0 rounded-lg p-1 text-gray-400 transition hover:bg-white hover:text-gray-600"
+        >
+          <X size={14} />
+        </button>
       </div>
-      <p className="min-w-0 flex-1 text-sm text-gray-700">
-        Еске салғышыңыз қосулы, бірақ бұл құрылғыда хабарландыруға рұқсат берілмеген
-      </p>
-      <button
-        onClick={enable}
-        disabled={loading}
-        className="btn-primary shrink-0 px-3 py-1.5 text-xs disabled:opacity-50"
+
+      <Link
+        href="/ornatu"
+        className="mt-2 flex items-center gap-1 pl-12 text-xs font-semibold text-primary-700 hover:underline"
       >
-        Рұқсат беру
-      </button>
-      <button
-        onClick={dismiss}
-        aria-label="Жабу"
-        className="shrink-0 rounded-lg p-1 text-gray-400 transition hover:bg-white hover:text-gray-600"
-      >
-        <X size={14} />
-      </button>
+        Қалай қосамын? <ArrowRight size={12} />
+      </Link>
     </div>
   );
 }

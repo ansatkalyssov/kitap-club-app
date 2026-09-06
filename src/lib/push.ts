@@ -27,6 +27,15 @@ function isStandalone(): boolean {
 }
 
 /**
+ * iPhone-да сайт басты экранға қосылмаған. Бұл жағдайда рұқсат сұраудың
+ * мүлдем мәні жоқ — Apple standalone режимінен тыс push бермейді.
+ * Адамға алдымен нұсқаулықты көрсету керек.
+ */
+export function needsHomeScreen(): boolean {
+  return typeof window !== "undefined" && isIOS() && !isStandalone();
+}
+
+/**
  * Браузер рұқсатын сұрайды.
  *
  * МАҢЫЗДЫ: бұны кез келген `await`-тен БҰРЫН шақыру керек. iOS Safari
