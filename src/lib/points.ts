@@ -37,7 +37,9 @@ export const POINT_RULES = {
   book_done_medium: { points: 40, capped: false, countsForClub: true },
   book_done_long: { points: 50, capped: false, countsForClub: true },
   club_book_ontime: { points: 50, capped: false, countsForClub: true },
-  club_join: { points: 25, capped: false, countsForClub: false, limit: { count: 3, period: "all" } },
+  // Тек ең бірінші клубқа тіркелгені үшін. Бұрын үшеуіне дейін берілетін
+  // де, ұпай үшін бірнеше клубқа кіріп шығуға түрткі болатын.
+  club_join: { points: 25, capped: false, countsForClub: false, limit: { count: 1, period: "all" } },
 
   // Streak
   streak_week: { points: 25, capped: false, countsForClub: true },
