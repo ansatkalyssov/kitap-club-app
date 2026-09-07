@@ -34,6 +34,14 @@ export default function StartChecklist({ hasClub, hasGoal, hasRead, hasPush }: P
       done: true,
     },
     {
+      label: "Басты экранға қосу",
+      // Белгі хабарландыруға жазылғанда қойылады — тек белгішені қосу
+      // жеткіліксіз, себебі еске салудың келуі рұқсатқа байланысты.
+      hint: "Хабарландыруға рұқсат бергенде белгіленеді",
+      href: "/ornatu",
+      done: hasPush,
+    },
+    {
       label: "Клубқа тіркелу",
       hint: "Бірге оқитын орта табыңыз",
       href: "/clubs",
@@ -50,12 +58,6 @@ export default function StartChecklist({ hasClub, hasGoal, hasRead, hasPush }: P
       hint: "Таймерді қосып, 15 минут оқып көріңіз",
       href: "/reading-plan",
       done: hasRead,
-    },
-    {
-      label: "Басты экранға қосу",
-      hint: "Еске салу хабарландыруы келуі үшін",
-      href: "/ornatu",
-      done: hasPush,
     },
   ];
 
