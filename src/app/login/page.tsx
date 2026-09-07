@@ -208,7 +208,10 @@ function LoginForm() {
     await supabase.auth.updateUser({ data: { full_name: fullName } });
 
     setLoading(false);
-    router.push(next);
+    // Атын жаңа енгізген адам — жаңа оқырман. Оны дашбордқа емес, бірден
+    // мақсат қоятын бетке жібереміз: клубқа кіргендердің тек алтыдан бірі
+    // мақсат қоятынын көрсеткен ең үлкен шығын нүктесі осы.
+    router.push(next === "/dashboard" ? "/reading-plan" : next);
     router.refresh();
   }
 
