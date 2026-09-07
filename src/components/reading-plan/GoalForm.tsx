@@ -123,7 +123,7 @@ export default function GoalForm({ userId, existingGoal, onSaved }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-5">
+    <form onSubmit={handleSubmit} data-tour="goal" className="card space-y-5">
       {!existingGoal && (
         <div>
           <h3 className="mb-1">Оқу мақсатыңызды таңдаңыз</h3>

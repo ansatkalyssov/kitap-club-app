@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Navbar from "@/components/layout/Navbar";
+import ProductTour from "@/components/tour/ProductTour";
+import { TOUR_VERSION } from "@/lib/tour";
 import { Profile } from "@/lib/types";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1 lg:ml-56">
         <div className="pt-14 pb-28 lg:pt-0 lg:pb-0">{children}</div>
       </main>
+      <ProductTour active={(profile.tour_version ?? 0) < TOUR_VERSION} />
     </div>
   );
 }

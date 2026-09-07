@@ -81,3 +81,30 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+
+/* Танысу туры (driver.js) — қолданбаның стиліне келтіру */
+.driver-popover.oq-tour {
+  @apply max-w-[320px] rounded-2xl border border-gray-100 p-4 shadow-xl;
+  font-family: var(--font-nunito), system-ui, sans-serif;
+}
+.driver-popover.oq-tour .driver-popover-title {
+  @apply mb-1 text-base font-extrabold text-primary-900;
+}
+.driver-popover.oq-tour .driver-popover-description {
+  @apply text-sm leading-relaxed text-gray-600;
+}
+.driver-popover.oq-tour .driver-popover-footer {
+  @apply mt-4 gap-2;
+}
+.driver-popover.oq-tour .driver-popover-next-btn {
+  @apply rounded-xl bg-primary-600 px-4 py-2 text-sm font-bold text-white;
+  text-shadow: none;
+  border: 0;
+}
+.driver-popover.oq-tour .driver-popover-prev-btn {
+  @apply rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500;
+  text-shadow: none;
+}
+.driver-popover.oq-tour .driver-popover-close-btn {
+  @apply text-gray-400 hover:text-gray-700;
+}

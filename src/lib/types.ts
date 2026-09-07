@@ -6,6 +6,8 @@ export interface Profile {
   name: string | null;
   role: UserRole;
   avatar_url: string | null;
+  /** Көрген танысу турының нұсқасы. 0 — әлі көрмеген */
+  tour_version: number;
   created_at: string;
   updated_at: string;
 }
