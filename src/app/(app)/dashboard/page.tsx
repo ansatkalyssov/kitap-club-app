@@ -6,8 +6,6 @@ import Image from "next/image";
 import { Users, BookMarked, Plus, Star, Calendar, MessageSquare } from "lucide-react";
 import PushSubscribe from "@/components/PushSubscribe";
 import PushReminderHint from "@/components/PushReminderHint";
-import StartChecklist from "@/components/onboarding/StartChecklist";
-import TodayNudge from "@/components/onboarding/TodayNudge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
 import { getUserStats } from "@/lib/points";
@@ -80,38 +78,11 @@ export default async function DashboardPage() {
 
   const stats = await getUserStats(user.id, monthBounds().start);
 
-  // Бастау жолы мен күнделікті шақыруға керек деректер
-  const [{ data: goal }, { count: readLogCount }, { data: todayLog }, { count: pushCount }] =
-    await Promise.all([
-      supabase
-        .from("reading_goals")
-        .select("reminder_enabled, daily_minutes")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("reading_logs")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id),
-      supabase
-        .from("reading_logs")
-        .select("minutes_read")
-        .eq("user_id", user.id)
-        .eq("date", today)
-        .maybeSingle(),
-      supabase
-        .from("push_subscriptions")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id),
-    ]);
-
-  const onboarding = {
-    hasClub: (memberships?.length ?? 0) > 0,
-    hasGoal: Boolean(goal),
-    hasRead: (readLogCount ?? 0) > 0,
-    hasPush: (pushCount ?? 0) > 0,
-  };
-  const onboardingDone =
-    onboarding.hasClub && onboarding.hasGoal && onboarding.hasRead && onboarding.hasPush;
+  const { data: goal } = await supabase
+    .from("reading_goals")
+    .select("reminder_enabled")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   const isFacilitatorWithClubs =
     profile.role !== "reader" && managedClubs && managedClubs.length > 0;
@@ -253,17 +224,6 @@ export default async function DashboardPage() {
       </div>
 
       <PushReminderHint reminderEnabled={Boolean(goal?.reminder_enabled)} />
-
-      {/* Жаңа оқырманға — бастау жолы, үйренгенге — бүгінгі шақыру.
-          Екеуі ешқашан қатар шықпайды. */}
-      {onboardingDone ? (
-        <TodayNudge
-          target={goal?.daily_minutes ?? 0}
-          todayMinutes={todayLog?.minutes_read ?? 0}
-        />
-      ) : (
-        <StartChecklist {...onboarding} />
-      )}
 
       {/* Quick stats */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
