@@ -30,7 +30,19 @@ export default async function ClubsPage({
     .eq("is_active", true);
   if (q) query = query.ilike("name", `%${q}%`);
 
-  const { data: allClubs } = await query.order("created_at", { ascending: false });
+  const { data: clubRows } = await query;
+
+  // Алфавит бойынша реттейміз. Postgres-тің өз реттеуі қазақ әліпбиінің
+  // Ә, Ғ, Қ, Ң, Ө, Ұ, Ү, І әріптерін дұрыс орналастырмайды, сондықтан
+  // қазақ локалімен осы жерде реттеген дұрыс. Аттың басындағы тырнақша
+  // есепке алынбайды — «ALQA» A әрпінен басталады деп саналады.
+  const collator = new Intl.Collator("kk", { numeric: true, sensitivity: "base" });
+  // Клуб аттары әртүрлі тырнақшамен жазылған: «», “”, "" — бәрін кесеміз
+  const sortName = (n: string | null) =>
+    (n ?? "").replace(/^[«»“”„‟"'‘’`\s]+/, "");
+  const allClubs = (clubRows ?? []).sort((a, b) =>
+    collator.compare(sortName(a.name), sortName(b.name))
+  );
 
   // User's memberships
   const { data: memberships } = await supabase
