@@ -42,7 +42,7 @@ export default async function TrackerPage() {
   if (otherClubTrackers.length > 0) sortedGroups.push({ clubName: (otherClubTrackers[0].club_plans as any)?.clubs?.name || null, trackers: otherClubTrackers });
 
   return (
-      <div className="page-container">
+      <div className="page-container" data-tour="tracker">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1>Кітап Трекері</h1>

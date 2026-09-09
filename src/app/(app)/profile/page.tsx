@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import { Star, Flame, TrendingUp } from "lucide-react";
 import ProfileForm from "@/components/profile/ProfileForm";
+import RestartTourButton from "@/components/tour/RestartTourButton";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { getUserStats } from "@/lib/points";
 import { monthBounds } from "@/lib/utils";
@@ -70,6 +71,10 @@ export default async function ProfilePage() {
       </div>
 
       <ProfileForm />
+
+      <div className="mt-4">
+        <RestartTourButton />
+      </div>
     </div>
   );
 }

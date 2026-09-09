@@ -48,7 +48,7 @@ export default function Navbar({ profile }: NavbarProps) {
         </div>
 
         {/* Nav links */}
-        <nav className="flex-1 space-y-1 p-3">
+        <nav data-tour="nav" className="flex-1 space-y-1 p-3">
           {navItems.map(({ href, label, icon: Icon, primary }) => {
             const active = pathname.startsWith(href);
             return (
@@ -141,7 +141,7 @@ export default function Navbar({ profile }: NavbarProps) {
       </header>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex flex-col border-t border-gray-100 bg-white lg:hidden">
+      <nav data-tour="nav" className="fixed inset-x-0 bottom-0 z-30 flex flex-col border-t border-gray-100 bg-white lg:hidden">
         <div className="flex items-end">
           {navItems.map(({ href, mobileLabel, icon: Icon, primary }) => {
             const active = pathname.startsWith(href);

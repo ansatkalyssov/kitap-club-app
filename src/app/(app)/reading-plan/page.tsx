@@ -46,7 +46,7 @@ export default async function ReadingPlanPage() {
             <PushReminderHint reminderEnabled={Boolean(goal.reminder_enabled)} />
 
             {/* Goal summary + streak */}
-            <div className="card flex items-center justify-between">
+            <div data-tour="goal" className="card flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
                   <Target size={20} />

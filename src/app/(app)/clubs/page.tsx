@@ -61,7 +61,7 @@ export default async function ClubsPage({
   const canJoinMore = myClubIds.size < 3;
 
   return (
-      <div className="page-container">
+      <div className="page-container" data-tour="clubs">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1>Клубтар</h1>

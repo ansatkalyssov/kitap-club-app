@@ -363,7 +363,7 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
   }
 
   return (
-    <div className="card space-y-4">
+    <div data-tour="timer" className="card space-y-4">
       <div className="flex items-center justify-between">
         <h3>Бүгінгі оқу уақыты</h3>
         {goalReached && <span className="badge-green">Мақсат орындалды ✓</span>}
