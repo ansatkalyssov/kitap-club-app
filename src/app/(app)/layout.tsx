@@ -16,7 +16,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1 lg:ml-56">
         <div className="pt-14 pb-28 lg:pt-0 lg:pb-0">{children}</div>
       </main>
-      <ProductTour active={(profile.tour_version ?? 0) < TOUR_VERSION} />
+      {/* tour_version бағаны әлі қосылмаса, мән undefined болады. Ондай
+          жағдайда турды мүлдем қоспаймыз: аяқтағанын жазатын жер жоқ
+          болғандықтан, ол әр кірген сайын қайта-қайта шығып, жабылмас
+          еді. Баған пайда болған сәтте тур өзінен-өзі іске қосылады. */}
+      <ProductTour
+        active={
+          typeof profile.tour_version === "number" &&
+          profile.tour_version < TOUR_VERSION
+        }
+      />
     </div>
   );
 }
