@@ -7,6 +7,7 @@ import { MONTHS_KZ } from "@/lib/constants";
 import { RefreshCw, Trash2, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateBook } from "@/app/actions/books";
+import { syncPlanTrackers } from "@/app/actions/plans";
 
 interface Props {
   clubId: string;
@@ -123,7 +124,20 @@ export default function EditPlanForm({ clubId, plan }: Props) {
       return;
     }
 
-    toast.success("Жоспар жаңартылды!");
+    // Оқырмандардың трекерлеріндегі көшірмелерді де жаңартамыз —
+    // әйтпесе жүргізуші күнді жылжытса да, оқырманда ескі күн қалады.
+    let synced = 0;
+    try {
+      synced = await syncPlanTrackers(plan.id);
+    } catch {
+      toast.error("Жоспар сақталды, бірақ оқырмандардың трекерлері жаңармады");
+    }
+
+    toast.success(
+      synced > 0
+        ? `Жоспар жаңартылды! ${synced} оқырманның трекері де жаңарды.`
+        : "Жоспар жаңартылды!"
+    );
     setLoading(false);
     router.push(`/clubs/${clubId}`);
     router.refresh();
