@@ -449,26 +449,12 @@ export default async function ClubDetailPage({
 
         </div>
 
-        {/* Клуб оқырмандары — ұпай бойынша */}
-        <section className="mt-5">
-          <div className="section-title">
-            <h2>Оқырмандар ({clubReaders.length})</h2>
-            <Link
-              href="/rating?tab=readers"
-              className="text-xs font-medium text-primary-600 hover:text-primary-700"
-            >
-              Жалпы рейтиң →
-            </Link>
-          </div>
-          <ClubReaderList readers={clubReaders} currentUserId={user.id} clubId={id} />
-        </section>
-
-        {/* Архив — мерзімі өткен талқылар, беттің ең түбінде */}
+        {/* Өткен талқылар — жоспардан кейін, оқырмандар тізімінен бұрын */}
         {pastPlans.length > 0 && (
-          <section className="mt-8">
+          <section className="mt-6">
             <p className="mb-3 flex items-center gap-2 text-xs text-gray-400">
               <span className="flex-1 border-t border-gray-100" />
-              Архив ({pastPlans.length})
+              Өткен талқылар ({pastPlans.length})
               <span className="flex-1 border-t border-gray-100" />
             </p>
 
@@ -497,7 +483,7 @@ export default async function ClubDetailPage({
                   </>
                 );
 
-                // Архивтегі талқы бәріне ашық — үлгерімі мен пікірлері сақталған
+                // Өткен талқы бәріне ашық — үлгерімі мен пікірлері сақталған
                 return (
                   <Link
                     key={plan.id}
@@ -511,6 +497,21 @@ export default async function ClubDetailPage({
             </div>
           </section>
         )}
+
+        {/* Клуб оқырмандары — ұпай бойынша */}
+        <section className="mt-5">
+          <div className="section-title">
+            <h2>Оқырмандар ({clubReaders.length})</h2>
+            <Link
+              href="/rating?tab=readers"
+              className="text-xs font-medium text-primary-600 hover:text-primary-700"
+            >
+              Жалпы рейтиң →
+            </Link>
+          </div>
+          <ClubReaderList readers={clubReaders} currentUserId={user.id} clubId={id} />
+        </section>
+
       </div>
   );
 }

@@ -93,6 +93,7 @@ export default async function PlanDiscussionPage({
           progress: t ? calcProgress(t.current_page, t.total_pages) : null,
           currentPage: t?.current_page ?? 0,
           totalPages: t?.total_pages ?? 0,
+          isCompleted: Boolean(t?.is_completed),
         };
       })
       .sort((a, b) => (b.progress ?? -1) - (a.progress ?? -1));
@@ -103,6 +104,13 @@ export default async function PlanDiscussionPage({
   const TOP_READERS = 10;
   const topReaders = membersWithProgress.slice(0, TOP_READERS);
   const restCount = membersWithProgress.length - topReaders.length;
+
+  // Қорытынды: кім бітірді, кім бастады, кім қолына да алмады
+  const finishedCount = membersWithProgress.filter((m) => m.isCompleted).length;
+  const startedCount = membersWithProgress.filter(
+    (m) => !m.isCompleted && m.currentPage > 0
+  ).length;
+  const notStartedCount = membersWithProgress.length - finishedCount - startedCount;
 
   const isPast = Boolean(plan.meeting_date && plan.meeting_date < kzDateStr());
   const book = plan.books as any;
@@ -182,6 +190,35 @@ export default async function PlanDiscussionPage({
           Оқырмандар үлгерімі ({membersWithProgress.length})
         </h2>
       </div>
+
+      {/* Қорытынды сандар. Өткен талқыда бұл — нәтиже, ал жүріп жатқанда
+          ағымдағы көрініс, сондықтан мәтіні екі түрлі. */}
+      {membersWithProgress.length > 0 && (
+        <div className="card mb-3 grid grid-cols-3 divide-x divide-gray-100">
+          {[
+            {
+              n: finishedCount,
+              label: isPast ? "оқып бітірді" : "бітірді",
+              color: "text-primary-600",
+            },
+            {
+              n: startedCount,
+              label: isPast ? "үлгермеді" : "оқып жатыр",
+              color: "text-amber-600",
+            },
+            {
+              n: notStartedCount,
+              label: "бастамады",
+              color: "text-gray-400",
+            },
+          ].map((s) => (
+            <div key={s.label} className="px-2 text-center">
+              <p className={`text-2xl font-bold tabular-nums ${s.color}`}>{s.n}</p>
+              <p className="mt-0.5 text-xs leading-tight text-gray-500">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {membersWithProgress.length > 0 ? (
         <div className="card mb-6 space-y-3">
