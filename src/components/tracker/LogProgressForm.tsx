@@ -10,6 +10,9 @@ import { kzDateStr } from "@/lib/utils";
 import { syncTrackerProgressPoints, syncBookCompletedPoints } from "@/app/actions/points";
 import { toastPoints } from "@/lib/pointsToast";
 
+/** Ескертпенің ең үлкен ұзындығы. Дерекқорда шектеу жоқ (TEXT). */
+const NOTE_MAX = 500;
+
 interface Props {
   trackerId: string;
   currentPage: number;
@@ -128,13 +131,27 @@ export default function LogProgressForm({ trackerId, currentPage, totalPages, to
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">Ескертпе</label>
-        <input
+        <div className="mb-1.5 flex items-baseline justify-between gap-2">
+          <label className="block text-sm font-medium text-gray-700">Ескертпе</label>
+          {/* Шекке жақындағанда ғана көрсетеміз — әйтпесе бос өрістің
+              жанында «0/500» тұрғаны артық. */}
+          {note.length > NOTE_MAX / 2 && (
+            <span
+              className={`text-xs tabular-nums ${
+                note.length >= NOTE_MAX ? "font-semibold text-amber-600" : "text-gray-400"
+              }`}
+            >
+              {note.length} / {NOTE_MAX}
+            </span>
+          )}
+        </div>
+        <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Бүгінгі оқу туралы қысқаша..."
-          className="input"
-          maxLength={200}
+          placeholder="Бүгінгі оқу туралы..."
+          className="input min-h-[84px] resize-y"
+          rows={3}
+          maxLength={NOTE_MAX}
         />
       </div>
 
