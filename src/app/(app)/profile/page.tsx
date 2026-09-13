@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/queries";
-import { TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { Star, Flame, TrendingUp, ArrowRight } from "lucide-react";
 import ProfileForm from "@/components/profile/ProfileForm";
-import PointsCard from "@/components/profile/PointsCard";
 import RestartTourButton from "@/components/tour/RestartTourButton";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { getUserStats, getPointHistory } from "@/lib/points";
+import { getUserStats } from "@/lib/points";
 import { monthBounds } from "@/lib/utils";
 
 export default async function ProfilePage() {
@@ -13,10 +13,7 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   const { start, label } = monthBounds();
-  const [stats, history] = await Promise.all([
-    getUserStats(user.id, start),
-    getPointHistory(user.id, 30),
-  ]);
+  const stats = await getUserStats(user.id, start);
 
   // Келесі деңгейге дейінгі жол
   const span = stats.nextLevel ? stats.nextLevel.min - stats.level.min : 0;
@@ -31,15 +28,44 @@ export default async function ProfilePage() {
         <p className="mt-1 text-sm text-gray-500">Жеке ақпаратыңыз бен нәтижеңіз</p>
       </div>
 
-      <PointsCard
-        total={stats.total}
-        levelName={stats.level.name}
-        nextLevelName={stats.nextLevel?.name ?? null}
-        toNext={toNext}
-        levelProgress={levelProgress}
-        streak={stats.streak}
-        history={history}
-      />
+      {/* Ұпай мен деңгей */}
+      <div className="card mb-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+              <Star size={20} />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-gray-900">{stats.total} ұпай</p>
+              <p className="text-xs font-medium text-primary-600">{stats.level.name}</p>
+            </div>
+          </div>
+          {stats.streak > 0 && (
+            <div className="flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-600">
+              <Flame size={15} />
+              {stats.streak} күн
+            </div>
+          )}
+        </div>
+
+        {stats.nextLevel ? (
+          <>
+            <ProgressBar value={levelProgress} size="sm" />
+            <p className="mt-1.5 text-xs text-gray-500">
+              «{stats.nextLevel.name}» деңгейіне {toNext} ұпай қалды
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-gray-500">Ең жоғары деңгейге жеттіңіз</p>
+        )}
+
+        <Link
+          href="/profile/points"
+          className="mt-3 flex items-center justify-center gap-1 border-t border-gray-50 pt-3 text-sm font-medium text-primary-600 hover:text-primary-700"
+        >
+          Ұпай тарихы <ArrowRight size={14} />
+        </Link>
+      </div>
 
       {/* Осы айдағы үлес */}
       <div className="card mb-6 flex items-center gap-3">
