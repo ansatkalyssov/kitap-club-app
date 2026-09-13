@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { ReadingProgress } from "@/lib/types";
 import { kzDateStr } from "@/lib/utils";
 import { syncTrackerProgressPoints, syncBookCompletedPoints } from "@/app/actions/points";
+import { addReadingMinutes } from "@/app/actions/reading";
 import { toastPoints } from "@/lib/pointsToast";
 
 /** Ескертпенің ең үлкен ұзындығы. Дерекқорда шектеу жоқ (TEXT). */
@@ -18,9 +19,20 @@ interface Props {
   currentPage: number;
   totalPages: number;
   todayProgress: ReadingProgress | null;
+  /** Күнделікті мақсат, минут. 0 — мақсат қойылмаған */
+  goalMinutes: number;
+  /** Бүгін журналға жазылған минут */
+  todayMinutes: number;
 }
 
-export default function LogProgressForm({ trackerId, currentPage, totalPages, todayProgress }: Props) {
+export default function LogProgressForm({
+  trackerId,
+  currentPage,
+  totalPages,
+  todayProgress,
+  goalMinutes,
+  todayMinutes,
+}: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
@@ -32,6 +44,9 @@ export default function LogProgressForm({ trackerId, currentPage, totalPages, to
 
   const [reachedPage, setReachedPage] = useState(initialPage.toString());
   const [note, setNote] = useState(todayProgress?.note || "");
+  // Әдейі бос: әр сақтауда қосылады, сондықтан алдын ала толтырсақ
+  // прогресті екінші рет түзеткенде уақыт қайта қосылып кетер еді.
+  const [minutes, setMinutes] = useState("");
 
   const parsed = parseInt(reachedPage || "0");
   const progress = parsed > 0 ? Math.round((parsed / totalPages) * 100) : null;
@@ -88,6 +103,16 @@ export default function LogProgressForm({ trackerId, currentPage, totalPages, to
 
     let earned = await syncTrackerProgressPoints(trackerId);
     if (isCompleted) earned += await syncBookCompletedPoints(trackerId);
+
+    // Оқу уақыты көрсетілсе — күнделікті журналға да қосамыз. Таймерді
+    // қоспай, тек бет санын белгілейтіндердің оқығаны бұрын күнделікті
+    // мақсатқа мүлдем есептелмейтін.
+    const mins = parseInt(minutes || "0");
+    if (mins > 0) {
+      earned += await addReadingMinutes(mins);
+      toast.success(`${mins} минут оқу уақытына қосылды`);
+    }
+
     toastPoints(earned);
 
     router.push("/tracker");
@@ -128,6 +153,56 @@ export default function LogProgressForm({ trackerId, currentPage, totalPages, to
             Бүгін +{pagesReadToday} бет · {parsed} / {totalPages} бет
           </p>
         )}
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-sm font-medium text-gray-700">
+          Бүгін неше минут оқыдыңыз?{" "}
+          <span className="font-normal text-gray-400">міндетті емес</span>
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            inputMode="numeric"
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value)}
+            placeholder="0"
+            min={0}
+            max={600}
+            className="input"
+          />
+          <span className="shrink-0 text-sm text-gray-500">минут</span>
+        </div>
+        <div className="mt-2 flex gap-2">
+          {[15, 30, 45, 60].map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMinutes(String(m))}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                minutes === String(m)
+                  ? "bg-primary-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {m} мин
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-gray-500">
+          {goalMinutes > 0 ? (
+            todayMinutes >= goalMinutes ? (
+              <>Бүгінгі мақсат орындалды: {todayMinutes} / {goalMinutes} минут</>
+            ) : (
+              <>
+                Күнделікті мақсатыңызға есептеледі. Бүгін: {todayMinutes} / {goalMinutes}{" "}
+                минут
+              </>
+            )
+          ) : (
+            <>Таймерді қоспай-ақ, оқыған уақытыңызды осында жазып қоюға болады</>
+          )}
+        </p>
       </div>
 
       <div>

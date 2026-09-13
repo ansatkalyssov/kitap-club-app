@@ -43,6 +43,21 @@ export default async function TrackerDetailPage({
   const today = kzDateStr();
   const todayProgress = progressHistory?.find((p) => p.date === today);
 
+  // Күнделікті мақсат — прогресс формасында оқу уақытын сұрау үшін
+  const [{ data: goal }, { data: todayLog }] = await Promise.all([
+    supabase
+      .from("reading_goals")
+      .select("daily_minutes")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("reading_logs")
+      .select("minutes_read")
+      .eq("user_id", user.id)
+      .eq("date", today)
+      .maybeSingle(),
+  ]);
+
   return (
       <div className="page-container max-w-2xl">
         <Link href="/tracker" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700">
@@ -122,6 +137,8 @@ export default async function TrackerDetailPage({
               currentPage={tracker.current_page}
               totalPages={tracker.total_pages}
               todayProgress={todayProgress || null}
+              goalMinutes={goal?.daily_minutes ?? 0}
+              todayMinutes={todayLog?.minutes_read ?? 0}
             />
           </div>
         )}
