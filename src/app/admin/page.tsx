@@ -216,7 +216,12 @@ export default async function AdminPage() {
   };
   (logs ?? []).forEach((l) => touch(l.date, l.user_id));
   (progress ?? []).forEach((p) => touch(p.date, p.userId));
-  (events ?? []).forEach((e) => touch(e.event_date, e.user_id));
+  // club_join — тіркелу белгісі, әрекет емес. Оны қосса, клубқа кірген
+  // әркім автоматты «белсенді» болып шығады да, көрсеткіш мағынасын
+  // жоғалтады: барлық клубта 100% көрінетін.
+  (events ?? [])
+    .filter((e) => e.code !== "club_join")
+    .forEach((e) => touch(e.event_date, e.user_id));
   (analyses ?? []).forEach((a) => touch(a.created_at, a.author_id));
 
   const daysActiveByUser = new Map<string, number>();
