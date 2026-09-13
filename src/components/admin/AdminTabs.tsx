@@ -12,8 +12,9 @@ const POINT_LABELS: Record<string, string> = {
   daily_goal: "Күндік мақсат",
   tracker_progress: "Трекер прогресі",
   analysis_write: "Талдау жазды",
-  analysis_reply: "Пікірге жауап",
-  analysis_got_reply: "Жауап алды",
+  // Ескі жазбалар үшін қалдырылды — ұпай енді берілмейді
+  analysis_reply: "Пікірге жауап (ескі)",
+  analysis_got_reply: "Жауап алды (ескі)",
   book_done: "Кітап аяқтады",
   book_done_medium: "200+ бет бонусы",
   book_done_long: "400+ бет бонусы",

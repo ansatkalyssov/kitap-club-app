@@ -28,9 +28,10 @@ export const POINT_RULES = {
   // Күнделікті — күніне 150-мен шектелген
   daily_goal: { points: 10, capped: true, countsForClub: true, limit: { count: 1, period: "day" } },
   tracker_progress: { points: 2, capped: true, countsForClub: true, limit: { count: 3, period: "day" } },
-  analysis_write: { points: 60, capped: true, countsForClub: true, limit: { count: 3, period: "week" } },
-  analysis_reply: { points: 15, capped: true, countsForClub: true, limit: { count: 3, period: "day" } },
-  analysis_got_reply: { points: 10, capped: true, countsForClub: true, limit: { count: 5, period: "day" } },
+  analysis_write: { points: 15, capped: true, countsForClub: true, limit: { count: 3, period: "week" } },
+  // Жауап беру мен жауап алу үшін ұпай берілмейді. Жауапта ұзындық
+  // шегі болмағандықтан, «иә», «келісемін» деп жазу ең арзан ұпай
+  // көзіне айналатын еді — оқығаннан гөрі тиімді.
 
   // Оқиға — шектен тыс, бірақ әрқайсысының өз қақпасы бар
   book_done: { points: 60, capped: false, countsForClub: true },
@@ -240,7 +241,7 @@ export async function onBookCompleted(userId: string, trackerId: string): Promis
 }
 
 /** Талдау ұпайы берілу үшін мазмұнның ең аз ұзындығы */
-export const MIN_ANALYSIS_LENGTH = 200;
+export const MIN_ANALYSIS_LENGTH = 150;
 
 /**
  * Пікір немесе жауап жазылды.
@@ -258,23 +259,8 @@ export async function onAnalysisCreated(userId: string, analysisId: string): Pro
 
   if (!row || row.author_id !== userId) return 0;
 
-  const isReply = Boolean(row.parent_id);
-
-  if (isReply) {
-    const total = await awardPoints(userId, "analysis_reply", analysisId);
-
-    const { data: parent } = await admin
-      .from("book_analyses")
-      .select("author_id")
-      .eq("id", row.parent_id)
-      .single();
-
-    // Өзіңе өзің жауап берсең — бонус жоқ
-    if (parent?.author_id && parent.author_id !== userId) {
-      await awardPoints(parent.author_id, "analysis_got_reply", analysisId);
-    }
-    return total;
-  }
+  // Жауап үшін ұпай берілмейді
+  if (row.parent_id) return 0;
 
   // Толық талдау — мазмұн шегі
   if ((row.content ?? "").trim().length < MIN_ANALYSIS_LENGTH) return 0;
