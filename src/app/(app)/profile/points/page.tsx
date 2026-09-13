@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 /** Қолданбадағы ұпай ережелері — оқырманға арналған тізім */
 const RULES: { label: string; points: string; limit: string }[] = [
-  { label: "Күндік мақсатты орындау", points: "+10", limit: "күніне 1 рет" },
+  { label: "Күнделікті мақсатты орындау", points: "+10", limit: "күніне 1 рет" },
   { label: "Трекерге прогресс енгізу", points: "+2", limit: "күніне 3 ретке дейін" },
   { label: "Ескертпе жазу", points: "+3", limit: "күніне 1 рет" },
   {
@@ -24,7 +24,7 @@ const RULES: { label: string; points: string; limit: string }[] = [
     limit: "аптасына 1 рет",
   },
   { label: "Клуб кітабын мерзімінде бітіру", points: "+50", limit: "әр кітап" },
-  { label: "Бірінші клубқа тіркелу", points: "+25", limit: "бір рет" },
+  { label: "Алғашқы клубқа тіркелу", points: "+25", limit: "бір рет" },
 ];
 
 const STREAKS = [
@@ -90,7 +90,7 @@ export default async function PointsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Ұпайлар</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Қалай жиналады және сіз не үшін алдыңыз
+          Сіздің жинағаныңыз және ұпай жүйесі
         </p>
       </div>
 
@@ -143,9 +143,10 @@ export default async function PointsPage() {
       <section className="mb-5">
         <h2 className="mb-2 text-base font-bold text-primary-900">Кітапты оқып бітіру</h2>
         <p className="mb-2 text-xs text-gray-500">
-          Кітаптың көлеміне қарай. Тұрақты бөлік әрқашан беріледі, ал прогресті
-          бірнеше күнге бөліп енгізсеңіз — үстіне бонус. Күніне бір кітап
-          есептеледі.
+          Кітаптың көлеміне қарай бағаланады. Кітапты бітіргеніңіз үшін тұрақты
+          ұпай беріледі, ал прогресті бірнеше күнге бөліп енгізген жағдайда —
+          үстіне бонус аласыз. Шектеу: бір күнде тек бір оқып бітірген
+          кітабыңыз ғана есепке алынады.
         </p>
         <div className="card divide-y divide-gray-50 py-0">
           {[...BOOK_TIERS]

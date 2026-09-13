@@ -610,12 +610,22 @@ export async function getClubLeaderboard(start: string, end: string): Promise<Cl
 
 export type Level = { name: string; min: number };
 
+/**
+ * Оқырманның жолы: оқиды → құмартады → іздейді → зерделейді →
+ * үйретеді → даналыққа жетеді.
+ *
+ * Алғашқы төртеуі қол жетерлік: ең белсенді оқырманның қарқынымен
+ * шамамен 1 ай, 5 ай, 1 жыл. Соңғы екеуі — жылдармен өлшенетін
+ * көкжиек.
+ */
 export const LEVELS: Level[] = [
   { name: "Оқырман", min: 0 },
   { name: "Кітапқұмар", min: 500 },
-  { name: "Білгір", min: 2000 },
-  { name: "Абыз", min: 6000 },
-  { name: "Шежіреші", min: 15000 },
+  { name: "Ізденімпаз", min: 2000 },
+  { name: "Зерделі", min: 5000 },
+  { name: "Ұстаз", min: 10000 },
+  { name: "Кемеңгер", min: 15000 },
+  { name: "Ғұлама", min: 22000 },
 ];
 
 export function levelFor(points: number): { current: Level; next: Level | null } {
