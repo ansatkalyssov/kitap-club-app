@@ -181,12 +181,6 @@ export default async function PlanDiscussionPage({
           <TrendingUp size={16} className="text-primary-500" />
           Оқырмандар үлгерімі ({membersWithProgress.length})
         </h2>
-        <Link
-          href={`/clubs/${id}/progress?plan=${planId}`}
-          className="text-xs font-medium text-primary-600 hover:text-primary-700"
-        >
-          Толық көру →
-        </Link>
       </div>
 
       {membersWithProgress.length > 0 ? (
