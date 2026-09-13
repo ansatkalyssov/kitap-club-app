@@ -4,15 +4,18 @@ import { Star, Flame, TrendingUp } from "lucide-react";
 import ProfileForm from "@/components/profile/ProfileForm";
 import RestartTourButton from "@/components/tour/RestartTourButton";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { getUserStats } from "@/lib/points";
-import { monthBounds } from "@/lib/utils";
+import { getUserStats, getPointHistory } from "@/lib/points";
+import { monthBounds, formatDateKz } from "@/lib/utils";
 
 export default async function ProfilePage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { start, label } = monthBounds();
-  const stats = await getUserStats(user.id, start);
+  const [stats, history] = await Promise.all([
+    getUserStats(user.id, start),
+    getPointHistory(user.id, 30),
+  ]);
 
   // Келесі деңгейге дейінгі жол
   const span = stats.nextLevel ? stats.nextLevel.min - stats.level.min : 0;
@@ -69,6 +72,30 @@ export default async function ProfilePage() {
           <p className="text-xs text-gray-500">{label} айында жиналды</p>
         </div>
       </div>
+
+      {/* Ұпай тарихы — «не үшін ұпай алдым» деген сұраққа жауап */}
+      {history.length > 0 && (
+        <section className="mb-6">
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className="text-base font-bold text-primary-900">Ұпай тарихы</h2>
+            <span className="text-xs text-gray-400">соңғы {history.length}</span>
+          </div>
+
+          <div className="card divide-y divide-gray-50 py-0">
+            {history.map((e) => (
+              <div key={e.id} className="flex items-center gap-3 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm leading-snug text-gray-800">{e.label}</span>
+                  <span className="block text-xs text-gray-400">{formatDateKz(e.date)}</span>
+                </span>
+                <span className="shrink-0 text-sm font-bold tabular-nums text-primary-600">
+                  +{e.points}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <ProfileForm />
 

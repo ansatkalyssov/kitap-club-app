@@ -63,6 +63,30 @@ export const POINT_RULES = {
 export type PointCode = keyof typeof POINT_RULES;
 
 /**
+ * Оқырманға көрсетілетін атаулар. Админ панеліндегі қысқа белгілерден
+ * бөлек: мұнда адамның не істегені айтылады.
+ */
+export const POINT_LABELS: Record<string, string> = {
+  daily_goal: "Күндік мақсатты орындадыңыз",
+  tracker_progress: "Трекерге прогресс енгіздіңіз",
+  progress_note: "Ескертпе жаздыңыз",
+  analysis_write: "Талқыға пікір жаздыңыз",
+  analysis_reply: "Пікірге жауап бердіңіз",
+  analysis_got_reply: "Пікіріңізге жауап келді",
+  book_done: "Кітапты оқып бітірдіңіз",
+  book_done_bonus: "Күн сайын оқығаныңыз үшін бонус",
+  book_done_medium: "Кітаптың көлемі үшін бонус",
+  book_done_long: "Кітаптың көлемі үшін бонус",
+  club_book_ontime: "Клуб кітабын мерзімінде бітірдіңіз",
+  club_join: "Клубқа тіркелдіңіз",
+  streak_week: "Бір апта қатарынан оқыдыңыз",
+  streak_7: "7 күн қатарынан оқыдыңыз",
+  streak_30: "30 күн қатарынан оқыдыңыз",
+  streak_100: "100 күн қатарынан оқыдыңыз",
+  streak_365: "365 күн қатарынан оқыдыңыз",
+};
+
+/**
  * Кітап бітіргендегі марапат — бет санына қарай.
  *
  * `base` әрқашан беріледі: бұрын үш күндік жасырын қақпа тұрған да,
@@ -395,6 +419,39 @@ export async function getPointsTotal(userId: string): Promise<number> {
   const admin = createAdminClient();
   const { data } = await admin.from("point_events").select("points").eq("user_id", userId);
   return (data ?? []).reduce((sum, r) => sum + r.points, 0);
+}
+
+export type PointEntry = {
+  id: string;
+  code: string;
+  label: string;
+  points: number;
+  date: string;
+};
+
+/**
+ * Оқырманның ұпай тарихы — «не үшін ұпай алдым» деген сұраққа жауап.
+ * Жаңасынан ескісіне қарай.
+ */
+export async function getPointHistory(
+  userId: string,
+  limit = 30
+): Promise<PointEntry[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("point_events")
+    .select("id, code, points, event_date, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []).map((e) => ({
+    id: e.id,
+    code: e.code,
+    label: POINT_LABELS[e.code] ?? e.code,
+    points: e.points,
+    date: e.event_date,
+  }));
 }
 
 export type UserStats = {
