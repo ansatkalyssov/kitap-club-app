@@ -35,14 +35,33 @@ const STREAKS = [
   { label: "365 күн қатарынан", points: "+5 000", limit: "бір рет" },
 ];
 
-function Row({ label, points, limit }: { label: string; points: string; limit: string }) {
+function Row({
+  label,
+  points,
+  limit,
+  muted,
+}: {
+  label: string;
+  points: string;
+  limit: string;
+  /** Ережесі жойылған ұпай — жасыл емес, сұр */
+  muted?: boolean;
+}) {
   return (
     <div className="flex items-baseline gap-3 py-2.5">
       <span className="min-w-0 flex-1">
-        <span className="block text-sm leading-snug text-gray-800">{label}</span>
+        <span
+          className={`block text-sm leading-snug ${muted ? "text-gray-500" : "text-gray-800"}`}
+        >
+          {label}
+        </span>
         <span className="block text-xs text-gray-400">{limit}</span>
       </span>
-      <span className="shrink-0 text-sm font-bold tabular-nums text-primary-600">
+      <span
+        className={`shrink-0 text-sm font-bold tabular-nums ${
+          muted ? "text-gray-400" : "text-primary-600"
+        }`}
+      >
         {points}
       </span>
     </div>
@@ -98,8 +117,13 @@ export default async function PointsPage() {
               <Row
                 key={e.id}
                 label={e.label}
-                limit={formatDateKz(e.date)}
+                limit={
+                  e.retired
+                    ? `${formatDateKz(e.date)} · ескі ереже`
+                    : formatDateKz(e.date)
+                }
                 points={`+${e.points}`}
+                muted={e.retired}
               />
             ))}
           </div>

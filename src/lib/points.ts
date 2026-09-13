@@ -421,12 +421,26 @@ export async function getPointsTotal(userId: string): Promise<number> {
   return (data ?? []).reduce((sum, r) => sum + r.points, 0);
 }
 
+/**
+ * Ережесі жойылған кодтар. Бұл ұпайлар тарихта қалады — журнал тек
+ * қосымша жазылады — бірақ енді берілмейді, сондықтан тізімде сұр
+ * түспен көрсетіледі: оқырман мұны қайталай алмайтынын білсін.
+ */
+export const RETIRED_CODES = new Set([
+  "analysis_reply",
+  "analysis_got_reply",
+  "book_done_medium",
+  "book_done_long",
+]);
+
 export type PointEntry = {
   id: string;
   code: string;
   label: string;
   points: number;
   date: string;
+  /** Ережесі жойылған — сұр түспен көрсетіледі */
+  retired: boolean;
 };
 
 /**
@@ -451,6 +465,7 @@ export async function getPointHistory(
     label: POINT_LABELS[e.code] ?? e.code,
     points: e.points,
     date: e.event_date,
+    retired: RETIRED_CODES.has(e.code),
   }));
 }
 
