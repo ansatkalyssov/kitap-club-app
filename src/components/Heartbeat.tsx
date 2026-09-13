@@ -25,13 +25,18 @@ export default function Heartbeat() {
       try {
         const last = Number(localStorage.getItem(KEY) ?? 0);
         if (Date.now() - last < INTERVAL_MS) return;
-        localStorage.setItem(KEY, String(Date.now()));
       } catch {
         // localStorage жабық болса да белгі жіберіле берсін
       }
 
       try {
-        await fetch("/api/heartbeat", { method: "POST", keepalive: true });
+        const res = await fetch("/api/heartbeat", { method: "POST", keepalive: true });
+        // Уақытты тек сәтті жазылғанда белгілейміз. Әйтпесе сәтсіз әрекет
+        // те келесі талпынысты 15 минутқа бөгеп тастар еді.
+        if (!res.ok) return;
+        const body = await res.json().catch(() => null);
+        if (body?.ok !== true) return;
+        localStorage.setItem(KEY, String(Date.now()));
       } catch {
         // Статистика — қолданбаның жұмысына кедергі емес
       }
