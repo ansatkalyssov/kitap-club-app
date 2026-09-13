@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { BookOpen, Shield, LogOut } from "lucide-react";
 import AdminTabs from "@/components/admin/AdminTabs";
 import { getClubLeaderboard, levelFor } from "@/lib/points";
-import { monthBounds, kzDateStr } from "@/lib/utils";
+import { monthBounds, kzDateStr, addDays } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +30,9 @@ export default async function AdminPage() {
     { data: events },
     { data: logs },
     rating,
+    { data: progressRows },
+    { data: goals },
+    { data: pushSubs },
   ] = await Promise.all([
     adminDb.from("profiles").select("*").order("created_at", { ascending: false }),
     adminDb.from("clubs").select("*, cities(name)").order("created_at", { ascending: false }),
@@ -46,7 +49,17 @@ export default async function AdminPage() {
       .order("created_at", { ascending: false }),
     adminDb.from("reading_logs").select("user_id, date, minutes_read"),
     getClubLeaderboard(start, end),
+    // Дэшборд үшін: трекер прогресі тікелей user_id ұстамайды, трекер
+    // арқылы байланады.
+    adminDb.from("reading_progress").select("date, book_trackers(user_id)"),
+    adminDb.from("reading_goals").select("user_id"),
+    adminDb.from("push_subscriptions").select("user_id"),
   ]);
+
+  // Прогресті пайдаланушыға байлап аламыз
+  const progress = (progressRows ?? [])
+    .map((r: any) => ({ date: r.date as string, userId: r.book_trackers?.user_id as string }))
+    .filter((r) => Boolean(r.userId));
 
   const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
   const clubMap = new Map((clubs ?? []).map((c) => [c.id, c]));
@@ -188,6 +201,90 @@ export default async function AdminPage() {
     activeToday: (logs ?? []).filter((l) => l.date === today).length,
   };
 
+  // ---------- Дэшборд ----------
+  // «Белсенді» = із қалдырған адам. Қолданбада «кірді» деген оқиға
+  // жазылмайтындықтан, қарап шыққандар бұл санға кірмейді.
+  const dayKeys = Array.from({ length: 30 }, (_, i) => addDays(today, i - 29));
+
+  const activeByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
+  const touch = (date: string | null | undefined, userId: string) => {
+    if (!date) return;
+    const d = date.slice(0, 10);
+    activeByDay.get(d)?.add(userId);
+  };
+  (logs ?? []).forEach((l) => touch(l.date, l.user_id));
+  (progress ?? []).forEach((p) => touch(p.date, p.userId));
+  (events ?? []).forEach((e) => touch(e.event_date, e.user_id));
+  (analyses ?? []).forEach((a) => touch(a.created_at, a.author_id));
+
+  const daysActiveByUser = new Map<string, number>();
+  activeByDay.forEach((set) => {
+    set.forEach((u) => daysActiveByUser.set(u, (daysActiveByUser.get(u) ?? 0) + 1));
+  });
+
+  const activeSince = (from: string) =>
+    new Set(
+      dayKeys.filter((d) => d >= from).flatMap((d) => Array.from(activeByDay.get(d) ?? []))
+    ).size;
+
+  const signupByDay = new Map<string, number>(dayKeys.map((d) => [d, 0]));
+  (profiles ?? []).forEach((p) => {
+    const d = (p.created_at ?? "").slice(0, 10);
+    if (signupByDay.has(d)) signupByDay.set(d, (signupByDay.get(d) ?? 0) + 1);
+  });
+
+  const withClub = new Set((members ?? []).map((m) => m.user_id));
+  const withGoal = new Set((goals ?? []).map((g) => g.user_id));
+  const withTimer = new Set((logs ?? []).map((l) => l.user_id));
+  const withProgress = new Set((progress ?? []).map((p) => p.userId));
+  const withThread = new Set((analyses ?? []).map((a) => a.author_id));
+  const withPush = new Set((pushSubs ?? []).map((s) => s.user_id));
+
+  const freqBuckets = [
+    { label: "Мүлдем белсенді емес", min: 0, max: 0 },
+    { label: "1 күн", min: 1, max: 1 },
+    { label: "2–6 күн", min: 2, max: 6 },
+    { label: "7–14 күн", min: 7, max: 14 },
+    { label: "15 күн және одан көп", min: 15, max: 99 },
+  ];
+
+  const analytics = {
+    totalUsers: stats.users,
+    activeToday: activeByDay.get(today)?.size ?? 0,
+    active7: activeSince(addDays(today, -6)),
+    active30: activeSince(dayKeys[0]),
+    noClub: stats.users - withClub.size,
+    daily: dayKeys.map((d) => ({ date: d, count: activeByDay.get(d)?.size ?? 0 })),
+    signups: dayKeys.map((d) => ({ date: d, count: signupByDay.get(d) ?? 0 })),
+    funnel: [
+      { label: "Тіркелген", count: stats.users },
+      { label: "Клубқа кірген", count: withClub.size },
+      { label: "Күнделікті мақсат қойған", count: withGoal.size },
+      { label: "Хабарландыруға жазылған", count: withPush.size },
+      { label: "Трекерге прогресс енгізген", count: withProgress.size },
+      { label: "Таймерді қолданған", count: withTimer.size },
+      { label: "Пікір жазған", count: withThread.size },
+    ],
+    frequency: freqBuckets.map((b) => ({
+      label: b.label,
+      count: (profiles ?? []).filter((p) => {
+        const n = daysActiveByUser.get(p.id) ?? 0;
+        return n >= b.min && n <= b.max;
+      }).length,
+    })),
+    clubs: (clubs ?? [])
+      .filter((c) => c.is_active)
+      .map((c) => {
+        const ids = (members ?? []).filter((m) => m.club_id === c.id).map((m) => m.user_id);
+        return {
+          name: c.name,
+          members: ids.length,
+          active: ids.filter((u) => (daysActiveByUser.get(u) ?? 0) > 0).length,
+        };
+      })
+      .sort((a, b) => b.members - a.members),
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4 shadow-sm">
@@ -231,6 +328,7 @@ export default async function AdminPage() {
           rating={rating}
           events={eventRows}
           profiles={profiles ?? []}
+          analytics={analytics}
         />
       </div>
     </div>

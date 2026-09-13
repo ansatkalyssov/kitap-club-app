@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import {
-  Users, BookOpen, BookMarked, MessageSquare, Trophy, Star, UserCog, Search,
+  Users, BookOpen, BookMarked, MessageSquare, Trophy, Star, UserCog, Search, BarChart3,
 } from "lucide-react";
 import UserManagement from "./UserManagement";
+import Analytics, { type AnalyticsData } from "./Analytics";
 import { formatDateKz } from "@/lib/utils";
 
 const POINT_LABELS: Record<string, string> = {
@@ -31,9 +32,10 @@ const ROLE_LABELS: Record<string, string> = {
   reader: "Оқырман",
 };
 
-type Tab = "overview" | "readers" | "facilitators" | "clubs" | "threads" | "rating" | "points" | "manage";
+type Tab = "dashboard" | "overview" | "readers" | "facilitators" | "clubs" | "threads" | "rating" | "points" | "manage";
 
 const TABS: { key: Tab; label: string; icon: any }[] = [
+  { key: "dashboard", label: "Дэшборд", icon: BarChart3 },
   { key: "overview", label: "Шолу", icon: BookOpen },
   { key: "readers", label: "Оқырмандар", icon: Users },
   { key: "facilitators", label: "Жүргізушілер", icon: UserCog },
@@ -44,8 +46,8 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: "manage", label: "Басқару", icon: UserCog },
 ];
 
-export default function AdminTabs({ stats, readers, facilitators, clubs, threads, rating, events, profiles }: any) {
-  const [tab, setTab] = useState<Tab>("overview");
+export default function AdminTabs({ stats, readers, facilitators, clubs, threads, rating, events, profiles, analytics }: any) {
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [q, setQ] = useState("");
 
   const term = q.trim().toLowerCase();
@@ -85,6 +87,7 @@ export default function AdminTabs({ stats, readers, facilitators, clubs, threads
         </div>
       )}
 
+      {tab === "dashboard" && <Analytics data={analytics as AnalyticsData} />}
       {tab === "overview" && <Overview stats={stats} />}
 
       {tab === "readers" && (
