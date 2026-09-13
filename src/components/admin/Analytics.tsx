@@ -34,11 +34,16 @@ const fmtDay = (d: string) => {
   return `${Number(day)}.${m}`;
 };
 
-/** Бағандық график — кітапхана қоспай, таза SVG */
+/**
+ * Бағандық график — кітапхана қоспай, HTML мен CSS.
+ *
+ * SVG емес: созылатын viewBox ішіндегі мәтін де қисайып кетеді, ал бізге
+ * бағандардың үстінде тұрақты сан керек.
+ */
 function BarChart({
   data,
   color = "#16a34a",
-  height = 140,
+  height = 150,
 }: {
   data: DayPoint[];
   color?: string;
@@ -50,53 +55,56 @@ function BarChart({
   }
 
   const max = Math.max(1, ...data.map((d) => d.count));
-  const gap = 2;
-  const w = 100 / data.length;
+  // Ең биік бағанның үстінде сан сыятындай орын қалдырамыз
+  const SCALE = 86;
 
   return (
     <div>
       <div className="relative" style={{ height }}>
-        <svg
-          viewBox={`0 0 100 ${height}`}
-          preserveAspectRatio="none"
-          className="h-full w-full"
-          role="img"
-          aria-label="Күнделікті белсенділік"
-        >
-          {[0.25, 0.5, 0.75, 1].map((f) => (
-            <line
-              key={f}
-              x1="0"
-              x2="100"
-              y1={height - height * f}
-              y2={height - height * f}
-              stroke="#f3f4f6"
-              strokeWidth="1"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
+        {[0.25, 0.5, 0.75].map((f) => (
+          <div
+            key={f}
+            className="absolute inset-x-0 border-t border-gray-100"
+            style={{ bottom: `${f * SCALE}%` }}
+          />
+        ))}
+
+        <div className="absolute inset-0 flex items-end gap-px">
           {data.map((d, i) => {
-            const h = (d.count / max) * (height - 4);
+            const pct = (d.count / max) * SCALE;
+            const dim = hover !== null && hover !== i;
             return (
-              <rect
+              <div
                 key={d.date}
-                x={i * w + gap / 2}
-                y={height - h}
-                width={Math.max(0.5, w - gap)}
-                height={h}
-                rx="0.6"
-                fill={color}
-                opacity={hover === null || hover === i ? 1 : 0.35}
+                className="relative h-full flex-1"
                 onMouseEnter={() => setHover(i)}
                 onMouseLeave={() => setHover(null)}
-              />
+                onTouchStart={() => setHover(i)}
+                title={`${fmtDay(d.date)} — ${d.count}`}
+              >
+                <div
+                  className="absolute inset-x-px bottom-0 rounded-t-sm transition-opacity"
+                  style={{
+                    height: `${pct}%`,
+                    background: color,
+                    opacity: dim ? 0.3 : 1,
+                  }}
+                />
+                {/* Телефонда 30 сан сыймайды — ол жерде басып көру қалады */}
+                {d.count > 0 && (
+                  <span
+                    className={`absolute inset-x-0 hidden text-center text-[9px] leading-none tabular-nums sm:block ${
+                      dim ? "text-gray-300" : "text-gray-500"
+                    }`}
+                    style={{ bottom: `calc(${pct}% + 3px)` }}
+                  >
+                    {d.count}
+                  </span>
+                )}
+              </div>
             );
           })}
-        </svg>
-        {/* Ең үлкен мән — масштаб түсінікті болу үшін */}
-        <span className="absolute right-0 top-0 text-[10px] tabular-nums text-gray-400">
-          {max}
-        </span>
+        </div>
       </div>
 
       <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-gray-400">
