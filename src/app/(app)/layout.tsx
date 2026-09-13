@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Navbar from "@/components/layout/Navbar";
 import ProductTour from "@/components/tour/ProductTour";
+import Heartbeat from "@/components/Heartbeat";
 import { TOUR_VERSION } from "@/lib/tour";
 import { Profile } from "@/lib/types";
 
@@ -16,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1 lg:ml-56">
         <div className="pt-14 pb-28 lg:pt-0 lg:pb-0">{children}</div>
       </main>
+      <Heartbeat />
       {/* tour_version бағаны әлі қосылмаса, мән undefined болады. Ондай
           жағдайда турды мүлдем қоспаймыз: аяқтағанын жазатын жер жоқ
           болғандықтан, ол әр кірген сайын қайта-қайта шығып, жабылмас

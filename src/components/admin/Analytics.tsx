@@ -15,6 +15,9 @@ export type DayPoint = { date: string; count: number };
 
 export type AnalyticsData = {
   totalUsers: number;
+  visitsToday: number;
+  hasVisitData: boolean;
+  visits: DayPoint[];
   activeToday: number;
   active7: number;
   active30: number;
@@ -156,6 +159,9 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
 export default function Analytics({ data }: { data: AnalyticsData }) {
   const tiles = [
     { label: "Тіркелген", value: data.totalUsers, color: "text-gray-900" },
+    ...(data.hasVisitData
+      ? [{ label: "Бүгін кірді", value: data.visitsToday, color: "text-sky-600" }]
+      : []),
     { label: "Бүгін белсенді", value: data.activeToday, color: "text-primary-600" },
     { label: "7 күнде белсенді", value: data.active7, color: "text-primary-600" },
     { label: "30 күнде белсенді", value: data.active30, color: "text-primary-600" },
@@ -164,7 +170,7 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {tiles.map((t) => (
           <div key={t.label} className="card py-4 text-center">
             <p className={`text-2xl font-bold tabular-nums ${t.color}`}>{t.value}</p>
@@ -173,9 +179,22 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
         ))}
       </div>
 
+      {data.hasVisitData && (
+        <Card
+          title="Күнделікті кірушілер"
+          hint="Соңғы 30 күн. Қолданбаны ашқан адам саны — әрекет жасамаса да саналады."
+        >
+          <BarChart data={data.visits} color="#0284c7" />
+        </Card>
+      )}
+
       <Card
         title="Күнделікті белсенділік"
-        hint="Соңғы 30 күн. Із қалдырған адам саны: таймер, трекер прогресі, ұпай немесе пікір. Жай қарап шыққандар саналмайды."
+        hint={
+          data.hasVisitData
+            ? "Соңғы 30 күн. Ашып қана қоймай, әрекет жасағандар: таймер, трекер прогресі, ұпай немесе пікір. Жоғарыдағы санмен айырмасы — қолданбаны ашып, ештеңе істемей кеткендер."
+            : "Соңғы 30 күн. Із қалдырған адам саны: таймер, трекер прогресі, ұпай немесе пікір. Жай қарап шыққандар саналмайды."
+        }
       >
         <BarChart data={data.daily} />
       </Card>

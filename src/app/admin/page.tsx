@@ -33,6 +33,7 @@ export default async function AdminPage() {
     { data: progressRows },
     { data: goals },
     { data: pushSubs },
+    { data: visits },
   ] = await Promise.all([
     adminDb.from("profiles").select("*").order("created_at", { ascending: false }),
     adminDb.from("clubs").select("*, cities(name)").order("created_at", { ascending: false }),
@@ -54,6 +55,7 @@ export default async function AdminPage() {
     adminDb.from("reading_progress").select("date, book_trackers(user_id)"),
     adminDb.from("reading_goals").select("user_id"),
     adminDb.from("push_subscriptions").select("user_id"),
+    adminDb.from("user_visits").select("user_id, date").gte("date", addDays(today, -29)),
   ]);
 
   // Прогресті пайдаланушыға байлап аламыз
@@ -248,8 +250,17 @@ export default async function AdminPage() {
     { label: "15 күн және одан көп", min: 15, max: 99 },
   ];
 
+  // Кіру белгісі. Баған жаңа қосылғандықтан, алғашқы күндері бос болады —
+  // сол себепті график тек дерек пайда болғанда көрсетіледі.
+  const visitByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
+  (visits ?? []).forEach((v) => visitByDay.get(v.date)?.add(v.user_id));
+  const visitsTotal = (visits ?? []).length;
+
   const analytics = {
     totalUsers: stats.users,
+    visitsToday: visitByDay.get(today)?.size ?? 0,
+    hasVisitData: visitsTotal > 0,
+    visits: dayKeys.map((d) => ({ date: d, count: visitByDay.get(d)?.size ?? 0 })),
     activeToday: activeByDay.get(today)?.size ?? 0,
     active7: activeSince(addDays(today, -6)),
     active30: activeSince(dayKeys[0]),
