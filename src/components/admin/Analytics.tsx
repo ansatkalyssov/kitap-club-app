@@ -26,6 +26,19 @@ export type AnalyticsData = {
   signups: DayPoint[];
   funnel: { label: string; count: number }[];
   frequency: { label: string; count: number }[];
+  noClubDetail: {
+    total: number;
+    nothing: number;
+    rows: {
+      name: string;
+      createdAt: string;
+      goal: boolean;
+      tracker: boolean;
+      timer: boolean;
+      progress: boolean;
+      push: boolean;
+    }[];
+  };
   clubs: {
     name: string;
     members: number;
@@ -235,6 +248,75 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
           <Bars rows={data.frequency} total={data.totalUsers} color="bg-sky-500" />
         </Card>
       </div>
+
+      <Card
+        title={`Клубқа кірмегендер (${data.noClubDetail.total})`}
+        hint="Клубқа кірмеген адамдардың қолданбада не істегені"
+      >
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-gray-50 px-4 py-3">
+            <p className="text-2xl font-bold tabular-nums text-gray-400">
+              {data.noClubDetail.nothing}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              тіркелген, бірақ ештеңе істемеген
+            </p>
+          </div>
+          <div className="rounded-xl bg-primary-50 px-4 py-3">
+            <p className="text-2xl font-bold tabular-nums text-primary-700">
+              {data.noClubDetail.rows.length}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              клубсыз-ақ қолданбаны пайдаланып жүр
+            </p>
+          </div>
+        </div>
+
+        {data.noClubDetail.rows.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full whitespace-nowrap text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+                  <th className="pb-2 pr-3 font-medium">Оқырман</th>
+                  <th className="pb-2 px-2 font-medium">Тіркелген</th>
+                  <th className="pb-2 px-2 text-center font-medium">Мақсат</th>
+                  <th className="pb-2 px-2 text-center font-medium">Жеке трекер</th>
+                  <th className="pb-2 px-2 text-center font-medium">Таймер</th>
+                  <th className="pb-2 px-2 text-center font-medium">Прогресс</th>
+                  <th className="pb-2 pl-2 text-center font-medium">Push</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.noClubDetail.rows.map((r) => {
+                  const mark = (v: boolean) =>
+                    v ? (
+                      <span className="font-bold text-primary-600">✓</span>
+                    ) : (
+                      <span className="text-gray-200">—</span>
+                    );
+                  return (
+                    <tr key={r.name + r.createdAt} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 pr-3 whitespace-normal">{r.name}</td>
+                      <td className="px-2 py-2 tabular-nums text-gray-500">
+                        {r.createdAt.slice(0, 10)}
+                      </td>
+                      <td className="px-2 py-2 text-center">{mark(r.goal)}</td>
+                      <td className="px-2 py-2 text-center">{mark(r.tracker)}</td>
+                      <td className="px-2 py-2 text-center">{mark(r.timer)}</td>
+                      <td className="px-2 py-2 text-center">{mark(r.progress)}</td>
+                      <td className="py-2 pl-2 text-center">{mark(r.push)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="py-4 text-center text-sm text-gray-400">
+            Клубсыз белсенді адам жоқ
+          </p>
+        )}
+      </Card>
 
       <Card
         title="Клубтар"

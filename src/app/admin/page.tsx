@@ -313,6 +313,42 @@ export default async function AdminPage() {
         return n >= b.min && n <= b.max;
       }).length,
     })),
+    noClubDetail: (() => {
+      const inClub = new Set((members ?? []).map((m) => m.user_id));
+      const soloTrackers = new Set(
+        (trackers ?? []).filter((t) => !t.club_plan_id).map((t) => t.user_id)
+      );
+      const anyGoal = new Set((goals ?? []).map((g) => g.user_id));
+      const anyTimer = new Set((logs ?? []).map((l) => l.user_id));
+      const anyProgress = new Set(progress.map((p) => p.userId));
+      const anyPush = new Set((pushSubs ?? []).map((s) => s.user_id));
+
+      const outside = (profiles ?? []).filter((p) => !inClub.has(p.id));
+      const rows = outside
+        .map((p) => ({
+          name: p.name ?? p.email ?? "—",
+          createdAt: p.created_at as string,
+          goal: anyGoal.has(p.id),
+          tracker: soloTrackers.has(p.id),
+          timer: anyTimer.has(p.id),
+          progress: anyProgress.has(p.id),
+          push: anyPush.has(p.id),
+        }))
+        .map((r) => ({
+          ...r,
+          any: r.goal || r.tracker || r.timer || r.progress || r.push,
+        }));
+
+      return {
+        total: outside.length,
+        nothing: rows.filter((r) => !r.any).length,
+        // Бірдеңе істегендер ғана — солармен сөйлесудің мәні бар
+        rows: rows
+          .filter((r) => r.any)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      };
+    })(),
+
     clubs: (clubs ?? [])
       .filter((c) => c.is_active)
       .map((c) => {
