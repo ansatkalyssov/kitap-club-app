@@ -229,6 +229,31 @@ export default async function AdminPage() {
     set.forEach((u) => daysActiveByUser.set(u, (daysActiveByUser.get(u) ?? 0) + 1));
   });
 
+  // Әрекет түрлері бойынша — соңғы 30 күнде сол әрекетті жасаған адамдар
+  const windowStart = dayKeys[0];
+  const usersDoing = (rows: { u?: string | null; d?: string | null }[]) =>
+    new Set(
+      rows
+        .filter((r) => r.u && r.d && r.d.slice(0, 10) >= windowStart)
+        .map((r) => r.u as string)
+    );
+
+  const timerUsers = usersDoing((logs ?? []).map((l) => ({ u: l.user_id, d: l.date })));
+  const progressUsers = usersDoing(progress.map((p) => ({ u: p.userId, d: p.date })));
+  const doneUsers = usersDoing(
+    (events ?? [])
+      .filter((e) => e.code === "book_done")
+      .map((e) => ({ u: e.user_id, d: e.event_date }))
+  );
+  const commentUsers = usersDoing(
+    (analyses ?? []).map((a) => ({ u: a.author_id, d: a.created_at }))
+  );
+  const goalUsers = usersDoing(
+    (events ?? [])
+      .filter((e) => e.code === "daily_goal")
+      .map((e) => ({ u: e.user_id, d: e.event_date }))
+  );
+
   const activeSince = (from: string) =>
     new Set(
       dayKeys.filter((d) => d >= from).flatMap((d) => Array.from(activeByDay.get(d) ?? []))
@@ -292,10 +317,16 @@ export default async function AdminPage() {
       .filter((c) => c.is_active)
       .map((c) => {
         const ids = (members ?? []).filter((m) => m.club_id === c.id).map((m) => m.user_id);
+        const inSet = (s: Set<string>) => ids.filter((u) => s.has(u)).length;
         return {
           name: c.name,
           members: ids.length,
           active: ids.filter((u) => (daysActiveByUser.get(u) ?? 0) > 0).length,
+          timer: inSet(timerUsers),
+          progress: inSet(progressUsers),
+          done: inSet(doneUsers),
+          comment: inSet(commentUsers),
+          goal: inSet(goalUsers),
         };
       })
       .sort((a, b) => b.members - a.members),

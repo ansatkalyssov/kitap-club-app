@@ -26,7 +26,16 @@ export type AnalyticsData = {
   signups: DayPoint[];
   funnel: { label: string; count: number }[];
   frequency: { label: string; count: number }[];
-  clubs: { name: string; members: number; active: number }[];
+  clubs: {
+    name: string;
+    members: number;
+    active: number;
+    timer: number;
+    progress: number;
+    done: number;
+    comment: number;
+    goal: number;
+  }[];
 };
 
 const fmtDay = (d: string) => {
@@ -227,34 +236,56 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
         </Card>
       </div>
 
-      <Card title="Клубтар" hint="Мүше саны және олардың ішінде 30 күнде белсенділері">
+      <Card
+        title="Клубтар"
+        hint="Соңғы 30 күн. Әр бағанда — сол әрекетті кемінде бір рет жасаған мүше саны. Бір адам бірнеше бағанда есептелуі мүмкін."
+      >
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full whitespace-nowrap text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
-                <th className="pb-2 font-medium">Клуб</th>
-                <th className="pb-2 text-right font-medium">Мүше</th>
-                <th className="pb-2 text-right font-medium">Белсенді</th>
-                <th className="pb-2 text-right font-medium">%</th>
+                <th className="pb-2 pr-3 font-medium">Клуб</th>
+                <th className="pb-2 px-2 text-right font-medium">Мүше</th>
+                <th className="pb-2 px-2 text-right font-medium">Белсенді</th>
+                <th className="pb-2 px-2 text-right font-medium">%</th>
+                <th className="pb-2 px-2 text-right font-medium">Таймер</th>
+                <th className="pb-2 px-2 text-right font-medium">Прогресс</th>
+                <th className="pb-2 px-2 text-right font-medium">Кітап</th>
+                <th className="pb-2 px-2 text-right font-medium">Пікір</th>
+                <th className="pb-2 pl-2 text-right font-medium">Мақсат</th>
               </tr>
             </thead>
             <tbody>
               {data.clubs.map((c) => {
                 const pct = c.members > 0 ? Math.round((c.active / c.members) * 100) : 0;
+                // Нөлді сұр қылып қоямыз — көз бірден бар жерлерге түссін
+                const cell = (n: number) =>
+                  n > 0 ? "tabular-nums text-gray-900" : "tabular-nums text-gray-300";
                 return (
                   <tr key={c.name} className="border-b border-gray-50 last:border-0">
-                    <td className="py-2 pr-3">{c.name}</td>
-                    <td className="py-2 text-right tabular-nums text-gray-600">{c.members}</td>
-                    <td className="py-2 text-right tabular-nums font-semibold text-gray-900">
+                    <td className="py-2 pr-3 whitespace-normal">{c.name}</td>
+                    <td className="px-2 py-2 text-right tabular-nums text-gray-600">
+                      {c.members}
+                    </td>
+                    <td className="px-2 py-2 text-right tabular-nums font-semibold text-gray-900">
                       {c.active}
                     </td>
                     <td
-                      className={`py-2 text-right tabular-nums ${
-                        pct >= 30 ? "text-primary-600" : pct >= 10 ? "text-amber-600" : "text-gray-400"
+                      className={`px-2 py-2 text-right tabular-nums ${
+                        pct >= 30
+                          ? "text-primary-600"
+                          : pct >= 10
+                            ? "text-amber-600"
+                            : "text-gray-400"
                       }`}
                     >
                       {pct}%
                     </td>
+                    <td className={`px-2 py-2 text-right ${cell(c.timer)}`}>{c.timer}</td>
+                    <td className={`px-2 py-2 text-right ${cell(c.progress)}`}>{c.progress}</td>
+                    <td className={`px-2 py-2 text-right ${cell(c.done)}`}>{c.done}</td>
+                    <td className={`px-2 py-2 text-right ${cell(c.comment)}`}>{c.comment}</td>
+                    <td className={`py-2 pl-2 text-right ${cell(c.goal)}`}>{c.goal}</td>
                   </tr>
                 );
               })}
