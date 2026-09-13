@@ -102,7 +102,28 @@ export default function LogProgressForm({
     toast.success(isCompleted ? "Кітапты аяқтадыңыз! 🎉" : "Прогрес сақталды!");
 
     let earned = await syncTrackerProgressPoints(trackerId);
-    if (isCompleted) earned += await syncBookCompletedPoints(trackerId);
+
+    if (isCompleted) {
+      const res = await syncBookCompletedPoints(trackerId);
+      earned += res.points;
+
+      if (res.dailyLimit) {
+        toast("Бүгіндікке бір кітабыңыз есепке алынды. Келесі кітабыңызды ертең енгізе аласыз", {
+          icon: "📚",
+          duration: 7000,
+        });
+      } else if (res.needDays && res.days !== undefined && res.days < res.needDays) {
+        // Мысалды нақты кітаптың бет санынан құрамыз — жалпы кеңестен
+        // гөрі «350 беттікті 50 беттен» дегені әлдеқайда түсінікті.
+        const perDay = Math.ceil(totalPages / res.needDays);
+        toast(
+          `Қосымша бонус алу үшін прогресіңізді ${res.needDays}-ге бөліп күн сайын енгізіп отырыңыз ` +
+            `(мысалы ${totalPages} беттік кітапты ${perDay} беттен ${res.needDays} күн енгізіңіз). ` +
+            `Сізде ${res.days} күн.`,
+          { duration: 9000 }
+        );
+      }
+    }
 
     // Оқу уақыты көрсетілсе — күнделікті журналға да қосамыз. Таймерді
     // қоспай, тек бет санын белгілейтіндердің оқығаны бұрын күнделікті
@@ -207,7 +228,10 @@ export default function LogProgressForm({
 
       <div>
         <div className="mb-1.5 flex items-baseline justify-between gap-2">
-          <label className="block text-sm font-medium text-gray-700">Ескертпе</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Ескертпе{" "}
+            <span className="font-semibold text-primary-600">+3 ұпай</span>
+          </label>
           {/* Шекке жақындағанда ғана көрсетеміз — әйтпесе бос өрістің
               жанында «0/500» тұрғаны артық. */}
           {note.length > NOTE_MAX / 2 && (

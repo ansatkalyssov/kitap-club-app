@@ -215,7 +215,14 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
     }
     toast.success(isCompleted ? "Кітап аяқталды! 🎉" : "Трекер жаңартылды!");
     if (isCompleted) {
-      toastPoints(await syncBookCompletedPoints(selectedTrackerId));
+      const res = await syncBookCompletedPoints(selectedTrackerId);
+      toastPoints(res.points);
+      if (res.dailyLimit) {
+        toast("Бүгіндікке бір кітабыңыз есепке алынды. Келесі кітабыңызды ертең енгізе аласыз", {
+          icon: "📚",
+          duration: 7000,
+        });
+      }
     }
     setShowModal(false);
     router.refresh();

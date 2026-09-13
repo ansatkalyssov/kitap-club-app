@@ -28,13 +28,23 @@ export const POINT_RULES = {
   // Күнделікті — күніне 150-мен шектелген
   daily_goal: { points: 10, capped: true, countsForClub: true, limit: { count: 1, period: "day" } },
   tracker_progress: { points: 2, capped: true, countsForClub: true, limit: { count: 3, period: "day" } },
-  analysis_write: { points: 15, capped: true, countsForClub: true, limit: { count: 3, period: "week" } },
+  // Ескертпе — прогресс белгілеудің үстіндегі ерікті әрекет. Күніне бір
+  // рет: әйтпесе бірнеше трекері бар адам бірдей жазып, ұпай жинар еді.
+  progress_note: { points: 3, capped: true, countsForClub: true, limit: { count: 1, period: "day" } },
+  analysis_write: { points: 15, capped: true, countsForClub: true, limit: { count: 1, period: "week" } },
   // Жауап беру мен жауап алу үшін ұпай берілмейді. Жауапта ұзындық
   // шегі болмағандықтан, «иә», «келісемін» деп жазу ең арзан ұпай
   // көзіне айналатын еді — оқығаннан гөрі тиімді.
 
-  // Оқиға — шектен тыс, бірақ әрқайсысының өз қақпасы бар
-  book_done: { points: 60, capped: false, countsForClub: true },
+  // Оқиға — шектен тыс, бірақ әрқайсысының өз қақпасы бар.
+  //
+  // Кітап бітіру екі бөліктен тұрады: тұрақты бөлік әрқашан беріледі,
+  // ал бонус прогресс жеткілікті күні енгізілсе қосылады. Екеуінің де
+  // саны кітаптың бет санына қарай өзгереді — BOOK_TIERS-ті қараңыз.
+  // Күніне бір кітаптан артық есептелмейді.
+  book_done: { points: 10, capped: false, countsForClub: true, limit: { count: 1, period: "day" } },
+  book_done_bonus: { points: 20, capped: false, countsForClub: true, limit: { count: 1, period: "day" } },
+  // Ескі жазбалар үшін қалдырылған — енді берілмейді
   book_done_medium: { points: 40, capped: false, countsForClub: true },
   book_done_long: { points: 50, capped: false, countsForClub: true },
   club_book_ontime: { points: 50, capped: false, countsForClub: true },
@@ -52,6 +62,26 @@ export const POINT_RULES = {
 
 export type PointCode = keyof typeof POINT_RULES;
 
+/**
+ * Кітап бітіргендегі марапат — бет санына қарай.
+ *
+ * `base` әрқашан беріледі: бұрын үш күндік жасырын қақпа тұрған да,
+ * кітапты тез оқыған адам мүлдем ұпайсыз қалатын әрі себебін
+ * білмейтін. Енді қақпа қабырға емес, бонус: жайлап, бірнеше күнде
+ * оқыса — үстіне қосылады.
+ */
+export const BOOK_TIERS = [
+  { minPages: 500, base: 50, days: 10, bonus: 100 },
+  { minPages: 300, base: 40, days: 7, bonus: 70 },
+  { minPages: 200, base: 30, days: 5, bonus: 50 },
+  { minPages: 100, base: 20, days: 3, bonus: 30 },
+  { minPages: 0, base: 10, days: 2, bonus: 20 },
+] as const;
+
+export function bookTier(pages: number) {
+  return BOOK_TIERS.find((t) => pages >= t.minPages) ?? BOOK_TIERS[BOOK_TIERS.length - 1];
+}
+
 // =============================================
 // Негізгі беру функциясы
 // =============================================
@@ -65,7 +95,9 @@ export type PointCode = keyof typeof POINT_RULES;
 export async function awardPoints(
   userId: string,
   code: PointCode,
-  refId: string
+  refId: string,
+  /** Ереженің орнына нақты сан. Кітап бітіру бет санына қарай өзгереді. */
+  amount?: number
 ): Promise<number> {
   const rule: Rule = POINT_RULES[code];
   const admin = createAdminClient();
@@ -78,7 +110,7 @@ export async function awardPoints(
   }
 
   // 2. Күндік шек
-  let points = rule.points;
+  let points = amount ?? rule.points;
   if (rule.capped) {
     const usedToday = await sumCappedToday(userId, today);
     const remaining = DAILY_CAP - usedToday;
@@ -177,15 +209,23 @@ export async function onTrackerProgress(userId: string, trackerId: string): Prom
 
   if (!tracker || tracker.user_id !== userId) return 0;
 
-  const { count } = await admin
+  const { data: todayRows } = await admin
     .from("reading_progress")
-    .select("*", { count: "exact", head: true })
+    .select("note")
     .eq("tracker_id", trackerId)
     .eq("date", today);
 
-  if (!count) return 0;
+  if (!todayRows?.length) return 0;
 
-  return awardPoints(userId, "tracker_progress", `${trackerId}:${today}`);
+  let total = await awardPoints(userId, "tracker_progress", `${trackerId}:${today}`);
+
+  // Ескертпе жазғаны үшін — күніне бір рет. ref_id күнге байланған,
+  // сондықтан жазбаны қайта сақтаса да екінші рет төленбейді.
+  if (todayRows.some((r) => (r.note ?? "").trim().length > 0)) {
+    total += await awardPoints(userId, "progress_note", today);
+  }
+
+  return total;
 }
 
 /**
@@ -194,7 +234,20 @@ export async function onTrackerProgress(userId: string, trackerId: string): Prom
  *   - прогресс кемінде N бөлек күні енгізілуі керек (бет санына қарай)
  * Бір отырыста трекер ашып "бітірдім" басу ұпай әкелмейді.
  */
-export async function onBookCompleted(userId: string, trackerId: string): Promise<number> {
+export type BookDoneResult = {
+  points: number;
+  /** Бүгін бір кітап бітіріп қойған — ұпай берілмеді */
+  dailyLimit?: boolean;
+  /** Прогресс енгізілген бөлек күндер саны */
+  days?: number;
+  /** Бонус алу үшін қажет күн саны */
+  needDays?: number;
+};
+
+export async function onBookCompleted(
+  userId: string,
+  trackerId: string
+): Promise<BookDoneResult> {
   const admin = createAdminClient();
 
   const { data: tracker } = await admin
@@ -203,33 +256,32 @@ export async function onBookCompleted(userId: string, trackerId: string): Promis
     .eq("id", trackerId)
     .single();
 
-  if (!tracker || tracker.user_id !== userId) return 0;
+  if (!tracker || tracker.user_id !== userId) return { points: 0 };
   // Кітап шынымен аяқталған күйде тұруы керек
-  if (!tracker.is_completed) return 0;
+  if (!tracker.is_completed) return { points: 0 };
 
-  // Трекердің жасы
-  const ageDays = Math.floor(
-    (Date.now() - new Date(tracker.created_at).getTime()) / 86_400_000
-  );
-  if (ageDays < 3) return 0;
+  // Күніне бір кітап. Бұны алдын ала тексереміз, себебі оқырманға
+  // «неге ұпай келмеді» дегенді айту керек — үнсіз нөл қайтару
+  // бұрынғы жасырын қақпалармен бірдей болып қалар еді.
+  const doneToday = await countInPeriod(userId, "book_done", kzDateStr(), "day");
+  if (doneToday >= 1) return { points: 0, dailyLimit: true };
 
-  // Прогресс енгізілген бөлек күндер саны
+  const pages = tracker.total_pages ?? 0;
+  const tier = bookTier(pages);
+
   const { data: progress } = await admin
     .from("reading_progress")
     .select("date")
     .eq("tracker_id", trackerId);
 
   const distinctDays = new Set((progress ?? []).map((p) => p.date)).size;
-  if (distinctDays < 3) return 0;
 
-  let total = await awardPoints(userId, "book_done", trackerId);
+  // Тұрақты бөлік — әрқашан
+  let total = await awardPoints(userId, "book_done", trackerId, tier.base);
 
-  const pages = tracker.total_pages ?? 0;
-  if (pages >= 200 && distinctDays >= 5) {
-    total += await awardPoints(userId, "book_done_medium", trackerId);
-  }
-  if (pages >= 400 && distinctDays >= 7) {
-    total += await awardPoints(userId, "book_done_long", trackerId);
+  // Бонус — прогресс жеткілікті күні енгізілсе
+  if (distinctDays >= tier.days) {
+    total += await awardPoints(userId, "book_done_bonus", trackerId, tier.bonus);
   }
 
   // Клуб кітабын дедлайнға дейін бітіру
@@ -237,7 +289,7 @@ export async function onBookCompleted(userId: string, trackerId: string): Promis
     total += await awardPoints(userId, "club_book_ontime", trackerId);
   }
 
-  return total;
+  return { points: total, days: distinctDays, needDays: tier.days };
 }
 
 /** Талдау ұпайы берілу үшін мазмұнның ең аз ұзындығы */

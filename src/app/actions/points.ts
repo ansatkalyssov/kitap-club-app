@@ -7,6 +7,7 @@ import {
   onBookCompleted,
   onAnalysisCreated,
   onClubJoined,
+  type BookDoneResult,
 } from "@/lib/points";
 
 // Клиент мутацияны өзі жасайды, содан кейін осы әрекеттерді шақырады.
@@ -36,13 +37,15 @@ export async function syncTrackerProgressPoints(trackerId: string): Promise<numb
 }
 
 /** Кітап аяқталды */
-export async function syncBookCompletedPoints(trackerId: string): Promise<number> {
+export async function syncBookCompletedPoints(
+  trackerId: string
+): Promise<BookDoneResult> {
   const user = await getUser();
-  if (!user) return 0;
+  if (!user) return { points: 0 };
   try {
     return await onBookCompleted(user.id, trackerId);
   } catch {
-    return 0;
+    return { points: 0 };
   }
 }
 

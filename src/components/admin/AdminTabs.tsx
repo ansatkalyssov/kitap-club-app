@@ -11,13 +11,15 @@ import { formatDateKz } from "@/lib/utils";
 const POINT_LABELS: Record<string, string> = {
   daily_goal: "Күндік мақсат",
   tracker_progress: "Трекер прогресі",
+  progress_note: "Ескертпе жазды",
   analysis_write: "Талдау жазды",
   // Ескі жазбалар үшін қалдырылды — ұпай енді берілмейді
   analysis_reply: "Пікірге жауап (ескі)",
   analysis_got_reply: "Жауап алды (ескі)",
   book_done: "Кітап аяқтады",
-  book_done_medium: "200+ бет бонусы",
-  book_done_long: "400+ бет бонусы",
+  book_done_bonus: "Кітап бонусы",
+  book_done_medium: "200+ бет бонусы (ескі)",
+  book_done_long: "400+ бет бонусы (ескі)",
   club_book_ontime: "Клуб кітабы уақытында",
   club_join: "Клубқа қосылды",
   streak_week: "Апталық streak",
