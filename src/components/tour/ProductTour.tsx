@@ -93,11 +93,21 @@ export default function ProductTour({ active }: { active: boolean }) {
     (async () => {
       const steps: DriveStep[] = await Promise.all(
         onPage.map(async (s) => {
-          const el = s.selector ? await waitFor(s.selector) : null;
+          const found = s.selector ? await waitFor(s.selector) : null;
+
+          // Элемент экранның 70%-ынан биік болса, оны жарықтатпаймыз:
+          // driver.js терезені сондай элементтің астына қояды да, ол
+          // экраннан шығып, көрінбей қалады.
+          const tooTall =
+            found &&
+            (found as HTMLElement).getBoundingClientRect().height >
+              window.innerHeight * 0.7;
+
           return {
-            // Элемент табылмаса — қадам ортада, жарықтаусыз көрсетіледі.
-            // Мысалы мақсат қоймаған адамда таймер әлі жоқ.
-            element: (el as HTMLElement) ?? undefined,
+            // Элемент табылмаса немесе тым үлкен болса — қадам ортада,
+            // жарықтаусыз көрсетіледі. Мысалы мақсат қоймаған адамда
+            // таймер әлі жоқ.
+            element: tooTall ? undefined : ((found as HTMLElement) ?? undefined),
             popover: { title: s.title, description: s.body },
           };
         })

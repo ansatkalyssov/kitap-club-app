@@ -18,7 +18,7 @@ function Header({ tab, label }: { tab: string; label: string }) {
   return (
     <>
       <div className="mb-4">
-        <h1>Рейтиң</h1>
+        <h1 data-tour="rating">Рейтиң</h1>
         <p className="mt-0.5 text-sm text-gray-500">
           {tab === "readers"
             ? "Кім не оқып жатыр"
@@ -60,7 +60,7 @@ export default async function RatingPage({
   if (tab === "readers") {
     const readers = await getReaders();
     return (
-      <div className="page-container" data-tour="rating">
+      <div className="page-container">
         <Header tab={tab} label={label} />
         <ReaderList readers={readers} />
       </div>
@@ -80,7 +80,7 @@ export default async function RatingPage({
     i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-gray-200 text-gray-700" : i === 2 ? "bg-orange-100 text-orange-700" : "bg-gray-50 text-gray-400";
 
   return (
-    <div className="page-container" data-tour="rating">
+    <div className="page-container">
       <Header tab={tab} label={label} />
 
       {ranked.length === 0 ? (
