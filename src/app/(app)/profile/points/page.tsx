@@ -5,7 +5,6 @@ import { getUser } from "@/lib/queries";
 import {
   getUserStats,
   getPointHistory,
-  POINT_LABELS,
   BOOK_TIERS,
   LEVELS,
   MIN_ANALYSIS_LENGTH,
@@ -60,20 +59,6 @@ export default async function PointsPage() {
     getPointHistory(user.id, 100),
   ]);
 
-  // Неден жиналғаны — тарихтағы емес, барлық уақыттағы жиынтық емес:
-  // тізім соңғы 100-ге шектелген, сондықтан «осы тізім бойынша» деп
-  // ашық жазамыз.
-  const byCode = new Map<string, { points: number; count: number }>();
-  history.forEach((e) => {
-    const cur = byCode.get(e.code) ?? { points: 0, count: 0 };
-    cur.points += e.points;
-    cur.count++;
-    byCode.set(e.code, cur);
-  });
-  const breakdown = Array.from(byCode.entries())
-    .map(([code, v]) => ({ code, label: POINT_LABELS[code] ?? code, ...v }))
-    .sort((a, b) => b.points - a.points);
-
   return (
     <div className="page-container max-w-md">
       <Link
@@ -100,23 +85,6 @@ export default async function PointsPage() {
           <p className="text-xs font-medium text-primary-600">{stats.level.name}</p>
         </div>
       </div>
-
-      {/* Не үшін алды */}
-      {breakdown.length > 0 && (
-        <section className="mb-5">
-          <h2 className="mb-2 text-base font-bold text-primary-900">Неден жиналды</h2>
-          <div className="card divide-y divide-gray-50 py-0">
-            {breakdown.map((b) => (
-              <Row
-                key={b.code}
-                label={b.label}
-                limit={`${b.count} рет`}
-                points={`+${b.points}`}
-              />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Тарих */}
       {history.length > 0 && (
