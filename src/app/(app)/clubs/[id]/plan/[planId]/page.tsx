@@ -98,6 +98,12 @@ export default async function PlanDiscussionPage({
       .sort((a, b) => (b.progress ?? -1) - (a.progress ?? -1));
   }
 
+  // Жоспар бетінде тізім қысқа: клубта 84 мүше болса, бүкіл бет соған
+  // кетіп қалады. Қалғандары «Толық көру» бетінде.
+  const TOP_READERS = 10;
+  const topReaders = membersWithProgress.slice(0, TOP_READERS);
+  const restCount = membersWithProgress.length - topReaders.length;
+
   const isPast = Boolean(plan.meeting_date && plan.meeting_date < kzDateStr());
   const book = plan.books as any;
 
@@ -173,10 +179,10 @@ export default async function PlanDiscussionPage({
       <div className="section-title">
         <h2 className="flex items-center gap-2">
           <TrendingUp size={16} className="text-primary-500" />
-          Оқырмандар үлгерімі
+          Оқырмандар үлгерімі ({membersWithProgress.length})
         </h2>
         <Link
-          href={`/clubs/${id}/progress`}
+          href={`/clubs/${id}/progress?plan=${planId}`}
           className="text-xs font-medium text-primary-600 hover:text-primary-700"
         >
           Толық көру →
@@ -185,7 +191,7 @@ export default async function PlanDiscussionPage({
 
       {membersWithProgress.length > 0 ? (
         <div className="card mb-6 space-y-3">
-          {membersWithProgress.map((m: any) => (
+          {topReaders.map((m: any) => (
             <div key={m.user_id} className="flex items-center gap-3">
               <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
                 {m.profiles?.avatar_url ? (
@@ -217,6 +223,15 @@ export default async function PlanDiscussionPage({
               </div>
             </div>
           ))}
+
+          {restCount > 0 && (
+            <Link
+              href={`/clubs/${id}/progress?plan=${planId}`}
+              className="flex items-center justify-center gap-1 border-t border-gray-50 pt-3 text-sm font-medium text-primary-600 hover:text-primary-700"
+            >
+              Тағы {restCount} оқырман →
+            </Link>
+          )}
         </div>
       ) : (
         <div className="card mb-6 py-6 text-center text-sm text-gray-500">Оқырман жоқ</div>

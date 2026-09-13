@@ -10,10 +10,13 @@ import { calcProgress, formatDateKz, kzDateStr } from "@/lib/utils";
 
 export default async function ClubProgressPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ plan?: string }>;
 }) {
   const { id } = await params;
+  const { plan: planParam } = await searchParams;
   const user = await getUser();
   if (!user) redirect("/login");
   const supabase = await createClient();
@@ -27,19 +30,9 @@ export default async function ClubProgressPage({
 
   if (!club) notFound();
 
-  // Тек жүргізуші немесе мүше кіре алады
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("id")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .single();
-
-  const isFacilitator = club.facilitator_id === user.id;
-  const isMember = !!membership;
-
-  if (!isFacilitator && !isMember) redirect(`/clubs/${id}`);
-
+  // Клуб мазмұны бәріне ашық: жоспар беті де, ондағы үлгерім тізімі де
+  // мүше емес адамға көрінеді. Бұл бет — сол тізімнің толық түрі,
+  // сондықтан оны бөлек жабудың мәні жоқ.
   const adminDb = createAdminClient();
   const today = kzDateStr();
 
@@ -50,10 +43,13 @@ export default async function ClubProgressPage({
     .eq("club_id", id)
     .order("end_date", { ascending: true });
 
-  // Дедлайны ең жақын белсенді жоспар
-  const nearestPlan = (plans || []).find(
-    (p) => p.end_date && p.end_date >= today
-  );
+  // Нақты жоспар сұралса — соны көрсетеміз. Әйтпесе дедлайны ең жақын
+  // белсенді жоспарды аламыз. Бұрын әрқашан соңғысы көрсетілетін де,
+  // архивтегі кітаптан «Толық көру» басқан адам басқа кітаптың
+  // үлгерімін көретін.
+  const nearestPlan =
+    (planParam && (plans || []).find((p) => p.id === planParam)) ||
+    (plans || []).find((p) => p.end_date && p.end_date >= today);
 
   // Клуб мүшелері
   const { data: members } = await adminDb
