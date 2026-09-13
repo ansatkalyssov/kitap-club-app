@@ -99,7 +99,7 @@ export default function ProfileForm() {
   }
 
   return (
-    <div>
+    <div data-tour="profile">
       {/* Avatar section */}
       <div className="mb-6 flex flex-col items-center gap-3">
         <div className="relative">
