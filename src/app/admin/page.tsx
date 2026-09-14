@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { BookOpen, Shield, LogOut } from "lucide-react";
 import AdminTabs from "@/components/admin/AdminTabs";
 import { getClubLeaderboard, levelFor } from "@/lib/points";
+import { TOUR_VERSION } from "@/lib/tour";
 import { monthBounds, kzDateStr, addDays } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -302,8 +303,37 @@ export default async function AdminPage() {
   );
   const visitDays = visitStart ? dayKeys.filter((d) => d >= visitStart) : [];
 
+  // Танысу туры.
+  //
+  // tour_version турдың қалай біткеніне қарамайды: соңына дейін өтсе де,
+  // бірінші қадамда жауып кетсе де бірдей жазылады. Сондықтан «аяқтады»
+  // деген санды жаңа tour_completed_at бағанынан аламыз. Ол бағандар
+  // кейін қосылғандықтан, бұрын көріп қойғандар бөлек саналады.
+  const tourStarted = (profiles ?? []).filter((p: any) => p.tour_started_at).length;
+  const tourFinished = (profiles ?? []).filter((p: any) => p.tour_completed_at).length;
+  const tourClosed = (profiles ?? []).filter(
+    (p: any) =>
+      p.tour_started_at && !p.tour_completed_at && (p.tour_version ?? 0) >= TOUR_VERSION
+  ).length;
+  const tourBefore = (profiles ?? []).filter(
+    (p: any) => !p.tour_started_at && (p.tour_version ?? 0) >= TOUR_VERSION
+  ).length;
+  const tourNotYet = (profiles ?? []).filter(
+    (p: any) => (p.tour_version ?? 0) < TOUR_VERSION
+  ).length;
+
   const analytics = {
     totalUsers: stats.users,
+    tour: {
+      started: tourStarted,
+      finished: tourFinished,
+      closed: tourClosed,
+      // Басталған, бірақ әлі жабылмаған да, аяқталмаған да емес —
+      // адам турды ортасында тастап, бетті жауып кеткен
+      dropped: Math.max(0, tourStarted - tourFinished - tourClosed),
+      before: tourBefore,
+      notYet: tourNotYet,
+    },
     visitsToday: visitByDay.get(today)?.size ?? 0,
     hasVisitData: visitsTotal > 0,
     visits: visitDays.map((d) => ({ date: d, count: visitByDay.get(d)?.size ?? 0 })),

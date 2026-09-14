@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { driver, type Driver, type DriveStep } from "driver.js";
 import "driver.js/dist/driver.css";
 import { TOUR_STEPS, TOUR_STORAGE_KEY } from "@/lib/tour";
-import { completeTour } from "@/app/actions/tour";
+import { beginTour, completeTour } from "@/app/actions/tour";
 
 /**
  * Танысу туры: экранды күңгірттеп, нақты элементті жарықтатып, жанында
@@ -49,12 +49,13 @@ export default function ProductTour({ active }: { active: boolean }) {
       } catch {}
     }
 
-    async function finish() {
+    /** @param finished соңғы қадамға дейін жетті ме — статистика үшін */
+    async function finish(finished: boolean) {
       if (doneRef.current) return;
       doneRef.current = true;
       clearIndex();
       try {
-        await completeTour();
+        await completeTour(finished);
       } catch {}
     }
 
@@ -87,6 +88,12 @@ export default function ProductTour({ active }: { active: boolean }) {
     // Тур басқа бетте тұр. Қолданушы өзі адасып кетсе, мазаламаймыз —
     // сол бетке оралғанда қайта шығады.
     if (startWithin < 0) return;
+
+    // Бірінші қадам — тур шынымен басталды деген сөз. Кейінгі беттерде
+    // қайта белгілемейміз, әрі сервер жағында да бос болса ғана жазады.
+    if (globalIndex === 0) {
+      beginTour().catch(() => {});
+    }
 
     const isLastPage = onPage[onPage.length - 1].gi === TOUR_STEPS.length - 1;
 
@@ -140,7 +147,7 @@ export default function ProductTour({ active }: { active: boolean }) {
           // Беттегі соңғы қадам
           const nextGlobal = onPage[i].gi + 1;
           if (nextGlobal >= TOUR_STEPS.length) {
-            finish();
+            finish(true);
             d.destroy();
             return;
           }
@@ -157,7 +164,7 @@ export default function ProductTour({ active }: { active: boolean }) {
             navigatingRef.current = false;
             return;
           }
-          finish();
+          finish(false);
         },
       });
 

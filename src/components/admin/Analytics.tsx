@@ -15,6 +15,14 @@ export type DayPoint = { date: string; count: number };
 
 export type AnalyticsData = {
   totalUsers: number;
+  tour: {
+    started: number;
+    finished: number;
+    closed: number;
+    dropped: number;
+    before: number;
+    notYet: number;
+  };
   visitsToday: number;
   hasVisitData: boolean;
   visits: DayPoint[];
@@ -279,6 +287,47 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
           <Bars rows={data.frequency} total={data.totalUsers} color="bg-sky-500" />
         </Card>
       </div>
+
+      <Card
+        title="Танысу туры"
+        hint="Есеп жаңа қосылды — бұл сандар бүгіннен бастап жиналады"
+      >
+        {data.tour.started > 0 ? (
+          <Bars
+            rows={[
+              { label: "Турды бастады", count: data.tour.started },
+              { label: "Соңына дейін аяқтады", count: data.tour.finished },
+              { label: "Ортасынан жауып кетті", count: data.tour.closed },
+              { label: "Аяқтамай, бетті тастап кетті", count: data.tour.dropped },
+            ]}
+            total={data.tour.started}
+            color="bg-violet-500"
+          />
+        ) : (
+          <p className="py-4 text-center text-sm text-gray-400">
+            Есеп қосылғаннан бері турды ешкім бастаған жоқ
+          </p>
+        )}
+
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
+          <div className="rounded-xl bg-gray-50 px-4 py-3">
+            <p className="text-2xl font-bold tabular-nums text-gray-400">
+              {data.tour.before}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              есеп қосылғанға дейін көрген (аяқтағаны белгісіз)
+            </p>
+          </div>
+          <div className="rounded-xl bg-amber-50 px-4 py-3">
+            <p className="text-2xl font-bold tabular-nums text-amber-700">
+              {data.tour.notYet}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              турды әлі көрмеген — келесі кіргенде көрсетіледі
+            </p>
+          </div>
+        </div>
+      </Card>
 
       <Card
         title={`Клубқа кірмегендер (${data.noClubDetail.total})`}
