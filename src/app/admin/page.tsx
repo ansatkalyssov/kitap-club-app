@@ -295,6 +295,7 @@ export default async function AdminPage() {
     active7: activeSince(addDays(today, -6)),
     active30: activeSince(dayKeys[0]),
     noClub: stats.users - withClub.size,
+    pushUsers: withPush.size,
     daily: dayKeys.map((d) => ({ date: d, count: activeByDay.get(d)?.size ?? 0 })),
     signups: dayKeys.map((d) => ({ date: d, count: signupByDay.get(d) ?? 0 })),
     funnel: [

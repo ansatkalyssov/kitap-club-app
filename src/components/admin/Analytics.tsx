@@ -22,6 +22,7 @@ export type AnalyticsData = {
   active7: number;
   active30: number;
   noClub: number;
+  pushUsers: number;
   daily: DayPoint[];
   signups: DayPoint[];
   funnel: { label: string; count: number }[];
@@ -195,12 +196,13 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
     { label: "Бүгін белсенді", value: data.activeToday, color: "text-primary-600" },
     { label: "7 күнде белсенді", value: data.active7, color: "text-primary-600" },
     { label: "30 күнде белсенді", value: data.active30, color: "text-primary-600" },
+    { label: "Хабарландыру қосқан", value: data.pushUsers, color: "text-gray-900" },
     { label: "Клубқа кірмеген", value: data.noClub, color: "text-amber-600" },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {tiles.map((t) => (
           <div key={t.label} className="card py-4 text-center">
             <p className={`text-2xl font-bold tabular-nums ${t.color}`}>{t.value}</p>
