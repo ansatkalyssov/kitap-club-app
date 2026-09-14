@@ -259,6 +259,14 @@ export default async function AdminPage() {
       dayKeys.filter((d) => d >= from).flatMap((d) => Array.from(activeByDay.get(d) ?? []))
     ).size;
 
+  // Әрекет түрлері бойынша күнделікті график. Адам саны саналады, оқиға
+  // саны емес: бір адам күніне бірнеше рет прогресс енгізсе де — бір.
+  const timerByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
+  (logs ?? []).forEach((l) => timerByDay.get(l.date)?.add(l.user_id));
+
+  const progressByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
+  progress.forEach((p) => progressByDay.get(p.date.slice(0, 10))?.add(p.userId));
+
   const signupByDay = new Map<string, number>(dayKeys.map((d) => [d, 0]));
   (profiles ?? []).forEach((p) => {
     const d = (p.created_at ?? "").slice(0, 10);
@@ -306,6 +314,8 @@ export default async function AdminPage() {
     noClub: stats.users - withClub.size,
     pushUsers: withPush.size,
     daily: dayKeys.map((d) => ({ date: d, count: activeByDay.get(d)?.size ?? 0 })),
+    timerDaily: dayKeys.map((d) => ({ date: d, count: timerByDay.get(d)?.size ?? 0 })),
+    progressDaily: dayKeys.map((d) => ({ date: d, count: progressByDay.get(d)?.size ?? 0 })),
     signups: dayKeys.map((d) => ({ date: d, count: signupByDay.get(d) ?? 0 })),
     funnel: [
       { label: "Тіркелген", count: stats.users },

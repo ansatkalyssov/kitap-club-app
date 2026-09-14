@@ -26,6 +26,8 @@ export type AnalyticsData = {
   noClub: number;
   pushUsers: number;
   daily: DayPoint[];
+  timerDaily: DayPoint[];
+  progressDaily: DayPoint[];
   signups: DayPoint[];
   funnel: { label: string; count: number }[];
   frequency: { label: string; count: number }[];
@@ -242,6 +244,20 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
         }
       >
         <BarChart data={data.daily} />
+      </Card>
+
+      <Card
+        title="Оқу уақытын белгілегендер"
+        hint="Соңғы 30 күн. Таймермен немесе қолмен минут енгізген адам саны."
+      >
+        <BarChart data={data.timerDaily} color="#d97706" />
+      </Card>
+
+      <Card
+        title="Трекерге прогресс енгізгендер"
+        hint="Соңғы 30 күн. Кітаптың бетін белгілеген адам саны."
+      >
+        <BarChart data={data.progressDaily} color="#7c3aed" />
       </Card>
 
       <Card title="Жаңа тіркелгендер" hint="Соңғы 30 күн">
