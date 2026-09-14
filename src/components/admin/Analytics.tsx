@@ -18,6 +18,8 @@ export type AnalyticsData = {
   visitsToday: number;
   hasVisitData: boolean;
   visits: DayPoint[];
+  /** Кіру есебі басталған күн */
+  visitStart: string | null;
   activeToday: number;
   active7: number;
   active30: number;
@@ -214,7 +216,13 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
       {data.hasVisitData && (
         <Card
           title="Күнделікті кірушілер"
-          hint="Соңғы 30 күн. Қолданбаны ашқан адам саны — әрекет жасамаса да саналады."
+          hint={
+            data.visits.length < 30 && data.visitStart
+              ? `Қолданбаны ашқан адам саны — әрекет жасамаса да саналады. Есеп ${fmtDay(
+                  data.visitStart
+                )} басталды, одан бұрынғы дерек жоқ.`
+              : "Соңғы 30 күн. Қолданбаны ашқан адам саны — әрекет жасамаса да саналады."
+          }
         >
           <BarChart data={data.visits} color="#0284c7" />
         </Card>

@@ -286,11 +286,20 @@ export default async function AdminPage() {
   (visits ?? []).forEach((v) => visitByDay.get(v.date)?.add(v.user_id));
   const visitsTotal = (visits ?? []).length;
 
+  // Есеп басталған күн. Одан бұрынғы күндерді графикке қоспаймыз:
+  // нөлдік бағандар «ешкім кірмеген» дегендей көрініп, жаңылыстырады.
+  const visitStart = (visits ?? []).reduce<string | null>(
+    (min, v) => (!min || v.date < min ? v.date : min),
+    null
+  );
+  const visitDays = visitStart ? dayKeys.filter((d) => d >= visitStart) : [];
+
   const analytics = {
     totalUsers: stats.users,
     visitsToday: visitByDay.get(today)?.size ?? 0,
     hasVisitData: visitsTotal > 0,
-    visits: dayKeys.map((d) => ({ date: d, count: visitByDay.get(d)?.size ?? 0 })),
+    visits: visitDays.map((d) => ({ date: d, count: visitByDay.get(d)?.size ?? 0 })),
+    visitStart,
     activeToday: activeByDay.get(today)?.size ?? 0,
     active7: activeSince(addDays(today, -6)),
     active30: activeSince(dayKeys[0]),
