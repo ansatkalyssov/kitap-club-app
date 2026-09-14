@@ -83,8 +83,13 @@ function BarChart({
   // Ең биік бағанның үстінде сан сыятындай орын қалдырамыз
   const SCALE = 86;
 
+  // Дерек аз болғанда бағандар бүкіл ені бойынша созылып, ұсқынсыз
+  // көрінеді. Ондай кезде графиктің өзін тарылтамыз — бағандардың ені
+  // 30 күндіктегідей қалыпты болып тұрады.
+  const maxWidth = data.length < 12 ? data.length * 64 : undefined;
+
   return (
-    <div>
+    <div style={{ maxWidth }}>
       <div className="relative" style={{ height }}>
         {[0.25, 0.5, 0.75].map((f) => (
           <div
