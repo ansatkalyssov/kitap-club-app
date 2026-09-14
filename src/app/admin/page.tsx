@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { BookOpen, Shield, LogOut } from "lucide-react";
 import AdminTabs from "@/components/admin/AdminTabs";
 import { getClubLeaderboard, levelFor } from "@/lib/points";
-import { TOUR_VERSION } from "@/lib/tour";
+import { TOUR_STEPS, TOUR_VERSION } from "@/lib/tour";
 import { monthBounds, kzDateStr, addDays } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -322,9 +322,18 @@ export default async function AdminPage() {
     (p: any) => (p.tour_version ?? 0) < TOUR_VERSION
   ).length;
 
+  // Қадам бойынша воронка: әр қадамға жеткен адам саны. Көрші екі жолдың
+  // айырмасы — сол жерде тоқтап қалғандар.
+  const tourTracked = (profiles ?? []).filter((p: any) => p.tour_started_at);
+  const tourReach = TOUR_STEPS.map((s, i) => ({
+    label: `${i + 1}. ${s.title} · ${s.path}`,
+    count: tourTracked.filter((p: any) => (p.tour_last_step ?? 0) >= i).length,
+  }));
+
   const analytics = {
     totalUsers: stats.users,
     tour: {
+      reach: tourReach,
       started: tourStarted,
       finished: tourFinished,
       closed: tourClosed,

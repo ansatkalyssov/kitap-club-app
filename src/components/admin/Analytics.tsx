@@ -16,6 +16,7 @@ export type DayPoint = { date: string; count: number };
 export type AnalyticsData = {
   totalUsers: number;
   tour: {
+    reach: { label: string; count: number }[];
     started: number;
     finished: number;
     closed: number;
@@ -309,7 +310,20 @@ export default function Analytics({ data }: { data: AnalyticsData }) {
           </p>
         )}
 
-        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
+        {data.tour.started > 0 && (
+          <div className="mt-5 border-t border-gray-100 pt-4">
+            <p className="mb-3 text-sm font-semibold text-primary-900">
+              Қай қадамға дейін жетті
+            </p>
+            <p className="mb-3 text-xs text-gray-500">
+              Әр жолда — сол қадамды көрген адам саны. Көрші екі жолдың
+              айырмасы — сол жерде тоқтап қалғандар.
+            </p>
+            <Bars rows={data.tour.reach} total={data.tour.started} color="bg-violet-400" />
+          </div>
+        )}
+
+        <div className="mt-5 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
           <div className="rounded-xl bg-gray-50 px-4 py-3">
             <p className="text-2xl font-bold tabular-nums text-gray-400">
               {data.tour.before}

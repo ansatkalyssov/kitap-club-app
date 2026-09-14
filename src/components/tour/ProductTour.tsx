@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { driver, type Driver, type DriveStep } from "driver.js";
 import "driver.js/dist/driver.css";
 import { TOUR_STEPS, TOUR_STORAGE_KEY } from "@/lib/tour";
-import { beginTour, completeTour } from "@/app/actions/tour";
+import { beginTour, completeTour, markTourStep } from "@/app/actions/tour";
 
 /**
  * Танысу туры: экранды күңгірттеп, нақты элементті жарықтатып, жанында
@@ -93,6 +93,9 @@ export default function ProductTour({ active }: { active: boolean }) {
     // қайта белгілемейміз, әрі сервер жағында да бос болса ғана жазады.
     if (globalIndex === 0) {
       beginTour().catch(() => {});
+    } else {
+      // Жаңа бетке өткен сәт — бұл да жеткен қадам
+      markTourStep(globalIndex).catch(() => {});
     }
 
     const isLastPage = onPage[onPage.length - 1].gi === TOUR_STEPS.length - 1;
@@ -140,6 +143,7 @@ export default function ProductTour({ active }: { active: boolean }) {
           const i = d.getActiveIndex() ?? 0;
 
           if (i < steps.length - 1) {
+            markTourStep(onPage[i + 1].gi).catch(() => {});
             d.moveNext();
             return;
           }

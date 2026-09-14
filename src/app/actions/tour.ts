@@ -2,7 +2,7 @@
 
 import { getUser } from "@/lib/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TOUR_VERSION } from "@/lib/tour";
+import { TOUR_STEPS, TOUR_VERSION } from "@/lib/tour";
 
 /**
  * Тур бірінші қадамнан басталды деп белгілейді.
@@ -20,6 +20,26 @@ export async function beginTour(): Promise<void> {
     .update({ tour_started_at: new Date().toISOString() })
     .eq("id", user.id)
     .is("tour_started_at", null);
+}
+
+/**
+ * Оқырманның қай қадамға жеткенін белгілейді.
+ *
+ * lt() сүзгісі арқылы тек алға жылжу жазылады: «Артқа» батырмасы санды
+ * төмендетпейді, сондықтан бағанда ең алыс жеткен қадам қалады.
+ */
+export async function markTourStep(step: number): Promise<void> {
+  if (!Number.isInteger(step) || step <= 0 || step >= TOUR_STEPS.length) return;
+
+  const user = await getUser();
+  if (!user) return;
+
+  const admin = createAdminClient();
+  await admin
+    .from("profiles")
+    .update({ tour_last_step: step })
+    .eq("id", user.id)
+    .lt("tour_last_step", step);
 }
 
 /**
