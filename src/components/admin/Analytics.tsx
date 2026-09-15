@@ -205,7 +205,56 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
   );
 }
 
-export default function Analytics({ data }: { data: AnalyticsData }) {
+/** Бір есеп үш түрде: бәрі, оқырмандар, жүргізушілер */
+export type AnalyticsBundle = {
+  all: AnalyticsData;
+  readers: AnalyticsData;
+  hosts: AnalyticsData;
+};
+
+type Scope = keyof AnalyticsBundle;
+
+const SCOPES: { key: Scope; label: string }[] = [
+  { key: "all", label: "Барлығы" },
+  { key: "readers", label: "Оқырман" },
+  { key: "hosts", label: "Жүргізуші" },
+];
+
+export default function Analytics({ data: bundle }: { data: AnalyticsBundle }) {
+  const [scope, setScope] = useState<Scope>("all");
+  const data = bundle[scope];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1.5">
+        {SCOPES.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setScope(s.key)}
+            className={`rounded-xl px-3.5 py-2 text-xs font-medium transition ${
+              scope === s.key
+                ? "bg-primary-600 text-white"
+                : "bg-white text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            {s.label}
+            <span
+              className={`ml-1.5 tabular-nums ${
+                scope === s.key ? "text-primary-100" : "text-gray-400"
+              }`}
+            >
+              {bundle[s.key].totalUsers}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <Dashboard data={data} />
+    </div>
+  );
+}
+
+function Dashboard({ data }: { data: AnalyticsData }) {
   const tiles = [
     { label: "Тіркелген", value: data.totalUsers, color: "text-gray-900" },
     ...(data.hasVisitData

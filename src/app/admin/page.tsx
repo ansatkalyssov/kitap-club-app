@@ -209,77 +209,7 @@ export default async function AdminPage() {
   // жазылмайтындықтан, қарап шыққандар бұл санға кірмейді.
   const dayKeys = Array.from({ length: 30 }, (_, i) => addDays(today, i - 29));
 
-  const activeByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
-  const touch = (date: string | null | undefined, userId: string) => {
-    if (!date) return;
-    const d = date.slice(0, 10);
-    activeByDay.get(d)?.add(userId);
-  };
-  (logs ?? []).forEach((l) => touch(l.date, l.user_id));
-  (progress ?? []).forEach((p) => touch(p.date, p.userId));
-  // club_join — тіркелу белгісі, әрекет емес. Оны қосса, клубқа кірген
-  // әркім автоматты «белсенді» болып шығады да, көрсеткіш мағынасын
-  // жоғалтады: барлық клубта 100% көрінетін.
-  (events ?? [])
-    .filter((e) => e.code !== "club_join")
-    .forEach((e) => touch(e.event_date, e.user_id));
-  (analyses ?? []).forEach((a) => touch(a.created_at, a.author_id));
-
-  const daysActiveByUser = new Map<string, number>();
-  activeByDay.forEach((set) => {
-    set.forEach((u) => daysActiveByUser.set(u, (daysActiveByUser.get(u) ?? 0) + 1));
-  });
-
-  // Әрекет түрлері бойынша — соңғы 30 күнде сол әрекетті жасаған адамдар
   const windowStart = dayKeys[0];
-  const usersDoing = (rows: { u?: string | null; d?: string | null }[]) =>
-    new Set(
-      rows
-        .filter((r) => r.u && r.d && r.d.slice(0, 10) >= windowStart)
-        .map((r) => r.u as string)
-    );
-
-  const timerUsers = usersDoing((logs ?? []).map((l) => ({ u: l.user_id, d: l.date })));
-  const progressUsers = usersDoing(progress.map((p) => ({ u: p.userId, d: p.date })));
-  const doneUsers = usersDoing(
-    (events ?? [])
-      .filter((e) => e.code === "book_done")
-      .map((e) => ({ u: e.user_id, d: e.event_date }))
-  );
-  const commentUsers = usersDoing(
-    (analyses ?? []).map((a) => ({ u: a.author_id, d: a.created_at }))
-  );
-  const goalUsers = usersDoing(
-    (events ?? [])
-      .filter((e) => e.code === "daily_goal")
-      .map((e) => ({ u: e.user_id, d: e.event_date }))
-  );
-
-  const activeSince = (from: string) =>
-    new Set(
-      dayKeys.filter((d) => d >= from).flatMap((d) => Array.from(activeByDay.get(d) ?? []))
-    ).size;
-
-  // Әрекет түрлері бойынша күнделікті график. Адам саны саналады, оқиға
-  // саны емес: бір адам күніне бірнеше рет прогресс енгізсе де — бір.
-  const timerByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
-  (logs ?? []).forEach((l) => timerByDay.get(l.date)?.add(l.user_id));
-
-  const progressByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
-  progress.forEach((p) => progressByDay.get(p.date.slice(0, 10))?.add(p.userId));
-
-  const signupByDay = new Map<string, number>(dayKeys.map((d) => [d, 0]));
-  (profiles ?? []).forEach((p) => {
-    const d = (p.created_at ?? "").slice(0, 10);
-    if (signupByDay.has(d)) signupByDay.set(d, (signupByDay.get(d) ?? 0) + 1);
-  });
-
-  const withClub = new Set((members ?? []).map((m) => m.user_id));
-  const withGoal = new Set((goals ?? []).map((g) => g.user_id));
-  const withTimer = new Set((logs ?? []).map((l) => l.user_id));
-  const withProgress = new Set((progress ?? []).map((p) => p.userId));
-  const withThread = new Set((analyses ?? []).map((a) => a.author_id));
-  const withPush = new Set((pushSubs ?? []).map((s) => s.user_id));
 
   const freqBuckets = [
     { label: "Мүлдем белсенді емес", min: 0, max: 0 },
@@ -289,142 +219,239 @@ export default async function AdminPage() {
     { label: "15 күн және одан көп", min: 15, max: 99 },
   ];
 
-  // Кіру белгісі. Баған жаңа қосылғандықтан, алғашқы күндері бос болады —
-  // сол себепті график тек дерек пайда болғанда көрсетіледі.
-  const visitByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
-  (visits ?? []).forEach((v) => visitByDay.get(v.date)?.add(v.user_id));
-  const visitsTotal = (visits ?? []).length;
+  /**
+   * Дэшбордты берілген адамдар тобы бойынша есептейді.
+   *
+   * Бүкіл есеп осы функцияның ішінде тұр, себебі оны рөл бойынша бөліп
+   * көрсету керек: жүргізушілердің әдеті оқырмандардікінен мүлдем бөлек,
+   * ал екеуін араластырса көрсеткіш бұлыңғыр болып шығады.
+   */
+  const buildAnalytics = (people: any[]) => {
+    const scope = new Set(people.map((p) => p.id));
+    const mine = (id: string | null | undefined) => Boolean(id && scope.has(id));
 
-  // Есеп басталған күн. Одан бұрынғы күндерді графикке қоспаймыз:
-  // нөлдік бағандар «ешкім кірмеген» дегендей көрініп, жаңылыстырады.
-  const visitStart = (visits ?? []).reduce<string | null>(
-    (min, v) => (!min || v.date < min ? v.date : min),
-    null
-  );
-  const visitDays = visitStart ? dayKeys.filter((d) => d >= visitStart) : [];
+    const activeByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
+    const touch = (date: string | null | undefined, userId: string) => {
+      if (!date || !mine(userId)) return;
+      const d = date.slice(0, 10);
+      activeByDay.get(d)?.add(userId);
+    };
+    (logs ?? []).forEach((l) => touch(l.date, l.user_id));
+    (progress ?? []).forEach((p) => touch(p.date, p.userId));
+    // club_join — тіркелу белгісі, әрекет емес. Оны қосса, клубқа кірген
+    // әркім автоматты «белсенді» болып шығады да, көрсеткіш мағынасын
+    // жоғалтады: барлық клубта 100% көрінетін.
+    (events ?? [])
+      .filter((e) => e.code !== "club_join")
+      .forEach((e) => touch(e.event_date, e.user_id));
+    (analyses ?? []).forEach((a) => touch(a.created_at, a.author_id));
 
-  // Танысу туры.
-  //
-  // tour_version турдың қалай біткеніне қарамайды: соңына дейін өтсе де,
-  // бірінші қадамда жауып кетсе де бірдей жазылады. Сондықтан «аяқтады»
-  // деген санды жаңа tour_completed_at бағанынан аламыз. Ол бағандар
-  // кейін қосылғандықтан, бұрын көріп қойғандар бөлек саналады.
-  const tourStarted = (profiles ?? []).filter((p: any) => p.tour_started_at).length;
-  const tourFinished = (profiles ?? []).filter((p: any) => p.tour_completed_at).length;
-  const tourClosed = (profiles ?? []).filter(
-    (p: any) =>
-      p.tour_started_at && !p.tour_completed_at && (p.tour_version ?? 0) >= TOUR_VERSION
-  ).length;
-  const tourBefore = (profiles ?? []).filter(
-    (p: any) => !p.tour_started_at && (p.tour_version ?? 0) >= TOUR_VERSION
-  ).length;
-  const tourNotYet = (profiles ?? []).filter(
-    (p: any) => (p.tour_version ?? 0) < TOUR_VERSION
-  ).length;
+    const daysActiveByUser = new Map<string, number>();
+    activeByDay.forEach((set) => {
+      set.forEach((u) => daysActiveByUser.set(u, (daysActiveByUser.get(u) ?? 0) + 1));
+    });
 
-  // Қадам бойынша воронка: әр қадамға жеткен адам саны. Көрші екі жолдың
-  // айырмасы — сол жерде тоқтап қалғандар.
-  const tourTracked = (profiles ?? []).filter((p: any) => p.tour_started_at);
-  const tourReach = TOUR_STEPS.map((s, i) => ({
-    label: `${i + 1}. ${s.title} · ${s.path}`,
-    count: tourTracked.filter((p: any) => (p.tour_last_step ?? 0) >= i).length,
-  }));
+    // Әрекет түрлері бойынша — соңғы 30 күнде сол әрекетті жасаған адамдар
+    const usersDoing = (rows: { u?: string | null; d?: string | null }[]) =>
+      new Set(
+        rows
+          .filter((r) => mine(r.u) && r.d && r.d.slice(0, 10) >= windowStart)
+          .map((r) => r.u as string)
+      );
+
+    const timerUsers = usersDoing((logs ?? []).map((l) => ({ u: l.user_id, d: l.date })));
+    const progressUsers = usersDoing(progress.map((p) => ({ u: p.userId, d: p.date })));
+    const doneUsers = usersDoing(
+      (events ?? [])
+        .filter((e) => e.code === "book_done")
+        .map((e) => ({ u: e.user_id, d: e.event_date }))
+    );
+    const commentUsers = usersDoing(
+      (analyses ?? []).map((a) => ({ u: a.author_id, d: a.created_at }))
+    );
+    const goalUsers = usersDoing(
+      (events ?? [])
+        .filter((e) => e.code === "daily_goal")
+        .map((e) => ({ u: e.user_id, d: e.event_date }))
+    );
+
+    const activeSince = (from: string) =>
+      new Set(
+        dayKeys.filter((d) => d >= from).flatMap((d) => Array.from(activeByDay.get(d) ?? []))
+      ).size;
+
+    // Әрекет түрлері бойынша күнделікті график. Адам саны саналады, оқиға
+    // саны емес: бір адам күніне бірнеше рет прогресс енгізсе де — бір.
+    const timerByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
+    (logs ?? []).forEach((l) => {
+      if (mine(l.user_id)) timerByDay.get(l.date)?.add(l.user_id);
+    });
+
+    const progressByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
+    progress.forEach((p) => {
+      if (mine(p.userId)) progressByDay.get(p.date.slice(0, 10))?.add(p.userId);
+    });
+
+    const signupByDay = new Map<string, number>(dayKeys.map((d) => [d, 0]));
+    people.forEach((p) => {
+      const d = (p.created_at ?? "").slice(0, 10);
+      if (signupByDay.has(d)) signupByDay.set(d, (signupByDay.get(d) ?? 0) + 1);
+    });
+
+    const only = (ids: (string | null | undefined)[]) =>
+      new Set(ids.filter((id) => mine(id)) as string[]);
+
+    const withClub = only((members ?? []).map((m) => m.user_id));
+    const withGoal = only((goals ?? []).map((g) => g.user_id));
+    const withTimer = only((logs ?? []).map((l) => l.user_id));
+    const withProgress = only((progress ?? []).map((p) => p.userId));
+    const withThread = only((analyses ?? []).map((a) => a.author_id));
+    const withPush = only((pushSubs ?? []).map((s) => s.user_id));
+
+    // Кіру белгісі. Баған жаңа қосылғандықтан, алғашқы күндері бос болады —
+    // сол себепті график тек дерек пайда болғанда көрсетіледі.
+    const myVisits = (visits ?? []).filter((v) => mine(v.user_id));
+    const visitByDay = new Map<string, Set<string>>(dayKeys.map((d) => [d, new Set<string>()]));
+    myVisits.forEach((v) => visitByDay.get(v.date)?.add(v.user_id));
+
+    // Есеп басталған күн. Одан бұрынғы күндерді графикке қоспаймыз:
+    // нөлдік бағандар «ешкім кірмеген» дегендей көрініп, жаңылыстырады.
+    const visitStart = myVisits.reduce<string | null>(
+      (min, v) => (!min || v.date < min ? v.date : min),
+      null
+    );
+    const visitDays = visitStart ? dayKeys.filter((d) => d >= visitStart) : [];
+
+    // Танысу туры.
+    //
+    // tour_version турдың қалай біткеніне қарамайды: соңына дейін өтсе де,
+    // бірінші қадамда жауып кетсе де бірдей жазылады. Сондықтан «аяқтады»
+    // деген санды жаңа tour_completed_at бағанынан аламыз. Ол бағандар
+    // кейін қосылғандықтан, бұрын көріп қойғандар бөлек саналады.
+    const tourStarted = people.filter((p) => p.tour_started_at).length;
+    const tourFinished = people.filter((p) => p.tour_completed_at).length;
+    const tourClosed = people.filter(
+      (p) => p.tour_started_at && !p.tour_completed_at && (p.tour_version ?? 0) >= TOUR_VERSION
+    ).length;
+
+    // Қадам бойынша воронка: әр қадамға жеткен адам саны. Көрші екі жолдың
+    // айырмасы — сол жерде тоқтап қалғандар.
+    const tourTracked = people.filter((p) => p.tour_started_at);
+
+    return {
+      totalUsers: people.length,
+      tour: {
+        reach: TOUR_STEPS.map((s, i) => ({
+          label: `${i + 1}. ${s.title} · ${s.path}`,
+          count: tourTracked.filter((p) => (p.tour_last_step ?? 0) >= i).length,
+        })),
+        started: tourStarted,
+        finished: tourFinished,
+        closed: tourClosed,
+        // Басталған, бірақ әлі жабылмаған да, аяқталмаған да емес —
+        // адам турды ортасында тастап, бетті жауып кеткен
+        dropped: Math.max(0, tourStarted - tourFinished - tourClosed),
+        before: people.filter(
+          (p) => !p.tour_started_at && (p.tour_version ?? 0) >= TOUR_VERSION
+        ).length,
+        notYet: people.filter((p) => (p.tour_version ?? 0) < TOUR_VERSION).length,
+      },
+      visitsToday: visitByDay.get(today)?.size ?? 0,
+      hasVisitData: myVisits.length > 0,
+      visits: visitDays.map((d) => ({ date: d, count: visitByDay.get(d)?.size ?? 0 })),
+      visitStart,
+      activeToday: activeByDay.get(today)?.size ?? 0,
+      active7: activeSince(addDays(today, -6)),
+      active30: activeSince(dayKeys[0]),
+      noClub: people.length - withClub.size,
+      pushUsers: withPush.size,
+      daily: dayKeys.map((d) => ({ date: d, count: activeByDay.get(d)?.size ?? 0 })),
+      timerDaily: dayKeys.map((d) => ({ date: d, count: timerByDay.get(d)?.size ?? 0 })),
+      progressDaily: dayKeys.map((d) => ({ date: d, count: progressByDay.get(d)?.size ?? 0 })),
+      signups: dayKeys.map((d) => ({ date: d, count: signupByDay.get(d) ?? 0 })),
+      funnel: [
+        { label: "Тіркелген", count: people.length },
+        { label: "Клубқа кірген", count: withClub.size },
+        { label: "Күнделікті мақсат қойған", count: withGoal.size },
+        { label: "Хабарландыруға жазылған", count: withPush.size },
+        { label: "Трекерге прогресс енгізген", count: withProgress.size },
+        { label: "Таймерді қолданған", count: withTimer.size },
+        { label: "Пікір жазған", count: withThread.size },
+      ],
+      frequency: freqBuckets.map((b) => ({
+        label: b.label,
+        count: people.filter((p) => {
+          const n = daysActiveByUser.get(p.id) ?? 0;
+          return n >= b.min && n <= b.max;
+        }).length,
+      })),
+      noClubDetail: (() => {
+        const inClub = new Set((members ?? []).map((m) => m.user_id));
+        const soloTrackers = new Set(
+          (trackers ?? []).filter((t) => !t.club_plan_id).map((t) => t.user_id)
+        );
+        const anyGoal = new Set((goals ?? []).map((g) => g.user_id));
+        const anyTimer = new Set((logs ?? []).map((l) => l.user_id));
+        const anyProgress = new Set(progress.map((p) => p.userId));
+        const anyPush = new Set((pushSubs ?? []).map((s) => s.user_id));
+
+        const outside = people.filter((p) => !inClub.has(p.id));
+        const rows = outside
+          .map((p) => ({
+            name: p.name ?? p.email ?? "—",
+            createdAt: p.created_at as string,
+            goal: anyGoal.has(p.id),
+            tracker: soloTrackers.has(p.id),
+            timer: anyTimer.has(p.id),
+            progress: anyProgress.has(p.id),
+            push: anyPush.has(p.id),
+          }))
+          .map((r) => ({
+            ...r,
+            any: r.goal || r.tracker || r.timer || r.progress || r.push,
+          }));
+
+        return {
+          total: outside.length,
+          nothing: rows.filter((r) => !r.any).length,
+          // Бірдеңе істегендер ғана — солармен сөйлесудің мәні бар
+          rows: rows
+            .filter((r) => r.any)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+        };
+      })(),
+
+      clubs: (clubs ?? [])
+        .filter((c) => c.is_active)
+        .map((c) => {
+          const ids = (members ?? [])
+            .filter((m) => m.club_id === c.id && mine(m.user_id))
+            .map((m) => m.user_id);
+          const inSet = (s: Set<string>) => ids.filter((u) => s.has(u)).length;
+          return {
+            name: c.name,
+            members: ids.length,
+            active: ids.filter((u) => (daysActiveByUser.get(u) ?? 0) > 0).length,
+            timer: inSet(timerUsers),
+            progress: inSet(progressUsers),
+            done: inSet(doneUsers),
+            comment: inSet(commentUsers),
+            goal: inSet(goalUsers),
+          };
+        })
+        .sort((a, b) => b.members - a.members),
+    };
+  };
+
+  // Жүргізушіге админ де кіреді: екеуі де клуб жүргізеді, әрі саны аз
+  // болғандықтан бөлек көрсеткіштің мәні жоқ. Сонда екі топтың қосындысы
+  // барлық тіркелгенге тең болып шығады.
+  const isHost = (p: any) => p.role === "facilitator" || p.role === "admin";
 
   const analytics = {
-    totalUsers: stats.users,
-    tour: {
-      reach: tourReach,
-      started: tourStarted,
-      finished: tourFinished,
-      closed: tourClosed,
-      // Басталған, бірақ әлі жабылмаған да, аяқталмаған да емес —
-      // адам турды ортасында тастап, бетті жауып кеткен
-      dropped: Math.max(0, tourStarted - tourFinished - tourClosed),
-      before: tourBefore,
-      notYet: tourNotYet,
-    },
-    visitsToday: visitByDay.get(today)?.size ?? 0,
-    hasVisitData: visitsTotal > 0,
-    visits: visitDays.map((d) => ({ date: d, count: visitByDay.get(d)?.size ?? 0 })),
-    visitStart,
-    activeToday: activeByDay.get(today)?.size ?? 0,
-    active7: activeSince(addDays(today, -6)),
-    active30: activeSince(dayKeys[0]),
-    noClub: stats.users - withClub.size,
-    pushUsers: withPush.size,
-    daily: dayKeys.map((d) => ({ date: d, count: activeByDay.get(d)?.size ?? 0 })),
-    timerDaily: dayKeys.map((d) => ({ date: d, count: timerByDay.get(d)?.size ?? 0 })),
-    progressDaily: dayKeys.map((d) => ({ date: d, count: progressByDay.get(d)?.size ?? 0 })),
-    signups: dayKeys.map((d) => ({ date: d, count: signupByDay.get(d) ?? 0 })),
-    funnel: [
-      { label: "Тіркелген", count: stats.users },
-      { label: "Клубқа кірген", count: withClub.size },
-      { label: "Күнделікті мақсат қойған", count: withGoal.size },
-      { label: "Хабарландыруға жазылған", count: withPush.size },
-      { label: "Трекерге прогресс енгізген", count: withProgress.size },
-      { label: "Таймерді қолданған", count: withTimer.size },
-      { label: "Пікір жазған", count: withThread.size },
-    ],
-    frequency: freqBuckets.map((b) => ({
-      label: b.label,
-      count: (profiles ?? []).filter((p) => {
-        const n = daysActiveByUser.get(p.id) ?? 0;
-        return n >= b.min && n <= b.max;
-      }).length,
-    })),
-    noClubDetail: (() => {
-      const inClub = new Set((members ?? []).map((m) => m.user_id));
-      const soloTrackers = new Set(
-        (trackers ?? []).filter((t) => !t.club_plan_id).map((t) => t.user_id)
-      );
-      const anyGoal = new Set((goals ?? []).map((g) => g.user_id));
-      const anyTimer = new Set((logs ?? []).map((l) => l.user_id));
-      const anyProgress = new Set(progress.map((p) => p.userId));
-      const anyPush = new Set((pushSubs ?? []).map((s) => s.user_id));
-
-      const outside = (profiles ?? []).filter((p) => !inClub.has(p.id));
-      const rows = outside
-        .map((p) => ({
-          name: p.name ?? p.email ?? "—",
-          createdAt: p.created_at as string,
-          goal: anyGoal.has(p.id),
-          tracker: soloTrackers.has(p.id),
-          timer: anyTimer.has(p.id),
-          progress: anyProgress.has(p.id),
-          push: anyPush.has(p.id),
-        }))
-        .map((r) => ({
-          ...r,
-          any: r.goal || r.tracker || r.timer || r.progress || r.push,
-        }));
-
-      return {
-        total: outside.length,
-        nothing: rows.filter((r) => !r.any).length,
-        // Бірдеңе істегендер ғана — солармен сөйлесудің мәні бар
-        rows: rows
-          .filter((r) => r.any)
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-      };
-    })(),
-
-    clubs: (clubs ?? [])
-      .filter((c) => c.is_active)
-      .map((c) => {
-        const ids = (members ?? []).filter((m) => m.club_id === c.id).map((m) => m.user_id);
-        const inSet = (s: Set<string>) => ids.filter((u) => s.has(u)).length;
-        return {
-          name: c.name,
-          members: ids.length,
-          active: ids.filter((u) => (daysActiveByUser.get(u) ?? 0) > 0).length,
-          timer: inSet(timerUsers),
-          progress: inSet(progressUsers),
-          done: inSet(doneUsers),
-          comment: inSet(commentUsers),
-          goal: inSet(goalUsers),
-        };
-      })
-      .sort((a, b) => b.members - a.members),
+    all: buildAnalytics(profiles ?? []),
+    readers: buildAnalytics((profiles ?? []).filter((p) => !isHost(p))),
+    hosts: buildAnalytics((profiles ?? []).filter(isHost)),
   };
 
   return (

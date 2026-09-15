@@ -5,7 +5,7 @@ import {
   Users, BookOpen, BookMarked, MessageSquare, Trophy, Star, UserCog, Search, BarChart3,
 } from "lucide-react";
 import UserManagement from "./UserManagement";
-import Analytics, { type AnalyticsData } from "./Analytics";
+import Analytics, { type AnalyticsBundle } from "./Analytics";
 import { formatDateKz } from "@/lib/utils";
 
 const POINT_LABELS: Record<string, string> = {
@@ -90,7 +90,7 @@ export default function AdminTabs({ stats, readers, facilitators, clubs, threads
         </div>
       )}
 
-      {tab === "dashboard" && <Analytics data={analytics as AnalyticsData} />}
+      {tab === "dashboard" && <Analytics data={analytics as AnalyticsBundle} />}
       {tab === "overview" && <Overview stats={stats} />}
 
       {tab === "readers" && (
