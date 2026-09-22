@@ -28,7 +28,7 @@ export const POINT_RULES = {
   // Күнделікті — күніне 150-мен шектелген
   daily_goal: { points: 10, capped: true, countsForClub: true, limit: { count: 1, period: "day" } },
   tracker_progress: { points: 2, capped: true, countsForClub: true, limit: { count: 3, period: "day" } },
-  // Ескертпе — прогресс белгілеудің үстіндегі ерікті әрекет. Күніне бір
+  // Ойазық — прогресс белгілеудің үстіндегі ерікті әрекет. Күніне бір
   // рет: әйтпесе бірнеше трекері бар адам бірдей жазып, ұпай жинар еді.
   progress_note: { points: 3, capped: true, countsForClub: true, limit: { count: 1, period: "day" } },
   analysis_write: { points: 15, capped: true, countsForClub: true, limit: { count: 1, period: "week" } },
@@ -69,7 +69,7 @@ export type PointCode = keyof typeof POINT_RULES;
 export const POINT_LABELS: Record<string, string> = {
   daily_goal: "Күндік мақсатты орындадыңыз",
   tracker_progress: "Трекерге прогресс енгіздіңіз",
-  progress_note: "Ескертпе жаздыңыз",
+  progress_note: "Ойазық жаздыңыз",
   analysis_write: "Талқыға пікір жаздыңыз",
   analysis_reply: "Пікірге жауап бердіңіз",
   analysis_got_reply: "Пікіріңізге жауап келді",
@@ -243,7 +243,7 @@ export async function onTrackerProgress(userId: string, trackerId: string): Prom
 
   let total = await awardPoints(userId, "tracker_progress", `${trackerId}:${today}`);
 
-  // Ескертпе жазғаны үшін — күніне бір рет. ref_id күнге байланған,
+  // Ойазық жазғаны үшін — күніне бір рет. ref_id күнге байланған,
   // сондықтан жазбаны қайта сақтаса да екінші рет төленбейді.
   if (todayRows.some((r) => (r.note ?? "").trim().length > 0)) {
     total += await awardPoints(userId, "progress_note", today);

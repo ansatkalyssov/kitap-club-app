@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 const RULES: { label: string; points: string; limit: string }[] = [
   { label: "Күнделікті мақсатты орындау", points: "+10", limit: "күніне 1 рет" },
   { label: "Трекерге прогресс енгізу", points: "+2", limit: "күніне 3 ретке дейін" },
-  { label: "Ескертпе жазу", points: "+3", limit: "күніне 1 рет" },
+  { label: "Ойазық жазу", points: "+3", limit: "күніне 1 рет" },
   {
     label: `Талқыға пікір жазу (кемінде ${MIN_ANALYSIS_LENGTH} таңба)`,
     points: "+15",

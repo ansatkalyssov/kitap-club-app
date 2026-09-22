@@ -11,7 +11,7 @@ import { syncTrackerProgressPoints, syncBookCompletedPoints } from "@/app/action
 import { addReadingMinutes } from "@/app/actions/reading";
 import { toastPoints } from "@/lib/pointsToast";
 
-/** Ескертпенің ең үлкен ұзындығы. Дерекқорда шектеу жоқ (TEXT). */
+/** Ойазықтың ең үлкен ұзындығы. Дерекқорда шектеу жоқ (TEXT). */
 const NOTE_MAX = 500;
 
 interface Props {
@@ -229,7 +229,7 @@ export default function LogProgressForm({
       <div>
         <div className="mb-1.5 flex items-baseline justify-between gap-2">
           <label className="block text-sm font-medium text-gray-700">
-            Ескертпе{" "}
+            Ойазық{" "}
             <span className="font-semibold text-primary-600">+3 ұпай</span>
           </label>
           {/* Шекке жақындағанда ғана көрсетеміз — әйтпесе бос өрістің

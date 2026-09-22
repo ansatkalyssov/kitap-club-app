@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { Play, Pause, Square, RefreshCw, X } from "lucide-react";
 import toast from "react-hot-toast";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { syncReadingPoints, syncBookCompletedPoints } from "@/app/actions/points";
+import {
+  syncReadingPoints,
+  syncBookCompletedPoints,
+  syncTrackerProgressPoints,
+} from "@/app/actions/points";
 import { toastPoints } from "@/lib/pointsToast";
 
 interface Props {
@@ -18,6 +22,11 @@ interface Props {
 
 // Таймер басталған уақытты localStorage-та сақтаймыз
 const TIMER_KEY = "reading_timer_start_ts";
+
+/** Ойазықтың ең үлкен ұзындығы — трекер бетіндегі формамен бірдей */
+const NOTE_MAX = 500;
+
+type TodayRow = { id: string; pages_read: number; note: string | null };
 
 export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }: Props) {
   const router = useRouter();
@@ -33,6 +42,9 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
   const [trackers, setTrackers] = useState<any[]>([]);
   const [selectedTrackerId, setSelectedTrackerId] = useState("");
   const [newPage, setNewPage] = useState("");
+  const [note, setNote] = useState("");
+  /** Бүгінгі прогресс жазбалары, трекер бойынша */
+  const [todayRows, setTodayRows] = useState<Record<string, TodayRow>>({});
   const [modalSaving, setModalSaving] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<any>(null);
@@ -181,9 +193,27 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
       .order("created_at", { ascending: false });
 
     if (activeTrackers && activeTrackers.length > 0) {
+      // Бүгін осы трекерлерге прогресс жазылған ба — бетті екінші рет
+      // белгілегенде санды қайта қоспау үшін керек
+      const { data: rows } = await supabase
+        .from("reading_progress")
+        .select("id, tracker_id, pages_read, note")
+        .eq("date", date)
+        .in(
+          "tracker_id",
+          activeTrackers.map((t) => t.id)
+        );
+
+      const byTracker: Record<string, TodayRow> = {};
+      (rows ?? []).forEach((r: any) => {
+        byTracker[r.tracker_id] = { id: r.id, pages_read: r.pages_read, note: r.note };
+      });
+
+      setTodayRows(byTracker);
       setTrackers(activeTrackers);
       setSelectedTrackerId(activeTrackers[0].id);
       setNewPage(String(activeTrackers[0].current_page || ""));
+      setNote(byTracker[activeTrackers[0].id]?.note ?? "");
       setShowModal(true);
     } else {
       toast("Белсенді трекер жоқ", { icon: "📚" });
@@ -194,13 +224,57 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
 
   async function handleModalSave() {
     const page = parseInt(newPage);
-    if (!selectedTrackerId || isNaN(page) || page < 0) {
+    const tracker = trackers.find((t) => t.id === selectedTrackerId);
+    if (!tracker || isNaN(page) || page < 0) {
       toast.error("Бетті дұрыс енгізіңіз");
       return;
     }
-    const tracker = trackers.find((t) => t.id === selectedTrackerId);
-    const isCompleted = tracker && tracker.total_pages > 0 && page >= tracker.total_pages;
+    if (tracker.total_pages > 0 && page > tracker.total_pages) {
+      toast.error(`Максималды бет: ${tracker.total_pages}`);
+      return;
+    }
+
+    // Бүгін бұған дейін белгіленген бетті екі рет санамау үшін, күннің
+    // басындағы бетті шығарып аламыз
+    const todayRow = todayRows[selectedTrackerId];
+    const pagesBefore = todayRow
+      ? tracker.current_page - todayRow.pages_read
+      : tracker.current_page;
+
+    if (page <= pagesBefore) {
+      toast.error(`Ағымдағы беттен (${pagesBefore}) үлкен мән енгізіңіз`);
+      return;
+    }
+
+    const pagesReadToday = page - pagesBefore;
+    const isCompleted = tracker.total_pages > 0 && page >= tracker.total_pages;
+    const cleanNote = note.trim() || null;
+
     setModalSaving(true);
+
+    // Прогресс жазбасы — трекер бетіндегі формамен бірдей. Бұрын бұл жерде
+    // тек трекердің беті жаңаратын да, жазба түспейтін: сол себепті таймер
+    // арқылы белгілеген адамға ұпай да, жұлдыз да келмейтін.
+    const progressResult = todayRow
+      ? await supabase
+          .from("reading_progress")
+          .update({ pages_read: pagesReadToday, note: cleanNote })
+          .eq("id", todayRow.id)
+      : await supabase
+          .from("reading_progress")
+          .insert({
+            tracker_id: selectedTrackerId,
+            date,
+            pages_read: pagesReadToday,
+            note: cleanNote,
+          });
+
+    if (progressResult.error) {
+      setModalSaving(false);
+      toast.error("Сақталмады");
+      return;
+    }
+
     const { error } = await supabase
       .from("book_trackers")
       .update({
@@ -213,10 +287,14 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
       toast.error("Жаңартылмады");
       return;
     }
-    toast.success(isCompleted ? "Кітап аяқталды! 🎉" : "Трекер жаңартылды!");
+
+    toast.success(isCompleted ? "Кітап аяқталды! 🎉" : "Прогрес сақталды!");
+
+    let earned = await syncTrackerProgressPoints(selectedTrackerId);
+
     if (isCompleted) {
       const res = await syncBookCompletedPoints(selectedTrackerId);
-      toastPoints(res.points);
+      earned += res.points;
       if (res.dailyLimit) {
         toast("Бүгіндікке бір кітабыңыз есепке алынды. Келесі кітабыңызды ертең енгізе аласыз", {
           icon: "📚",
@@ -224,6 +302,8 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
         });
       }
     }
+
+    toastPoints(earned);
     setShowModal(false);
     router.refresh();
   }
@@ -247,6 +327,7 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
                   onClick={() => {
                     setSelectedTrackerId(t.id);
                     setNewPage(String(t.current_page || ""));
+                    setNote(todayRows[t.id]?.note ?? "");
                   }}
                   className={`w-full rounded-2xl border p-3 text-left transition ${
                     selectedTrackerId === t.id
@@ -287,6 +368,28 @@ export default function ReadingTimer({ userId, date, todayMinutes, goalMinutes }
               className="input text-center text-lg font-semibold"
               autoFocus
             />
+          </div>
+
+          {/* Ойазық — оқығаны туралы қысқа жазба. Ерікті, бірақ жазса
+              күніне бір рет қосымша ұпай береді. */}
+          <div className="mb-5">
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Ойазық{" "}
+              <span className="font-normal text-gray-400">(міндетті емес, +3 ұпай)</span>
+            </label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
+              rows={3}
+              maxLength={NOTE_MAX}
+              placeholder="Оқығаныңыздан не есте қалды?"
+              className="input resize-none"
+            />
+            {note.length > 0 && (
+              <p className="mt-1 text-right text-xs text-gray-400">
+                {note.length} / {NOTE_MAX}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3">
