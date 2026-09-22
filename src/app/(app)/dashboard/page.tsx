@@ -3,14 +3,13 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
-import { Users, BookMarked, Plus, Star, Calendar, MessageSquare } from "lucide-react";
+import { Users, Plus, MessageSquare } from "lucide-react";
 import PushSubscribe from "@/components/PushSubscribe";
 import PushReminderHint from "@/components/PushReminderHint";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
 import { getUserStats, getReaders } from "@/lib/points";
 import { getStarWeek } from "@/lib/stars";
-import { isPreviewUser } from "@/lib/preview";
 import StarStrip from "@/components/dashboard/StarStrip";
 import { BookTracker } from "@/lib/types";
 
@@ -24,8 +23,8 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const today = kzDateStr();
 
-  // Parallel: trackers + memberships + managedClubs + total tracker count
-  const [{ data: trackers }, { data: memberships }, { data: managedClubs }, { count: totalTrackerCount }] = await Promise.all([
+  // Parallel: trackers + memberships + managedClubs
+  const [{ data: trackers }, { data: memberships }, { data: managedClubs }] = await Promise.all([
     supabase
       .from("book_trackers")
       .select("*, club_plans(books(cover_url))")
@@ -45,10 +44,6 @@ export default async function DashboardPage() {
           .eq("facilitator_id", user.id)
           .eq("is_active", true)
       : Promise.resolve({ data: null }),
-    supabase
-      .from("book_trackers")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id),
   ]);
 
   // Алдағы талқылар (depends on memberships)
@@ -90,12 +85,7 @@ export default async function DashboardPage() {
   const isFacilitatorWithClubs =
     profile.role !== "reader" && managedClubs && managedClubs.length > 0;
 
-  // Тұрақтылық блогы әзірге тек алдын ала қарайтын аккаунтта. Көңілден
-  // шықса, тексеруді алып тастаймыз да, бәріне ашылады.
-  const preview = isPreviewUser(profile.email);
-  const [starWeek, readerRows] = preview
-    ? await Promise.all([getStarWeek(user.id), getReaders()])
-    : [null, []];
+  const [starWeek, readerRows] = await Promise.all([getStarWeek(user.id), getReaders()]);
 
   const rankIndex = readerRows.findIndex((r) => r.user_id === user.id);
   const rank = rankIndex >= 0 ? rankIndex + 1 : null;
@@ -239,32 +229,13 @@ export default async function DashboardPage() {
       <PushReminderHint reminderEnabled={Boolean(goal?.reminder_enabled)} />
 
       {/* Тұрақтылық: ұпай, рейтиң және жеті күндік жұлдыз жолағы.
-          Ескі төрт тақтайшаның орнын басады. */}
-      {starWeek ? (
-        <StarStrip
-          points={stats.total}
-          levelName={stats.level.name}
-          rank={rank}
-          week={starWeek}
-        />
-      ) : (
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: "Клубтар", value: memberships?.length ?? 0, icon: Users, href: "/clubs", color: "text-blue-600 bg-blue-50" },
-          { label: "Трекерлер", value: totalTrackerCount ?? 0, icon: BookMarked, href: "/tracker", color: "text-primary-600 bg-primary-50" },
-          { label: "Талқылар", value: upcomingMeetings?.length ?? 0, icon: Calendar, href: "/clubs", color: "text-yellow-600 bg-yellow-50" },
-          { label: "Ұпай", value: stats.total, icon: Star, href: "/profile", color: "text-purple-600 bg-purple-50" },
-        ].map(({ label, value, icon: Icon, href, color }) => (
-          <Link key={label} href={href} className="card hover:border-primary-200 transition">
-            <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl ${color}`}>
-              <Icon size={18} />
-            </div>
-            <p className="text-xl font-bold text-gray-900">{value}</p>
-            <p className="text-xs text-gray-500">{label}</p>
-          </Link>
-        ))}
-      </div>
-      )}
+          Ескі төрт тақтайшаның орнын басты. */}
+      <StarStrip
+        points={stats.total}
+        levelName={stats.level.name}
+        rank={rank}
+        week={starWeek}
+      />
 
       {isFacilitatorWithClubs ? (
         /* ── ЖҮРГІЗУШІ: трекерлер сол, клубтар оң ── */
