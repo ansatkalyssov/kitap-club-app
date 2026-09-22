@@ -8,7 +8,10 @@ import PushSubscribe from "@/components/PushSubscribe";
 import PushReminderHint from "@/components/PushReminderHint";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
-import { getUserStats } from "@/lib/points";
+import { getUserStats, getReaders } from "@/lib/points";
+import { getStarWeek } from "@/lib/stars";
+import { isPreviewUser } from "@/lib/preview";
+import StarStrip from "@/components/dashboard/StarStrip";
 import { BookTracker } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -86,6 +89,16 @@ export default async function DashboardPage() {
 
   const isFacilitatorWithClubs =
     profile.role !== "reader" && managedClubs && managedClubs.length > 0;
+
+  // Тұрақтылық блогы әзірге тек алдын ала қарайтын аккаунтта. Көңілден
+  // шықса, тексеруді алып тастаймыз да, бәріне ашылады.
+  const preview = isPreviewUser(profile.email);
+  const [starWeek, readerRows] = preview
+    ? await Promise.all([getStarWeek(user.id), getReaders()])
+    : [null, []];
+
+  const rankIndex = readerRows.findIndex((r) => r.user_id === user.id);
+  const rank = rankIndex >= 0 ? rankIndex + 1 : null;
 
   // Трекер картасы — қайта пайдалану үшін
   function TrackerCard({ t }: { t: BookTracker }) {
@@ -225,7 +238,16 @@ export default async function DashboardPage() {
 
       <PushReminderHint reminderEnabled={Boolean(goal?.reminder_enabled)} />
 
-      {/* Quick stats */}
+      {/* Тұрақтылық: ұпай, рейтиң және жеті күндік жұлдыз жолағы.
+          Ескі төрт тақтайшаның орнын басады. */}
+      {starWeek ? (
+        <StarStrip
+          points={stats.total}
+          levelName={stats.level.name}
+          rank={rank}
+          week={starWeek}
+        />
+      ) : (
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Клубтар", value: memberships?.length ?? 0, icon: Users, href: "/clubs", color: "text-blue-600 bg-blue-50" },
@@ -242,6 +264,7 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+      )}
 
       {isFacilitatorWithClubs ? (
         /* ── ЖҮРГІЗУШІ: трекерлер сол, клубтар оң ── */

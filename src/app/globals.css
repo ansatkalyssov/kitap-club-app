@@ -108,3 +108,61 @@
 .driver-popover.oq-tour .driver-popover-close-btn {
   @apply text-gray-400 hover:text-gray-700;
 }
+
+/* ── Жұлдыз жолағы ─────────────────────────────────────────────
+   Қозғалыс тек transform мен opacity арқылы — телефонда да жеңіл.
+   Анимацияны азайтуды қосқан адамда бәрі қозғалыссыз тұрады. */
+
+.oq-star {
+  display: inline-block;
+  transform-origin: center;
+}
+
+.oq-wave {
+  animation: oq-wave 0.85s cubic-bezier(0.3, 1.1, 0.4, 1) both;
+}
+@keyframes oq-wave {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+.oq-beat {
+  animation: oq-beat 1.9s ease-in-out infinite;
+}
+@keyframes oq-beat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+
+.oq-pop {
+  animation: oq-pop 0.65s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+@keyframes oq-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.5) rotate(-10deg); }
+  70% { transform: scale(0.94) rotate(4deg); }
+  100% { transform: scale(1); }
+}
+
+.oq-spark {
+  position: absolute;
+  left: 50%;
+  top: 35%;
+  opacity: 0;
+  pointer-events: none;
+  animation: oq-spark 0.75s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+@keyframes oq-spark {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oq-wave, .oq-beat, .oq-pop, .oq-spark {
+    animation: none !important;
+    transform: none !important;
+  }
+  .oq-spark { opacity: 0 !important; }
+}
