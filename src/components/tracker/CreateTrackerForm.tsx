@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { calcDailyPages, kzDateStr } from "@/lib/utils";
 import { RefreshCw, BookOpen, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { prepareImage } from "@/lib/image";
 
 interface Prefill {
   planId?: string;
@@ -68,9 +69,11 @@ export default function CreateTrackerForm({ userId, prefill }: Props) {
 
     let coverUrl: string | null = null;
     if (coverFile) {
-      const ext = coverFile.name.split(".").pop();
+      const { blob, ext } = await prepareImage(coverFile, "cover");
       const path = `${userId}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("books").upload(path, coverFile);
+      const { error: uploadError } = await supabase.storage
+        .from("books")
+        .upload(path, blob, { contentType: blob.type });
       if (uploadError) {
         toast.error("Мұқаба жүктелмеді: " + uploadError.message);
         setLoading(false);

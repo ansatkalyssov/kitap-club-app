@@ -8,6 +8,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { updateTracker } from "@/app/actions/trackers";
+import { prepareImage } from "@/lib/image";
 
 interface Props {
   trackerId: string;
@@ -66,9 +67,11 @@ export default function EditTrackerForm({ trackerId, existing }: Props) {
 
     if (coverFile) {
       const { data: { user } } = await supabase.auth.getUser();
-      const ext = coverFile.name.split(".").pop();
+      const { blob, ext } = await prepareImage(coverFile, "cover");
       const path = `${user?.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("books").upload(path, coverFile);
+      const { error: uploadError } = await supabase.storage
+        .from("books")
+        .upload(path, blob, { contentType: blob.type });
       if (uploadError) {
         toast.error("Сурет жүктелмеді");
         setLoading(false);

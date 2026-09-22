@@ -8,6 +8,7 @@ import { RefreshCw, ArrowLeft, Upload, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { prepareImage } from "@/lib/image";
 
 interface Props {
   clubId: string;
@@ -69,11 +70,11 @@ export default function EditClubForm({ clubId, userId, cities, existing }: Props
     let emblem_url: string | null | undefined = undefined;
 
     if (file) {
-      const ext = file.name.split(".").pop();
+      const { blob, ext } = await prepareImage(file, "emblem");
       const path = `${userId}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("clubs")
-        .upload(path, file, { upsert: true });
+        .upload(path, blob, { upsert: true, contentType: blob.type });
       if (uploadError) {
         toast.error("Сурет жүктелмеді");
         setLoading(false);

@@ -7,6 +7,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/app/actions/profile";
+import { prepareImage } from "@/lib/image";
 
 export default function ProfileForm() {
   const supabase = createClient();
@@ -60,11 +61,11 @@ export default function ProfileForm() {
     let newAvatarUrl = avatarUrl;
 
     if (avatarFile) {
-      const ext = avatarFile.name.split(".").pop();
+      const { blob, ext } = await prepareImage(avatarFile, "avatar");
       const path = `${userId}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, avatarFile, { upsert: true });
+        .upload(path, blob, { upsert: true, contentType: blob.type });
 
       if (uploadError) {
         toast.error("Сурет жүктелмеді: " + uploadError.message);

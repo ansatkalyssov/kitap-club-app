@@ -8,6 +8,7 @@ import { RefreshCw, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { createTrackersForMembers } from "@/app/actions/trackers";
 import { kzDateStr } from "@/lib/utils";
+import { prepareImage } from "@/lib/image";
 
 interface Props {
   clubId: string;
@@ -73,9 +74,11 @@ export default function AddPlanForm({ clubId }: Props) {
     let coverUrl: string | null = null;
     if (coverFile) {
       const { data: { user } } = await supabase.auth.getUser();
-      const ext = coverFile.name.split(".").pop();
+      const { blob, ext } = await prepareImage(coverFile, "cover");
       const path = `${user?.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("books").upload(path, coverFile);
+      const { error: uploadError } = await supabase.storage
+        .from("books")
+        .upload(path, blob, { contentType: blob.type });
       if (uploadError) {
         toast.error("Мұқаба жүктелмеді: " + uploadError.message);
         setLoading(false);

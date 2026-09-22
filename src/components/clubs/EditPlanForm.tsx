@@ -8,6 +8,7 @@ import { RefreshCw, Trash2, ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateBook } from "@/app/actions/books";
 import { syncPlanTrackers } from "@/app/actions/plans";
+import { prepareImage } from "@/lib/image";
 
 interface Props {
   clubId: string;
@@ -78,9 +79,11 @@ export default function EditPlanForm({ clubId, plan }: Props) {
     let coverUrl: string | null = plan.books?.cover_url ?? null;
     if (coverFile) {
       const { data: { user } } = await supabase.auth.getUser();
-      const ext = coverFile.name.split(".").pop();
+      const { blob, ext } = await prepareImage(coverFile, "cover");
       const path = `${user?.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("books").upload(path, coverFile);
+      const { error: uploadError } = await supabase.storage
+        .from("books")
+        .upload(path, blob, { contentType: blob.type });
       if (uploadError) {
         toast.error("Мұқаба жүктелмеді: " + uploadError.message);
         setLoading(false);
