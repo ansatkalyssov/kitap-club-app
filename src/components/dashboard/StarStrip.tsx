@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Star, Trophy, Plus } from "lucide-react";
+import { Star, Trophy, Target } from "lucide-react";
 import type { StarWeek } from "@/lib/stars";
 
 /**
@@ -41,7 +41,7 @@ interface Props {
 }
 
 export default function StarStrip({ points, levelName, rank, week }: Props) {
-  const { days, streak, hasActiveTracker } = week;
+  const { days, streak, hasGoal, everLit } = week;
   const today = days[days.length - 1];
 
   const [waveAt, setWaveAt] = useState(0);
@@ -77,12 +77,18 @@ export default function StarStrip({ points, levelName, rank, week }: Props) {
     return () => clearTimeout(timer);
   }, [today.lit, today.date]);
 
-  // Жұлдыз екі іздің кез келгенінен жанады, сондықтан мәтін де екеуін
-  // де атайды — әйтпесе таймермен оқитын адам тек прогресс керек деп
-  // ойлап қалады
-  const message = today.lit
-    ? "Бүгінгі жұлдызыңыз жанды 👏"
-    : "Бүгінгі жұлдызыңызды алу үшін оқу уақытыңызды немесе прогресіңізді енгізіңіз";
+  // Мәтін оқырманның нақты жағдайына қарай өзгереді. Жұлдыз екі іздің
+  // кез келгенінен жанатындықтан, екеуі де аталады — әйтпесе таймермен
+  // оқитын адам тек прогресс керек деп ойлап қалады.
+  const message = !hasGoal
+    ? "Жұлдызыңыз жануы үшін күнделікті мақсатыңызды қойып, оқу прогресіңізді енгізіңіз"
+    : today.lit
+      ? "Бүгінгі жұлдызыңыз жанды 👏"
+      : streak > 0
+        ? `${streak} күндік тізбегіңіз үзілмеуі үшін бүгін де оқыңыз`
+        : !everLit
+          ? "Бірінші жұлдызыңызды жағыңыз — оқып, прогресіңізді енгізіңіз"
+          : "Бүгінгі жұлдызыңызды жағыңыз — оқып, прогресіңізді енгізіңіз";
 
   return (
     <div className="card mb-6">
@@ -157,12 +163,9 @@ export default function StarStrip({ points, levelName, rank, week }: Props) {
 
       <div className="mt-4 flex items-center gap-3 rounded-xl bg-amber-50 px-3 py-2.5">
         <p className="flex-1 text-[13px] leading-snug text-amber-900">{message}</p>
-        {!hasActiveTracker && (
-          <Link
-            href="/tracker/new"
-            className="btn-primary shrink-0 px-3 py-1.5 text-xs"
-          >
-            <Plus size={13} /> Кітап қосу
+        {!hasGoal && (
+          <Link href="/reading-plan" className="btn-primary shrink-0 px-3 py-1.5 text-xs">
+            <Target size={13} /> Мақсат қою
           </Link>
         )}
       </div>

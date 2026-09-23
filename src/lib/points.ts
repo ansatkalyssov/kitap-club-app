@@ -1,7 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { kzDateStr, addDays, calcReadingStreak } from "@/lib/utils";
+import { kzDateStr, addDays } from "@/lib/utils";
+import { getActiveDays, streakFrom } from "@/lib/stars";
 
 // =============================================
 // Ұпай ережелері
@@ -209,11 +210,15 @@ export async function onReadingLogged(userId: string): Promise<number> {
   ]);
 
   const target = goal?.daily_minutes ?? 0;
-  if (!target || !log || log.minutes_read < target) return 0;
+  if (!target) return 0;
 
-  const earned = await awardPoints(userId, "daily_goal", today);
-  const streakEarned = await syncStreak(userId);
-  return earned + streakEarned;
+  // Күндік ұпай тек мақсат орындалғанда беріледі. Ал тізбек одан бөлек:
+  // оған сол күні оқығанының ізі қалса жеткілікті, сондықтан мақсатқа
+  // жетпесе де тексереміз.
+  const earned =
+    log && log.minutes_read >= target ? await awardPoints(userId, "daily_goal", today) : 0;
+
+  return earned + (await syncStreak(userId));
 }
 
 /**
@@ -248,6 +253,11 @@ export async function onTrackerProgress(userId: string, trackerId: string): Prom
   if (todayRows.some((r) => (r.note ?? "").trim().length > 0)) {
     total += await awardPoints(userId, "progress_note", today);
   }
+
+  // Прогресс те тізбектің күнін ашады, сондықтан тексеру осы жерде де
+  // жүруі керек: әйтпесе тек бет белгілейтін адамның тізбегі өсіп
+  // тұрады да, марапаты ешқашан төленбейді.
+  total += await syncStreak(userId);
 
   return total;
 }
@@ -369,22 +379,10 @@ export async function onClubJoined(userId: string, clubId: string): Promise<numb
  * бірнеше рет шақырса да артық ұпай кетпейді.
  */
 export async function syncStreak(userId: string): Promise<number> {
-  const admin = createAdminClient();
-
-  const [{ data: goal }, { data: logs }] = await Promise.all([
-    admin.from("reading_goals").select("daily_minutes").eq("user_id", userId).maybeSingle(),
-    admin
-      .from("reading_logs")
-      .select("date, minutes_read")
-      .eq("user_id", userId)
-      .order("date", { ascending: false })
-      .limit(400),
-  ]);
-
-  const target = goal?.daily_minutes ?? 0;
-  if (!target) return 0;
-
-  const streak = calcReadingStreak(logs ?? [], target);
+  // Тізбектің ережесі жұлдыз жолағымен ортақ — екеуі бір жерден
+  // есептеледі, сондықтан экрандағы сан мен ұпай ешқашан ажырамайды
+  const days = await getActiveDays(userId);
+  const streak = streakFrom(days, kzDateStr());
   if (streak < 7) return 0;
 
   let total = 0;
@@ -481,15 +479,9 @@ export type UserStats = {
 export async function getUserStats(userId: string, monthStart: string): Promise<UserStats> {
   const admin = createAdminClient();
 
-  const [{ data: events }, { data: goal }, { data: logs }] = await Promise.all([
+  const [{ data: events }, days] = await Promise.all([
     admin.from("point_events").select("points, event_date").eq("user_id", userId),
-    admin.from("reading_goals").select("daily_minutes").eq("user_id", userId).maybeSingle(),
-    admin
-      .from("reading_logs")
-      .select("date, minutes_read")
-      .eq("user_id", userId)
-      .order("date", { ascending: false })
-      .limit(400),
+    getActiveDays(userId),
   ]);
 
   const rows = events ?? [];
@@ -498,7 +490,7 @@ export async function getUserStats(userId: string, monthStart: string): Promise<
     .filter((r) => r.event_date >= monthStart)
     .reduce((s, r) => s + r.points, 0);
 
-  const streak = calcReadingStreak(logs ?? [], goal?.daily_minutes ?? 0);
+  const streak = streakFrom(days, kzDateStr());
   const { current, next } = levelFor(total);
 
   return { total, monthPoints, streak, level: current, nextLevel: next };

@@ -2,17 +2,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { kzDateStr, addDays } from "@/lib/utils";
 
 /**
- * Жұлдыз жолағы — оқырманның соңғы жеті күндегі тұрақтылығы.
+ * Жұлдыз жолағы және оның артындағы тізбек.
  *
- * Жұлдыз ұпайға байланбаған: ол — әдеттің белгісі, марапат емес. Сол
- * себепті шарты да қарапайым: сол күні оқығанының ізі қалса, жұлдыз
- * жанады. Із екеу болуы мүмкін — трекерге енгізілген бет прогресі
- * немесе журналға жазылған оқу уақыты.
+ * Жұлдыз бен стрик — бір нәрсенің екі көрінісі: жолақтағы жанған жұлдыз
+ * дәл сол тізбектің күні. Сондықтан екеуінің ережесі де осы файлда, бір
+ * жерде тұр — әйтпесе экрандағы сан мен ұпай бір-бірінен ажырап кетер
+ * еді.
  *
- * Екеуін де санаймыз, себебі оқырман бетін белгілеуді ұмытып, тек
- * таймермен оқуы мүмкін. Ондайда ол күні оқығаны рас, бірақ жолағы бос
- * қалар еді. Күнделікті мақсаттың да, ұпайдың да бұған қатысы жоқ —
- * оларда өз ережесі бар.
+ * Ереже:
+ *   1. Күнделікті мақсат қойылған болуы керек — бір реттік кіру билеті.
+ *      Мақсаттың саны күннің есептелуіне әсер етпейді.
+ *   2. Сол күні кемінде бір минут жазылса НЕМЕСЕ трекерге прогресс
+ *      енгізілсе — күн есептеледі.
+ *   3. Бүгінгі күн тізбекті үзбейді: із әлі қалмаса, санақ кешеден
+ *      жүреді. Күн бітпейінше үлгеруге болады.
  */
 
 export type StarDay = {
@@ -25,10 +28,11 @@ export type StarDay = {
 
 export type StarWeek = {
   days: StarDay[];
-  /** Қатарынан неше күн — бүгіннен (әлі енгізбесе, кешеден) кері саналады */
   streak: number;
-  /** Белсенді трекер бар ма — болмаса жұлдыз жағудың жолы жоқ */
-  hasActiveTracker: boolean;
+  /** Мақсат қойылған ба — қойылмаса жұлдыз мүлдем жанбайды */
+  hasGoal: boolean;
+  /** Бұрын бірде-бір жұлдыз жаққан ба — жаңа оқырманға бөлек сөз үшін */
+  everLit: boolean;
 };
 
 const WEEKDAYS = ["Жк", "Дс", "Сс", "Ср", "Бс", "Жм", "Сн"];
@@ -38,21 +42,33 @@ function labelFor(date: string): string {
   return WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
 }
 
-export async function getStarWeek(userId: string): Promise<StarWeek> {
+/** Тізбек есебіне жететін ең ұзын кезең */
+const WINDOW_DAYS = 400;
+
+/**
+ * Оқырманның ізі қалған күндері.
+ *
+ * Мақсат қойылмаса бос жиын қайтады — сонда жолақ та, тізбек те бірдей
+ * бос болады, екеуі ешқашан қайшы келмейді.
+ */
+export async function getActiveDays(userId: string): Promise<Set<string>> {
   const admin = createAdminClient();
-  const today = kzDateStr();
+  const since = addDays(kzDateStr(), -WINDOW_DAYS);
+
+  const { data: goal } = await admin
+    .from("reading_goals")
+    .select("daily_minutes")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!goal?.daily_minutes) return new Set();
 
   const { data: trackers } = await admin
     .from("book_trackers")
-    .select("id, is_completed")
+    .select("id")
     .eq("user_id", userId);
 
   const ids = (trackers ?? []).map((t) => t.id);
-  const hasActiveTracker = (trackers ?? []).some((t) => !t.is_completed);
-
-  // Тізбек ұзын болуы мүмкін, сондықтан жолаққа керек жеті күннен әрі
-  // қарай да аламыз. 400 күн — streak-тегі шекпен бірдей.
-  const since = addDays(today, -400);
 
   const [{ data: progress }, { data: logs }] = await Promise.all([
     ids.length
@@ -60,29 +76,49 @@ export async function getStarWeek(userId: string): Promise<StarWeek> {
       : Promise.resolve({ data: [] as { date: string }[] }),
     admin
       .from("reading_logs")
-      .select("date, minutes_read")
+      .select("date")
       .eq("user_id", userId)
       .gt("minutes_read", 0)
       .gte("date", since),
   ]);
 
-  const done = new Set<string>([
+  return new Set<string>([
     ...(progress ?? []).map((p) => p.date),
     ...(logs ?? []).map((l) => l.date),
   ]);
+}
 
-  const days: StarDay[] = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(today, i - 6);
-    return { date, label: labelFor(date), lit: done.has(date), isToday: date === today };
-  });
-
-  // Бүгін әлі енгізбесе, тізбек үзілмейді — күн әлі бітпеді
-  let cursor = done.has(today) ? today : addDays(today, -1);
+/** Қатарынан неше күн — бүгіннен, із жоқ болса кешеден кері санайды */
+export function streakFrom(days: Set<string>, today: string): number {
+  let cursor = days.has(today) ? today : addDays(today, -1);
   let streak = 0;
-  while (done.has(cursor)) {
+  while (days.has(cursor)) {
     streak++;
     cursor = addDays(cursor, -1);
   }
+  return streak;
+}
 
-  return { days, streak, hasActiveTracker };
+export async function getStarWeek(userId: string): Promise<StarWeek> {
+  const today = kzDateStr();
+  const days = await getActiveDays(userId);
+
+  // Мақсаты жоқ адамда жиын бос болады, бірақ оған жолақтың орнына
+  // мақсат қоюға шақыру көрсетіледі — сол себепті бөлек белгі керек
+  const admin = createAdminClient();
+  const { data: goal } = await admin
+    .from("reading_goals")
+    .select("daily_minutes")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return {
+    days: Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(today, i - 6);
+      return { date, label: labelFor(date), lit: days.has(date), isToday: date === today };
+    }),
+    streak: streakFrom(days, today),
+    hasGoal: Boolean(goal?.daily_minutes),
+    everLit: days.size > 0,
+  };
 }

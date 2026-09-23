@@ -6,7 +6,8 @@ import GoalForm from "@/components/reading-plan/GoalForm";
 import EditGoalSection from "@/components/reading-plan/EditGoalSection";
 import ReadingTimer from "@/components/reading-plan/ReadingTimer";
 import PushReminderHint from "@/components/PushReminderHint";
-import { calcReadingStreak, formatDateKz, kzDateStr } from "@/lib/utils";
+import { formatDateKz, kzDateStr } from "@/lib/utils";
+import { getActiveDays, streakFrom } from "@/lib/stars";
 
 export default async function ReadingPlanPage() {
   const user = await getUser();
@@ -30,7 +31,8 @@ export default async function ReadingPlanPage() {
 
   const todayLog = (logs || []).find((l) => l.date === today) || null;
   const target = goal?.daily_minutes || 0;
-  const streak = goal ? calcReadingStreak(logs || [], target) : 0;
+  // Жолақтағы жұлдызбен бірдей ереже — екі бетте екі түрлі сан тұрмас үшін
+  const streak = streakFrom(await getActiveDays(user.id), today);
 
   return (
       <div className="page-container max-w-xl">

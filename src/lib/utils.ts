@@ -83,31 +83,7 @@ export function addDays(dateStr: string, delta: number): string {
   return dt.toISOString().split("T")[0];
 }
 
-export function calcReadingStreak(
-  logs: { date: string; minutes_read: number }[],
-  target: number
-): number {
-  if (!target) return 0;
-
-  const logMap = new Map(logs.map((l) => [l.date, l]));
-
-  // Бүгін әлі мақсатты орындамаса, тізбек үзілмейді — әлі кеш емес.
-  // Сондықтан санақ кешеден басталады.
-  let cursor = kzDateStr();
-  const todayLog = logMap.get(cursor);
-  if (!todayLog || todayLog.minutes_read < target) {
-    cursor = addDays(cursor, -1);
-  }
-
-  let streak = 0;
-  while (true) {
-    const log = logMap.get(cursor);
-    if (log && log.minutes_read >= target) {
-      streak++;
-      cursor = addDays(cursor, -1);
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
+// Оқу тізбегі бұрын осы жерде есептелетін: күн тек мақсат орындалғанда
+// ғана саналатын. Қазір ереже өзгерді — тізбек пен жұлдыз жолағы бір
+// есептен шығады, ол lib/stars.ts ішінде. Екі жерде екі түрлі сан
+// шықпас үшін ескі функция алынып тасталды.
