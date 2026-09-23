@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/queries";
 import Link from "next/link";
-import { Star, Flame, TrendingUp, ArrowRight } from "lucide-react";
+import { Star, Flame, TrendingUp, ArrowRight, BookOpen } from "lucide-react";
 import ProfileForm from "@/components/profile/ProfileForm";
 import RestartTourButton from "@/components/tour/RestartTourButton";
 import ProgressBar from "@/components/ui/ProgressBar";
@@ -66,6 +66,23 @@ export default async function ProfilePage() {
           Ұпай тарихы <ArrowRight size={14} />
         </Link>
       </div>
+
+      {/* Өз сөресі. Бұл бет басқаларға бұрыннан көрінетін, ал оқырманның
+          өзіне апаратын жол жоқ еді. from арқылы «Артқа» осы бетке
+          қайтады — әйтпесе ол оқырмандар тізіміне шығып кетеді. */}
+      <Link
+        href={`/readers/${user.id}?from=/profile`}
+        className="card mb-4 flex items-center gap-3 transition hover:border-primary-200"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+          <BookOpen size={16} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-gray-900">Менің сөрем</p>
+          <p className="text-xs text-gray-500">Оқып жатқан және бітірген кітаптарым</p>
+        </div>
+        <ArrowRight size={16} className="shrink-0 text-gray-400" />
+      </Link>
 
       {/* Осы айдағы үлес */}
       <div className="card mb-6 flex items-center gap-3">
