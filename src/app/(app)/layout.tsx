@@ -14,7 +14,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Navbar profile={profile as Profile} />
-      <main className="flex-1 lg:ml-56">
+      {/* min-w-0 міндетті: flex элементі әдепкіде өз мазмұнының ең кіші
+          енінен кішірейе алмайды. Ішінде бөлінбейтін ұзын нәрсе болса,
+          main экраннан кеңейіп кетеді де, iOS бүкіл бетті сол ендікке
+          есептеп, үлкейтілген күйде көрсетеді. */}
+      <main className="min-w-0 flex-1 lg:ml-56">
         <div className="pt-14 pb-28 lg:pt-0 lg:pb-0">{children}</div>
       </main>
       <Heartbeat />
