@@ -10,9 +10,11 @@ import { getClubLeaderboard, getReaders } from "@/lib/points";
 import { monthBounds } from "@/lib/utils";
 
 function Header({ tab, label }: { tab: string; label: string }) {
+  // Оқырмандар алдымен тұрады әрі әдепкі қойынды сол — бетке кірген адам
+  // ең бірінші өзін және таныстарын іздейді
   const tabs = [
-    { key: "clubs", label: "Клубтар", href: "/rating" },
-    { key: "readers", label: "Оқырмандар", href: "/rating?tab=readers" },
+    { key: "readers", label: "Оқырмандар", href: "/rating" },
+    { key: "clubs", label: "Клубтар", href: "/rating?tab=clubs" },
   ];
 
   return (
@@ -55,7 +57,7 @@ export default async function RatingPage({
   const supabase = await createClient();
 
   const { start, end, label } = monthBounds();
-  const tab = (await searchParams).tab === "readers" ? "readers" : "clubs";
+  const tab = (await searchParams).tab === "clubs" ? "clubs" : "readers";
 
   if (tab === "readers") {
     const readers = await getReaders();
