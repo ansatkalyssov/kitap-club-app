@@ -516,6 +516,20 @@ export type ReaderRow = {
  * SECURITY DEFINER функциясы тек рұқсат етілген өрістерді қайтарады:
  * жеке ескертпелер мен күнделікті журнал сұрауға кірмейді.
  */
+/**
+ * Оқырманның рейтингтегі орны.
+ *
+ * Бұрын бұл үшін readers_directory толық шақырылатын: 292 оқырманның
+ * ұпайы, кітаптары, клубтары есептеліп, тізімнен өз орны ізделетін.
+ * Басты бет ашылған сайын — бір ғана сан үшін.
+ */
+export async function getReaderRank(userId: string): Promise<number | null> {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase.rpc("reader_rank", { target: userId });
+  if (error || typeof data !== "number") return null;
+  return data;
+}
+
 export async function getReaders(): Promise<ReaderRow[]> {
   // Қолданушы клиентімен шақырылады: функция ішінде auth.uid() тексеріледі,
   // ал service_role кілтінде ол бос болады да, ештеңе қайтпайды.

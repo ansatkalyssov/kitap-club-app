@@ -8,7 +8,7 @@ import PushSubscribe from "@/components/PushSubscribe";
 import PushReminderHint from "@/components/PushReminderHint";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
-import { getUserStats, getReaders } from "@/lib/points";
+import { getUserStats, getReaderRank } from "@/lib/points";
 import { getStarWeek } from "@/lib/stars";
 import StarStrip from "@/components/dashboard/StarStrip";
 import { BookTracker } from "@/lib/types";
@@ -46,49 +46,56 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: null }),
   ]);
 
-  // Алдағы талқылар (depends on memberships)
   const clubIds = memberships?.map((m) => m.club_id) || [];
-  const { data: upcomingMeetings } = clubIds.length
-    ? await supabase
-        .from("club_plans")
-        .select("id, meeting_date, meeting_location, books(title), clubs(id, name, emblem_url)")
-        .in("club_id", clubIds)
-        .gte("meeting_date", today)
-        .order("meeting_date", { ascending: true })
-        .limit(1)
-    : { data: null };
 
-  // Клубтардағы соңғы пікір белсенділігі.
-  // Пікір енді жеке таб емес — талқының ішінде тұр, сондықтан жаңалықтан
-  // хабардар ететін жалғыз орын осы лента.
-  const { data: recentActivity } = clubIds.length
-    ? await supabase
-        .from("book_analyses")
-        .select("id, title, parent_id, club_id, club_plan_id, created_at, profiles(name), clubs(name), club_plans(books(title))")
-        .in("club_id", clubIds)
-        .neq("author_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(4)
-    : { data: null };
+  // Қалған сұраудың бәрі бір-біріне тәуелсіз, сондықтан бірге кетеді.
+  // Бұрын олар кезекпен жүретін де, әрқайсысы Vercel мен Supabase
+  // арасындағы бір барып-қайтуға созылатын.
+  const [
+    { data: upcomingMeetings },
+    { data: recentActivity },
+    stats,
+    { data: goal },
+    starWeek,
+    rank,
+  ] = await Promise.all([
+    // Алдағы талқы
+    clubIds.length
+      ? supabase
+          .from("club_plans")
+          .select("id, meeting_date, meeting_location, books(title), clubs(id, name, emblem_url)")
+          .in("club_id", clubIds)
+          .gte("meeting_date", today)
+          .order("meeting_date", { ascending: true })
+          .limit(1)
+      : Promise.resolve({ data: null }),
+    // Клубтардағы соңғы пікір белсенділігі. Пікір енді жеке таб емес —
+    // талқының ішінде тұр, сондықтан жаңалықтан хабардар ететін жалғыз
+    // орын осы лента.
+    clubIds.length
+      ? supabase
+          .from("book_analyses")
+          .select("id, title, parent_id, club_id, club_plan_id, created_at, profiles(name), clubs(name), club_plans(books(title))")
+          .in("club_id", clubIds)
+          .neq("author_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(4)
+      : Promise.resolve({ data: null }),
+    getUserStats(user.id, monthBounds().start),
+    supabase
+      .from("reading_goals")
+      .select("reminder_enabled")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    getStarWeek(user.id),
+    getReaderRank(user.id),
+  ]);
 
   // Нақты оқылып жатқан трекерлер (current_page > 0)
   const inProgressTrackers = (trackers || []).filter((t) => t.current_page > 0);
 
-  const stats = await getUserStats(user.id, monthBounds().start);
-
-  const { data: goal } = await supabase
-    .from("reading_goals")
-    .select("reminder_enabled")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
   const isFacilitatorWithClubs =
     profile.role !== "reader" && managedClubs && managedClubs.length > 0;
-
-  const [starWeek, readerRows] = await Promise.all([getStarWeek(user.id), getReaders()]);
-
-  const rankIndex = readerRows.findIndex((r) => r.user_id === user.id);
-  const rank = rankIndex >= 0 ? rankIndex + 1 : null;
 
   // Трекер картасы — қайта пайдалану үшін
   function TrackerCard({ t }: { t: BookTracker }) {

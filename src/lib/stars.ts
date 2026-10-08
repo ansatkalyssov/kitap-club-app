@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kzDateStr, addDays } from "@/lib/utils";
 
@@ -50,18 +51,17 @@ const WINDOW_DAYS = 400;
  *
  * Мақсат қойылмаса бос жиын қайтады — сонда жолақ та, тізбек те бірдей
  * бос болады, екеуі ешқашан қайшы келмейді.
+ *
+ * cache() — бір сұраныстың ішінде бір рет қана есептеу үшін. Басты бетте
+ * бұл функция екі жерден шақырылады (ұпай көрсеткіші мен жұлдыз жолағы),
+ * ал оның әр жүрісі төрт сұрау жібереді.
  */
-export async function getActiveDays(userId: string): Promise<Set<string>> {
+export const getActiveDays = cache(async (userId: string): Promise<Set<string>> => {
   const admin = createAdminClient();
   const since = addDays(kzDateStr(), -WINDOW_DAYS);
 
-  const { data: goal } = await admin
-    .from("reading_goals")
-    .select("daily_minutes")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (!goal?.daily_minutes) return new Set();
+  const goal = await getGoalMinutes(userId);
+  if (!goal) return new Set();
 
   const { data: trackers } = await admin
     .from("book_trackers")
@@ -86,7 +86,21 @@ export async function getActiveDays(userId: string): Promise<Set<string>> {
     ...(progress ?? []).map((p) => p.date),
     ...(logs ?? []).map((l) => l.date),
   ]);
-}
+});
+
+/**
+ * Күнделікті мақсаттың минуты. Бір сұраныста бірнеше жерден керек болады
+ * (жұлдыз жолағы, тізбек, еске салғыш), сондықтан бір рет сұралады.
+ */
+export const getGoalMinutes = cache(async (userId: string): Promise<number> => {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("reading_goals")
+    .select("daily_minutes")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data?.daily_minutes ?? 0;
+});
 
 /** Қатарынан неше күн — бүгіннен, із жоқ болса кешеден кері санайды */
 export function streakFrom(days: Set<string>, today: string): number {
@@ -104,13 +118,9 @@ export async function getStarWeek(userId: string): Promise<StarWeek> {
   const days = await getActiveDays(userId);
 
   // Мақсаты жоқ адамда жиын бос болады, бірақ оған жолақтың орнына
-  // мақсат қоюға шақыру көрсетіледі — сол себепті бөлек белгі керек
-  const admin = createAdminClient();
-  const { data: goal } = await admin
-    .from("reading_goals")
-    .select("daily_minutes")
-    .eq("user_id", userId)
-    .maybeSingle();
+  // мақсат қоюға шақыру көрсетіледі — сол себепті бөлек белгі керек.
+  // Сұрау қайталанбайды: cache() жоғарыдағы шақырудың жауабын береді.
+  const goal = await getGoalMinutes(userId);
 
   return {
     days: Array.from({ length: 7 }, (_, i) => {
@@ -118,7 +128,7 @@ export async function getStarWeek(userId: string): Promise<StarWeek> {
       return { date, label: labelFor(date), lit: days.has(date), isToday: date === today };
     }),
     streak: streakFrom(days, today),
-    hasGoal: Boolean(goal?.daily_minutes),
+    hasGoal: goal > 0,
     everLit: days.size > 0,
   };
 }
