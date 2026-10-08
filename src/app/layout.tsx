@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import { Toaster } from "react-hot-toast";
+import ViewportFix from "@/components/ViewportFix";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="kk" className={nunito.variable}>
       <body>
+        <ViewportFix />
         {children}
         <Toaster
           position="top-center"
