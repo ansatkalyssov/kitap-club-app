@@ -316,20 +316,25 @@ export const getAppFeed = unstable_cache(
  */
 async function rankMoves(): Promise<FeedItem[]> {
   const admin = createAdminClient();
-  const cut = addDays(kzDateStr(), -WINDOW);
+  const today = kzDateStr();
+  const windowDays = Array.from({ length: WINDOW + 1 }, (_, i) => addDays(today, i - WINDOW));
 
   const [{ data: events }, { data: profiles }] = await Promise.all([
     admin.from("point_events").select("user_id, points, event_date"),
     admin.from("profiles").select("id, name, email"),
   ]);
 
-  const now = new Map<string, number>();
-  const before = new Map<string, number>();
+  const names = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  // Журналды алдын ала күн бойынша да, адам бойынша да бөліп аламыз —
+  // әйтпесе әр оқырман үшін бүкіл тізімді қайта сүзіп шығар едік
+  const byDay = new Map<string, { user_id: string; points: number }[]>();
+  const byUser = new Map<string, { event_date: string; points: number }[]>();
   (events ?? []).forEach((e) => {
-    now.set(e.user_id, (now.get(e.user_id) ?? 0) + e.points);
-    if (e.event_date < cut) {
-      before.set(e.user_id, (before.get(e.user_id) ?? 0) + e.points);
-    }
+    if (!byDay.has(e.event_date)) byDay.set(e.event_date, []);
+    byDay.get(e.event_date)!.push(e);
+    if (!byUser.has(e.user_id)) byUser.set(e.user_id, []);
+    byUser.get(e.user_id)!.push(e);
   });
 
   const rank = (totals: Map<string, number>) => {
@@ -339,53 +344,85 @@ async function rankMoves(): Promise<FeedItem[]> {
     return new Map(sorted.map((r, i) => [r.id, i + 1]));
   };
 
-  const rNow = rank(now);
-  const rBefore = rank(before);
-  const names = new Map((profiles ?? []).map((p) => [p.id, p]));
-  const at = new Date().toISOString();
+  // Әр күнгі жиынтық пен рет. Терезеден бұрынғы күй — бастапқы нүкте,
+  // одан кейін күн-күнмен алға жүреміз. Сонда адам қай күні, қанша
+  // ұпаймен кіргені дәл шығады.
+  const totals = new Map<string, number>();
+  (events ?? [])
+    .filter((e) => e.event_date < windowDays[0])
+    .forEach((e) => totals.set(e.user_id, (totals.get(e.user_id) ?? 0) + e.points));
+
+  const snaps = [{ date: addDays(windowDays[0], -1), totals: new Map(totals), rank: rank(totals) }];
+  for (const d of windowDays) {
+    (byDay.get(d) ?? []).forEach((e) =>
+      totals.set(e.user_id, (totals.get(e.user_id) ?? 0) + e.points)
+    );
+    snaps.push({ date: d, totals: new Map(totals), rank: rank(totals) });
+  }
+
+  const last = snaps[snaps.length - 1];
   const items: FeedItem[] = [];
 
-  for (const [id, place] of Array.from(rNow.entries())) {
-    const was = rBefore.get(id) ?? Infinity;
+  for (const p of profiles ?? []) {
+    const id = p.id;
     const name = fmtName(names.get(id));
-    const pts = now.get(id) ?? 0;
-    const base = { id: `rank:${id}:${place}`, href: "/rating", at };
 
-    if (place === 1) {
+    // Көш бастау — бүгінгі күй, өткендегі оқиға емес. Мәтіні де осы
+    // шақта: «келе жатыр».
+    if (last.rank.get(id) === 1) {
       items.push({
-        ...base,
+        id: `rank-lead:${id}`,
         icon: "💯",
         lead: name,
-        rest: ` әлемдік рейтиңде ${pts} ұпаймен көш бастап келе жатыр!`,
-      });
-    } else if (place <= 3 && was > 3) {
-      items.push({
-        ...base,
-        icon: "💥",
-        lead: name,
-        rest: ` әлемдік рейтиңде ${pts} ұпаймен үздік үштікке кірді!`,
-      });
-    } else if (place <= 10 && was > 10) {
-      items.push({
-        ...base,
-        icon: "🎆",
-        lead: name,
-        rest: ` әлемдік рейтиңде ${pts} ұпаймен үздік ондыққа кірді!`,
+        rest: ` әлемдік рейтиңде ${last.totals.get(id) ?? 0} ұпаймен көш бастап келе жатыр!`,
+        href: "/rating",
+        at: `${today}T12:00:00`,
       });
     }
 
-    // Деңгей көтерілу — сол бір есептен шығады
-    const pts0 = before.get(id) ?? 0;
-    const lvlNow = levelFor(pts).current;
-    if (lvlNow.name !== levelFor(pts0).current.name) {
-      items.push({
-        id: `level:${id}:${lvlNow.name}`,
-        icon: "🔥",
-        lead: name,
-        rest: ` ${pts} ұпай жинап «${lvlNow.name}» деңгейіне өтті`,
-        href: `/readers/${id}`,
-        at,
-      });
+    // Үштікке, ондыққа кіру — нақты қай күні болғанын табамыз
+    for (const [limit, icon, label] of [
+      [3, "💥", "үздік үштікке"],
+      [10, "🎆", "үздік ондыққа"],
+    ] as const) {
+      for (let i = 1; i < snaps.length; i++) {
+        const now = snaps[i].rank.get(id) ?? Infinity;
+        const prev = snaps[i - 1].rank.get(id) ?? Infinity;
+        if (now <= limit && prev > limit) {
+          items.push({
+            id: `rank:${id}:${limit}`,
+            icon,
+            lead: name,
+            rest: ` әлемдік рейтиңде ${snaps[i].totals.get(id) ?? 0} ұпаймен ${label} кірді!`,
+            href: "/rating",
+            at: `${snaps[i].date}T12:00:00`,
+          });
+          break;
+        }
+      }
+    }
+
+    // Деңгей көтерілу — адамның өз журналы бойынша, қай жазбада асып
+    // түскені нақты белгілі
+    let run = snaps[0].totals.get(id) ?? 0;
+    const own = (byUser.get(id) ?? [])
+      .filter((e) => e.event_date >= windowDays[0])
+      .sort((a, b) => a.event_date.localeCompare(b.event_date));
+
+    for (const e of own) {
+      const was = levelFor(run).current.name;
+      run += e.points;
+      const became = levelFor(run).current.name;
+      if (became !== was) {
+        items.push({
+          id: `level:${id}:${became}`,
+          icon: "🔥",
+          lead: name,
+          rest: ` ${run} ұпай жинап «${became}» деңгейіне өтті`,
+          href: `/readers/${id}`,
+          at: `${e.event_date}T12:00:00`,
+        });
+      }
     }
   }
 
