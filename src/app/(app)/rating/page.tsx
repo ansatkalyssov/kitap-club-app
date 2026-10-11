@@ -23,7 +23,7 @@ function Header({ tab, label }: { tab: string; label: string }) {
         <h1 data-tour="rating">Рейтиң</h1>
         <p className="mt-0.5 text-sm text-gray-500">
           {tab === "readers"
-            ? "Кім не оқып жатыр"
+            ? "Кітап оқудан бақ сынап көріңіз"
             : `Клубтардың ${label} айындағы оқу белсенділігі`}
         </p>
       </div>
@@ -138,7 +138,7 @@ export default async function RatingPage({
                     )}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {r.member_count} мүше · орташа {r.avg_points}
+                    {r.member_count} оқырман · орташа {r.avg_points}
                   </p>
                 </div>
 
@@ -166,7 +166,7 @@ export default async function RatingPage({
               >
                 <Users size={14} className="shrink-0 text-gray-300" />
                 <span className="min-w-0 flex-1 truncate text-sm text-gray-600">{r.club_name}</span>
-                <span className="shrink-0 text-xs text-gray-400">{r.member_count} мүше</span>
+                <span className="shrink-0 text-xs text-gray-400">{r.member_count} оқырман</span>
               </Link>
             ))}
           </div>
@@ -174,7 +174,7 @@ export default async function RatingPage({
       )}
 
       <p className="mt-8 text-center text-xs text-gray-400">
-        Рейтиң мүшелердің оқудан жинаған ұпайынан құралады.
+        Рейтиң оқырмандардың оқудан жинаған ұпайынан құралады.
         <br />
         Әр айдың басында нөлден басталады.
       </p>

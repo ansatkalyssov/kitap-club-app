@@ -463,14 +463,14 @@ function Dashboard({ data }: { data: AnalyticsData }) {
 
       <Card
         title="Клубтар"
-        hint="Соңғы 30 күн. Әр бағанда — сол әрекетті кемінде бір рет жасаған мүше саны. Бір адам бірнеше бағанда есептелуі мүмкін."
+        hint="Соңғы 30 күн. Әр бағанда — сол әрекетті кемінде бір рет жасаған оқырман саны. Бір адам бірнеше бағанда есептелуі мүмкін."
       >
         <div className="overflow-x-auto">
           <table className="w-full whitespace-nowrap text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                 <th className="pb-2 pr-3 font-medium">Клуб</th>
-                <th className="pb-2 px-2 text-right font-medium">Мүше</th>
+                <th className="pb-2 px-2 text-right font-medium">Оқырман</th>
                 <th className="pb-2 px-2 text-right font-medium">Белсенді</th>
                 <th className="pb-2 px-2 text-right font-medium">%</th>
                 <th className="pb-2 px-2 text-right font-medium">Таймер</th>

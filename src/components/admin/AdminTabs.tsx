@@ -142,7 +142,7 @@ export default function AdminTabs({ stats, readers, facilitators, clubs, threads
                         <BookMarked size={13} className="shrink-0 text-primary-500" />
                         <span className="min-w-0 flex-1 truncate text-gray-700">{c.name}</span>
                         {!c.active && <Badge tone="gray">Белсенді емес</Badge>}
-                        <span className="shrink-0 text-xs text-gray-500">{c.members} мүше</span>
+                        <span className="shrink-0 text-xs text-gray-500">{c.members} оқырман</span>
                       </div>
                     ))}
                   </div>
@@ -159,7 +159,7 @@ export default function AdminTabs({ stats, readers, facilitators, clubs, threads
 
       {tab === "clubs" && (
         <Table
-          head={["Клуб", "Қала", "Жүргізуші", "Мүше", "Жоспар", "Пікір", "Осы ай"]}
+          head={["Клуб", "Қала", "Жүргізуші", "Оқырман", "Жоспар", "Пікір", "Осы ай"]}
           rows={clubs
             .filter((c: any) => match(c.name, c.city, c.facilitator))
             .map((c: any) => [
@@ -197,7 +197,7 @@ export default function AdminTabs({ stats, readers, facilitators, clubs, threads
 
       {tab === "rating" && (
         <Table
-          head={["#", "Клуб", "Мүше", "Ұпай", "Орташа"]}
+          head={["#", "Клуб", "Оқырман", "Ұпай", "Орташа"]}
           rows={rating.map((r: any, i: number) => [
             <span key="i" className={`font-bold ${i < 3 ? "text-primary-600" : "text-gray-400"}`}>{i + 1}</span>,
             <span key="c" className="font-medium text-gray-900">{r.club_name}</span>,
