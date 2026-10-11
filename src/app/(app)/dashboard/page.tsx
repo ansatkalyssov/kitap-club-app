@@ -10,7 +10,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
 import { getUserStats, getReaderRank } from "@/lib/points";
 import { getStarWeek } from "@/lib/stars";
-import { getClubFeed, getAppFeed } from "@/lib/feed";
+import { getClubFeed, getAppFeed, pickVaried } from "@/lib/feed";
 import { isPreviewUser } from "@/lib/preview";
 import NewsFeed from "@/components/dashboard/NewsFeed";
 import StarStrip from "@/components/dashboard/StarStrip";
@@ -103,12 +103,15 @@ export default async function DashboardPage() {
   ]);
 
   // Бесеу-бестен. Жалпы лентадан өз клубының оқиғалары алынып тасталады —
-  // оқырман оны жоғарыдан онсыз да көреді.
+  // оқырман оны жоғарыдан онсыз да көреді. Қалғанынан әр түрлі клубтың,
+  // әр түрлі оқиғасы таңдалады.
   const clubNews = clubFeed.slice(0, 5);
-  const appNews = appFeed
-    .filter((a) => !a.clubId || !clubIds.includes(a.clubId))
-    .filter((a) => !clubNews.some((c) => c.id === a.id))
-    .slice(0, 5);
+  const appNews = pickVaried(
+    appFeed
+      .filter((a) => !a.clubId || !clubIds.includes(a.clubId))
+      .filter((a) => !clubNews.some((c) => c.id === a.id)),
+    5
+  );
 
   // Нақты оқылып жатқан трекерлер (current_page > 0)
   const inProgressTrackers = (trackers || []).filter((t) => t.current_page > 0);

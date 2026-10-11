@@ -25,6 +25,11 @@ export type FeedItem = {
   /** Сұрыптау үшін */
   at: string;
   /**
+   * Оқиғаның түрі. Басты бетте түрлерін араластыру үшін керек — әйтпесе
+   * лента бір түрдегі оқиғалармен толып қалады.
+   */
+  kind: "book" | "streak" | "members" | "plan" | "club" | "thread" | "rank" | "level";
+  /**
    * Оқиға қай клубқа қатысты. Жалпы лентадан оқырманның өз клубының
    * жаңалығын алып тастау үшін керек — ол оны жоғарыдан онсыз да көреді.
    */
@@ -38,6 +43,39 @@ export type FeedItem = {
  * араластырсақ, кешкі оқиға бір күн бұрынғы болып шығады — сондықтан
  * алдымен белдеуге келтіреміз.
  */
+/**
+ * Клубқа қосылғандарды бір оқиғаға жинайды.
+ *
+ * Бұрын күн бойынша топталатын, сондықтан бір клубқа бірнеше күн
+ * қатарынан адам қосылса, лента сол бір хабармен толып кететін. Енді
+ * бүкіл терезе бойынша бір жол шығады.
+ */
+function groupJoins(
+  rows: { club_id: string; joined_at: string }[]
+): { club: string; n: number; at: string; from: string }[] {
+  const byClub = new Map<string, { n: number; at: string; from: string }>();
+  rows.forEach((m) => {
+    const cur = byClub.get(m.club_id);
+    if (!cur) {
+      byClub.set(m.club_id, { n: 1, at: m.joined_at, from: m.joined_at });
+      return;
+    }
+    cur.n++;
+    if (m.joined_at > cur.at) cur.at = m.joined_at;
+    if (m.joined_at < cur.from) cur.from = m.joined_at;
+  });
+
+  return Array.from(byClub.entries()).map(([club, v]) => ({ club, ...v }));
+}
+
+/** «соңғы бір аптада», «соңғы екі аптада» — топталған оқиғаның мерзімі */
+function spanLabel(from: string): string {
+  const days = Math.round(
+    (new Date(kzDateStr()).getTime() - new Date(from.slice(0, 10)).getTime()) / 86400000
+  );
+  return days <= 7 ? "соңғы бір аптада" : "соңғы екі аптада";
+}
+
 function joinIcon(key: string): string {
   // Кезектесіп тұрады — лента бір ғана эмодзимен қайталанбас үшін. Кілт
   // бойынша таңдалады, сондықтан бір оқиға әр жүктегенде құбылмайды.
@@ -138,31 +176,20 @@ export async function getClubFeed(userId: string, clubIds: string[]): Promise<Fe
   // 1 мен 2 — ұпай журналынан
   items.push(...(await fromPointEvents(events ?? [], names, (u) => mateIds.has(u) && u !== userId)));
 
-  // 3. Жаңа мүшелер — клуб пен күн бойынша топталады, әйтпесе лента
-  //    тек солармен толып кетеді
-  const grouped = new Map<string, { club: string; day: string; n: number; at: string }>();
-  (members ?? [])
-    .filter((m) => m.user_id !== userId)
-    .forEach((m) => {
-      const day = m.joined_at.slice(0, 10);
-      const key = `${m.club_id}:${day}`;
-      const cur = grouped.get(key);
-      if (cur) {
-        cur.n++;
-        if (m.joined_at > cur.at) cur.at = m.joined_at;
-      } else {
-        grouped.set(key, { club: m.club_id, day, n: 1, at: m.joined_at });
-      }
-    });
-
-  grouped.forEach((g, key) => {
+  // 3. Жаңа мүшелер — клуб бойынша бір жолға жиналады
+  groupJoins((members ?? []).filter((m) => m.user_id !== userId)).forEach((g) => {
     items.push({
-      id: `members:${key}`,
-      icon: joinIcon(key),
+      id: `members:${g.club}`,
+      icon: joinIcon(g.club),
+      kind: "members",
       lead: `«${clubs.get(g.club)?.name ?? "Клуб"}»`,
-      rest: ` — ${g.n} жаңа оқырман қосылды`,
+      rest:
+        g.n === 1
+          ? " құрамына жаңа оқырман қосылды"
+          : ` құрамына ${spanLabel(g.from)} ${g.n} адам қосылды`,
       href: `/clubs/${g.club}`,
       at: g.at,
+      clubId: g.club,
     });
   });
 
@@ -170,6 +197,7 @@ export async function getClubFeed(userId: string, clubIds: string[]): Promise<Fe
   (plans ?? []).forEach((p: any) => {
     items.push({
       id: `plan:${p.id}`,
+      kind: "plan",
       icon: "📜",
       lead: `«${clubs.get(p.club_id)?.name ?? "Клуб"}»`,
       rest: ` жүргізушісі жаңа жоспар жариялады${p.books?.title ? `: «${p.books.title}»` : ""}`,
@@ -184,6 +212,7 @@ export async function getClubFeed(userId: string, clubIds: string[]): Promise<Fe
     .forEach((t) => {
       items.push({
         id: `thread:${t.id}`,
+        kind: "thread",
         icon: "💬",
         lead: fmtName(names.get(t.author_id!)),
         rest: ` ${teaser(t.content || t.title || "")}`,
@@ -229,6 +258,7 @@ export const getAppFeed = unstable_cache(
       const city = c.cities?.name;
       items.push({
         id: `club:${c.id}`,
+        kind: "club",
         icon: "📗",
         lead: city ? `${city} қаласында` : "Қолданбада",
         rest: ` су жаңа «${c.name}» атты кітап клубы құрылды`,
@@ -239,23 +269,16 @@ export const getAppFeed = unstable_cache(
 
     // 5. Жаңа мүшелер
     const allClubs = await clubsOf(Array.from(new Set((members ?? []).map((m) => m.club_id))));
-    const grouped = new Map<string, { club: string; n: number; at: string }>();
-    (members ?? []).forEach((m) => {
-      const key = `${m.club_id}:${m.joined_at.slice(0, 10)}`;
-      const cur = grouped.get(key);
-      if (cur) {
-        cur.n++;
-        if (m.joined_at > cur.at) cur.at = m.joined_at;
-      } else {
-        grouped.set(key, { club: m.club_id, n: 1, at: m.joined_at });
-      }
-    });
-    grouped.forEach((g, key) => {
+    groupJoins(members ?? []).forEach((g) => {
       items.push({
-        id: `app-members:${key}`,
-        icon: joinIcon(key),
+        id: `app-members:${g.club}`,
+        icon: joinIcon(g.club),
+        kind: "members",
         lead: `«${allClubs.get(g.club)?.name ?? "Клуб"}»`,
-        rest: ` құрамына ${g.n} жаңа оқырман қосылды`,
+        rest:
+          g.n === 1
+            ? " құрамына жаңа оқырман қосылды"
+            : ` құрамына ${spanLabel(g.from)} ${g.n} адам қосылды`,
         href: `/clubs/${g.club}`,
         at: g.at,
         clubId: g.club,
@@ -266,6 +289,7 @@ export const getAppFeed = unstable_cache(
     (plans ?? []).forEach((p: any) => {
       items.push({
         id: `app-plan:${p.id}`,
+        kind: "plan",
         icon: "📜",
         lead: `«${allClubs.get(p.club_id)?.name ?? "Клуб"}»`,
         rest: ` жүргізушісі жаңа жоспар жариялады${p.books?.title ? `: «${p.books.title}»` : ""}`,
@@ -288,6 +312,7 @@ export const getAppFeed = unstable_cache(
     if (top) {
       items.push({
         id: `top-thread:${top.t.id}`,
+        kind: "thread",
         // 🔥 деңгей көтерілуге кетті, екеуі шатаспас үшін басқасы
         icon: "🗣️",
         lead: "Ең көп талқыланған",
@@ -391,6 +416,7 @@ async function rankMoves(): Promise<FeedItem[]> {
     if (last.rank.get(id) === 1) {
       items.push({
         id: `rank-lead:${id}`,
+        kind: "rank",
         icon: "💯",
         lead: name,
         rest: " әлемдік рейтиңде көш бастап келе жатыр!",
@@ -410,6 +436,7 @@ async function rankMoves(): Promise<FeedItem[]> {
         if (now <= limit && prev > limit) {
           items.push({
             id: `rank:${id}:${limit}`,
+            kind: "rank",
             icon,
             lead: name,
             rest: ` әлемдік рейтиңде ${label} кірді!`,
@@ -435,6 +462,7 @@ async function rankMoves(): Promise<FeedItem[]> {
       if (became !== was) {
         items.push({
           id: `level:${id}:${became}`,
+          kind: "level",
           icon: "🔥",
           lead: name,
           rest: ` ${run} ұпай жинап «${became}» деңгейіне өтті`,
@@ -507,6 +535,7 @@ async function fromPointEvents(
 
       items.push({
         id: `book:${e.ref_id}`,
+        kind: "book",
         icon: "🎉",
         lead: name,
         rest: ` «${t.book_title}» атты клуб кітабын ${days ? `${days} күнде ` : ""}оқып бітірді`,
@@ -519,6 +548,7 @@ async function fromPointEvents(
     const days = e.code === "streak_7" ? 7 : e.code === "streak_30" ? 30 : 365;
     items.push({
       id: `streak:${e.id}`,
+      kind: "streak",
       icon: "👏",
       lead: name,
       rest: ` ${days} күн қатарынан кітап оқып жүр`,
@@ -543,6 +573,36 @@ async function clubsOf(ids: string[]) {
   if (ids.length === 0) return new Map<string, { name: string }>();
   const { data } = await admin.from("clubs").select("id, name").in("id", ids);
   return new Map((data ?? []).map((c) => [c.id, { name: c.name }]));
+}
+
+/**
+ * Басты бетке әр түрлі оқиға шығатындай етіп таңдайды.
+ *
+ * Жай ғана ең жаңаларын алсақ, лента бір клубтың немесе бір түрдегі
+ * оқиғалармен толып қалады — ал қолданбада басқа да тірлік болып жатыр.
+ * Сондықтан алдымен әр түрден, әр клубтан біреуден аламыз, содан кейін
+ * орын қалса қалғанымен толтырамыз.
+ */
+export function pickVaried(items: FeedItem[], count: number): FeedItem[] {
+  const picked: FeedItem[] = [];
+  const kinds = new Set<string>();
+  const clubs = new Set<string>();
+
+  for (const it of items) {
+    if (picked.length >= count) break;
+    if (kinds.has(it.kind)) continue;
+    if (it.clubId && clubs.has(it.clubId)) continue;
+    picked.push(it);
+    kinds.add(it.kind);
+    if (it.clubId) clubs.add(it.clubId);
+  }
+
+  for (const it of items) {
+    if (picked.length >= count) break;
+    if (!picked.includes(it)) picked.push(it);
+  }
+
+  return picked;
 }
 
 /**
