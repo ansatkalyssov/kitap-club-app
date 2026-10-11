@@ -10,6 +10,8 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
 import { getUserStats, getReaderRank } from "@/lib/points";
 import { getStarWeek } from "@/lib/stars";
+import { getClubFeed, getAppFeed } from "@/lib/feed";
+import { isPreviewUser } from "@/lib/preview";
 import StarStrip from "@/components/dashboard/StarStrip";
 import { BookTracker } from "@/lib/types";
 
@@ -48,11 +50,17 @@ export default async function DashboardPage() {
 
   const clubIds = memberships?.map((m) => m.club_id) || [];
 
+  // Жаңа лента әзірге тек алдын ала қарайтын аккаунтта. Қалғандарына
+  // бұрынғы пікір лентасы көрінеді.
+  const preview = isPreviewUser(profile.email);
+
   // Қалған сұраудың бәрі бір-біріне тәуелсіз, сондықтан бірге кетеді.
   // Бұрын олар кезекпен жүретін де, әрқайсысы Vercel мен Supabase
   // арасындағы бір барып-қайтуға созылатын.
   const [
     { data: upcomingMeetings },
+    clubFeed,
+    appFeed,
     { data: recentActivity },
     stats,
     { data: goal },
@@ -69,10 +77,12 @@ export default async function DashboardPage() {
           .order("meeting_date", { ascending: true })
           .limit(1)
       : Promise.resolve({ data: null }),
-    // Клубтардағы соңғы пікір белсенділігі. Пікір енді жеке таб емес —
-    // талқының ішінде тұр, сондықтан жаңалықтан хабардар ететін жалғыз
-    // орын осы лента.
-    clubIds.length
+    // Клубтағы жаңалықтар — тек мүшеге. Клубсыз оқырманда бос массив.
+    preview ? getClubFeed(user.id, clubIds) : Promise.resolve([]),
+    // Oqyrman жаңалықтары — бәріне ортақ, сондықтан кэштен келеді
+    preview ? getAppFeed() : Promise.resolve([]),
+    // Ескі лента — жаңасы ашылғанша қалғандарға сол көрінеді
+    !preview && clubIds.length
       ? supabase
           .from("book_analyses")
           .select("id, title, parent_id, club_id, club_plan_id, created_at, profiles(name), clubs(name), club_plans(books(title))")
@@ -90,6 +100,13 @@ export default async function DashboardPage() {
     getStarWeek(user.id),
     getReaderRank(user.id),
   ]);
+
+  // Клуб жаңалықтары алдымен тұрады, жетпесе қалғаны жалпы лентадан
+  // толтырылады — сонда ешкімде бос экран қалмайды
+  const feed = [...clubFeed, ...appFeed.filter((a) => !clubFeed.some((c) => c.id === a.id))].slice(
+    0,
+    6
+  );
 
   // Нақты оқылып жатқан трекерлер (current_page > 0)
   const inProgressTrackers = (trackers || []).filter((t) => t.current_page > 0);
@@ -356,8 +373,8 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Клубтардағы соңғы белсенділік */}
-      {recentActivity && recentActivity.length > 0 && (
+      {/* Ескі лента — жаңасы ашылғанша қалған оқырмандарда сол тұрады */}
+      {!preview && recentActivity && recentActivity.length > 0 && (
         <section className="mt-5">
           <div className="section-title">
             <h2>Клубтарда не болып жатыр</h2>
@@ -388,6 +405,31 @@ export default async function DashboardPage() {
                 </Link>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {/* Жаңалықтар. Клуб мүшесі екеуін де көреді, клубсыз оқырман тек
+          Oqyrman жаңалықтарын — бұрын ол бұл жерде ештеңе көрмейтін. */}
+      {feed.length > 0 && (
+        <section className="mt-5">
+          <div className="section-title">
+            <h2>{clubIds.length > 0 ? "Не болып жатыр" : "Oqyrman-да не болып жатыр"}</h2>
+          </div>
+          <div className="space-y-2">
+            {feed.map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                className="flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-primary-200 hover:shadow-sm"
+              >
+                <span className="shrink-0 text-lg leading-none">{item.icon}</span>
+                <p className="min-w-0 flex-1 text-sm leading-snug text-gray-700">
+                  <span className="font-semibold text-gray-900">{item.lead}</span>
+                  {item.rest}
+                </p>
+              </Link>
+            ))}
           </div>
         </section>
       )}
