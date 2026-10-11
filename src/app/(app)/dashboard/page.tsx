@@ -102,14 +102,13 @@ export default async function DashboardPage() {
     getReaderRank(user.id),
   ]);
 
-  // Үшеу-үштен: соңғы 3 клуб жаңалығы және соңғы 3 жалпы жаңалық.
-  // Жалпы лентадан өз клубының оқиғалары алынып тасталады — оқырман оны
-  // жоғарыдан онсыз да көреді.
-  const clubNews = clubFeed.slice(0, 3);
+  // Бесеу-бестен. Жалпы лентадан өз клубының оқиғалары алынып тасталады —
+  // оқырман оны жоғарыдан онсыз да көреді.
+  const clubNews = clubFeed.slice(0, 5);
   const appNews = appFeed
     .filter((a) => !a.clubId || !clubIds.includes(a.clubId))
     .filter((a) => !clubNews.some((c) => c.id === a.id))
-    .slice(0, 3);
+    .slice(0, 5);
 
   // Нақты оқылып жатқан трекерлер (current_page > 0)
   const inProgressTrackers = (trackers || []).filter((t) => t.current_page > 0);
