@@ -344,20 +344,40 @@ async function rankMoves(): Promise<FeedItem[]> {
     return new Map(sorted.map((r, i) => [r.id, i + 1]));
   };
 
-  // Әр күнгі жиынтық пен рет. Терезеден бұрынғы күй — бастапқы нүкте,
-  // одан кейін күн-күнмен алға жүреміз. Сонда адам қай күні, қанша
-  // ұпаймен кіргені дәл шығады.
-  const totals = new Map<string, number>();
-  (events ?? [])
-    .filter((e) => e.event_date < windowDays[0])
-    .forEach((e) => totals.set(e.user_id, (totals.get(e.user_id) ?? 0) + e.points));
+  // Күн-күнмен бүкіл тарихты шолып өтеміз. Терезедегі күндердің ретін
+  // сақтаймыз (кім қашан үштікке кіргенін табу үшін), ал көшбасшының
+  // ауысуын одан да әріден іздейміз: ол терезеден бұрын да басталуы
+  // мүмкін, бірақ «қашаннан бері» деген сұрақтың жауабы керек.
+  const allDays = Array.from(byDay.keys()).sort();
+  const start = allDays[0] ?? windowDays[0];
+  const snapFrom = addDays(windowDays[0], -1);
 
-  const snaps = [{ date: addDays(windowDays[0], -1), totals: new Map(totals), rank: rank(totals) }];
-  for (const d of windowDays) {
+  const totals = new Map<string, number>();
+  const snaps: { date: string; totals: Map<string, number>; rank: Map<string, number> }[] = [];
+  let leaderId: string | null = null;
+  let leaderSince: string | null = null;
+
+  for (let d = start; d <= kzDateStr(); d = addDays(d, 1)) {
     (byDay.get(d) ?? []).forEach((e) =>
       totals.set(e.user_id, (totals.get(e.user_id) ?? 0) + e.points)
     );
-    snaps.push({ date: d, totals: new Map(totals), rank: rank(totals) });
+
+    // Көшбасшы — ең көп ұпайлы адам. Тең болса, аты бойынша: рейтиң
+    // бетіндегі ретпен бірдей болуы керек.
+    let top: { id: string; pts: number; name: string } | null = null;
+    for (const p of profiles ?? []) {
+      const pts = totals.get(p.id) ?? 0;
+      const name = p.name ?? "";
+      if (!top || pts > top.pts || (pts === top.pts && name.localeCompare(top.name) < 0)) {
+        top = { id: p.id, pts, name };
+      }
+    }
+    if (top && top.pts > 0 && top.id !== leaderId) {
+      leaderId = top.id;
+      leaderSince = d;
+    }
+
+    if (d >= snapFrom) snaps.push({ date: d, totals: new Map(totals), rank: rank(totals) });
   }
 
   const last = snaps[snaps.length - 1];
@@ -367,16 +387,15 @@ async function rankMoves(): Promise<FeedItem[]> {
     const id = p.id;
     const name = fmtName(names.get(id));
 
-    // Көш бастау — бүгінгі күй, өткендегі оқиға емес. Мәтіні де осы
-    // шақта: «келе жатыр».
+    // Көш бастау. Мәтіні осы шақта тұр, ал күні — қашан бастағаны.
     if (last.rank.get(id) === 1) {
       items.push({
         id: `rank-lead:${id}`,
         icon: "💯",
         lead: name,
-        rest: ` әлемдік рейтиңде ${last.totals.get(id) ?? 0} ұпаймен көш бастап келе жатыр!`,
+        rest: " әлемдік рейтиңде көш бастап келе жатыр!",
         href: "/rating",
-        at: `${today}T12:00:00`,
+        at: `${leaderSince ?? today}T12:00:00`,
       });
     }
 
@@ -393,7 +412,7 @@ async function rankMoves(): Promise<FeedItem[]> {
             id: `rank:${id}:${limit}`,
             icon,
             lead: name,
-            rest: ` әлемдік рейтиңде ${snaps[i].totals.get(id) ?? 0} ұпаймен ${label} кірді!`,
+            rest: ` әлемдік рейтиңде ${label} кірді!`,
             href: "/rating",
             at: `${snaps[i].date}T12:00:00`,
           });
