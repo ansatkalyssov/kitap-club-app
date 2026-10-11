@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kzDateStr, addDays } from "@/lib/utils";
+import { levelFor } from "@/lib/points";
 
 /**
  * Басты беттегі жаңалықтар лентасы.
@@ -37,6 +38,14 @@ export type FeedItem = {
  * араластырсақ, кешкі оқиға бір күн бұрынғы болып шығады — сондықтан
  * алдымен белдеуге келтіреміз.
  */
+function joinIcon(key: string): string {
+  // Кезектесіп тұрады — лента бір ғана эмодзимен қайталанбас үшін. Кілт
+  // бойынша таңдалады, сондықтан бір оқиға әр жүктегенде құбылмайды.
+  let sum = 0;
+  for (let i = 0; i < key.length; i++) sum += key.charCodeAt(i);
+  return sum % 2 === 0 ? "👨‍🎓" : "👩‍🎓";
+}
+
 export function timeAgo(iso: string): string {
   const kz = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Almaty" });
   const day = (s: string) => new Date(s + "T00:00:00Z").getTime();
@@ -149,7 +158,7 @@ export async function getClubFeed(userId: string, clubIds: string[]): Promise<Fe
   grouped.forEach((g, key) => {
     items.push({
       id: `members:${key}`,
-      icon: "👩‍🎓",
+      icon: joinIcon(key),
       lead: `«${clubs.get(g.club)?.name ?? "Клуб"}»`,
       rest: ` — ${g.n} жаңа оқырман қосылды`,
       href: `/clubs/${g.club}`,
@@ -244,7 +253,7 @@ export const getAppFeed = unstable_cache(
     grouped.forEach((g, key) => {
       items.push({
         id: `app-members:${key}`,
-        icon: "👩‍🎓",
+        icon: joinIcon(key),
         lead: `«${allClubs.get(g.club)?.name ?? "Клуб"}»`,
         rest: ` құрамына ${g.n} жаңа оқырман қосылды`,
         href: `/clubs/${g.club}`,
@@ -279,7 +288,8 @@ export const getAppFeed = unstable_cache(
     if (top) {
       items.push({
         id: `top-thread:${top.t.id}`,
-        icon: "🔥",
+        // 🔥 деңгей көтерілуге кетті, екеуі шатаспас үшін басқасы
+        icon: "🗣️",
         lead: "Ең көп талқыланған",
         rest: ` — ${teaser(top.t.title || top.t.content || "")} · ${top.n} жауап`,
         href: `/analysis/${top.t.id}`,
@@ -297,15 +307,16 @@ export const getAppFeed = unstable_cache(
 );
 
 /**
- * Рейтиңдегі қозғалыс.
+ * Рейтиңдегі қозғалыс пен деңгей көтерілу.
  *
- * Орындардың тарихы сақталмайды, бірақ оның қажеті де жоқ: ұпай журналы
- * толықтай сақтаулы әрі әр жазбаның күні бар. Сондықтан бір апта бұрынғы
- * ұпайды қосып, сол кездегі орынды есептеп шығарамыз.
+ * Орындардың да, деңгейлердің де тарихы сақталмайды, бірақ оның қажеті
+ * жоқ: ұпай журналы толықтай сақтаулы әрі әр жазбаның күні бар. Сондықтан
+ * екі апта бұрынғы ұпайды қосып, сол кездегі орын мен деңгейді есептеп
+ * шығарамыз — айырмасы болса, бұл шынымен болған оқиға.
  */
 async function rankMoves(): Promise<FeedItem[]> {
   const admin = createAdminClient();
-  const weekAgo = addDays(kzDateStr(), -7);
+  const cut = addDays(kzDateStr(), -WINDOW);
 
   const [{ data: events }, { data: profiles }] = await Promise.all([
     admin.from("point_events").select("user_id, points, event_date"),
@@ -316,7 +327,7 @@ async function rankMoves(): Promise<FeedItem[]> {
   const before = new Map<string, number>();
   (events ?? []).forEach((e) => {
     now.set(e.user_id, (now.get(e.user_id) ?? 0) + e.points);
-    if (e.event_date < weekAgo) {
+    if (e.event_date < cut) {
       before.set(e.user_id, (before.get(e.user_id) ?? 0) + e.points);
     }
   });
@@ -337,14 +348,44 @@ async function rankMoves(): Promise<FeedItem[]> {
   for (const [id, place] of Array.from(rNow.entries())) {
     const was = rBefore.get(id) ?? Infinity;
     const name = fmtName(names.get(id));
+    const pts = now.get(id) ?? 0;
     const base = { id: `rank:${id}:${place}`, href: "/rating", at };
 
     if (place === 1) {
-      items.push({ ...base, icon: "💯", lead: name, rest: " әлемдік рейтиңде көш бастап келе жатыр" });
+      items.push({
+        ...base,
+        icon: "💯",
+        lead: name,
+        rest: ` әлемдік рейтиңде ${pts} ұпаймен көш бастап келе жатыр!`,
+      });
     } else if (place <= 3 && was > 3) {
-      items.push({ ...base, icon: "💥", lead: name, rest: " әлемдік рейтиңде үздік үштікке кірді" });
+      items.push({
+        ...base,
+        icon: "💥",
+        lead: name,
+        rest: ` әлемдік рейтиңде ${pts} ұпаймен үздік үштікке кірді!`,
+      });
     } else if (place <= 10 && was > 10) {
-      items.push({ ...base, icon: "🎆", lead: name, rest: " әлемдік рейтиңде үздік ондыққа кірді" });
+      items.push({
+        ...base,
+        icon: "🎆",
+        lead: name,
+        rest: ` әлемдік рейтиңде ${pts} ұпаймен үздік ондыққа кірді!`,
+      });
+    }
+
+    // Деңгей көтерілу — сол бір есептен шығады
+    const pts0 = before.get(id) ?? 0;
+    const lvlNow = levelFor(pts).current;
+    if (lvlNow.name !== levelFor(pts0).current.name) {
+      items.push({
+        id: `level:${id}:${lvlNow.name}`,
+        icon: "🔥",
+        lead: name,
+        rest: ` ${pts} ұпай жинап «${lvlNow.name}» деңгейіне өтті`,
+        href: `/readers/${id}`,
+        at,
+      });
     }
   }
 
@@ -368,14 +409,28 @@ async function fromPointEvents(
     .filter((e) => e.code === "club_book_ontime" || e.code === "book_done")
     .map((e) => e.ref_id);
 
-  const { data: trackers } = trackerIds.length
-    ? await admin
-        .from("book_trackers")
-        .select("id, book_title, start_date, created_at, club_plan_id")
-        .in("id", trackerIds)
-    : { data: [] };
+  const [{ data: trackers }, { data: progress }] = trackerIds.length
+    ? await Promise.all([
+        admin
+          .from("book_trackers")
+          .select("id, book_title, club_plan_id")
+          .in("id", trackerIds),
+        admin.from("reading_progress").select("tracker_id, date").in("tracker_id", trackerIds),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   const byId = new Map((trackers ?? []).map((t) => [t.id, t]));
+
+  // Оқуға кеткен уақыт трекердің жасалған күнінен емес, бірінші прогрестен
+  // саналады. Клуб кітабының трекерін жүргізуші жоспар жариялағанда бүкіл
+  // мүшеге бірден ашады — сондықтан трекердің жасы «қанша күнде оқыды»
+  // дегенді мүлдем көрсетпейді: 38 күн деп тұрғаны шын мәнінде жоспардың
+  // жасы болып шығады.
+  const firstProgress = new Map<string, string>();
+  (progress ?? []).forEach((p) => {
+    const cur = firstProgress.get(p.tracker_id);
+    if (!cur || p.date < cur) firstProgress.set(p.tracker_id, p.date);
+  });
   const items: FeedItem[] = [];
   const seenBook = new Set<string>();
 
@@ -389,12 +444,16 @@ async function fromPointEvents(
       if (!t || !t.club_plan_id || seenBook.has(e.ref_id)) continue;
       seenBook.add(e.ref_id);
 
-      const days = daysBetween(t.start_date ?? t.created_at, e.created_at);
+      // Прогресс мүлдем енгізілмесе, күн санын жазбаймыз — ойдан шыққан
+      // сан жазғаннан гөрі, оны мүлдем айтпаған дұрыс
+      const first = firstProgress.get(e.ref_id);
+      const days = first ? daysBetween(first, e.created_at) : null;
+
       items.push({
         id: `book:${e.ref_id}`,
         icon: "🎉",
         lead: name,
-        rest: ` «${t.book_title}» атты клуб кітабын ${days} күнде оқып бітірді`,
+        rest: ` «${t.book_title}» атты клуб кітабын ${days ? `${days} күнде ` : ""}оқып бітірді`,
         href: `/readers/${e.user_id}`,
         at: e.created_at,
       });
