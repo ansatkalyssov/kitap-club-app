@@ -245,7 +245,7 @@ export const getAppFeed = unstable_cache(
         admin.from("club_plans").select("id, club_id, created_at, books(title)").gte("created_at", sinceTs),
         admin
           .from("book_analyses")
-          .select("id, title, content, parent_id, created_at")
+          .select("id, title, content, parent_id, author_id, created_at")
           .gte("created_at", addDays(kzDateStr(), -60) + "T00:00:00"),
       ]);
 
@@ -309,14 +309,17 @@ export const getAppFeed = unstable_cache(
       .map((t) => ({ t, n: counts.get(t.id) ?? 0 }))
       .filter((x) => x.n > 0)
       .sort((a, b) => b.n - a.n)[0];
+    // Таңдауы «ең көп талқыланған» бойынша, ал көрінісі клубтағы пікір
+    // сияқты: автордың аты мен сөзінің басы. Оқырманға «мынаны ең көп
+    // талқылады» дегеннен гөрі, сөздің өзі қызығырақ.
     if (top) {
+      const author = await namesOf([top.t.author_id]);
       items.push({
         id: `top-thread:${top.t.id}`,
         kind: "thread",
-        // 🔥 деңгей көтерілуге кетті, екеуі шатаспас үшін басқасы
-        icon: "🗣️",
-        lead: "Ең көп талқыланған",
-        rest: ` — ${teaser(top.t.title || top.t.content || "")} · ${top.n} жауап`,
+        icon: "💬",
+        lead: fmtName(author.get(top.t.author_id)),
+        rest: ` ${teaser(top.t.content || top.t.title || "")}`,
         href: `/analysis/${top.t.id}`,
         at: top.t.created_at,
       });
