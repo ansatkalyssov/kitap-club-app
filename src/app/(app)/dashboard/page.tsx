@@ -12,6 +12,7 @@ import { getUserStats, getReaderRank } from "@/lib/points";
 import { getStarWeek } from "@/lib/stars";
 import { getClubFeed, getAppFeed } from "@/lib/feed";
 import { isPreviewUser } from "@/lib/preview";
+import NewsFeed from "@/components/dashboard/NewsFeed";
 import StarStrip from "@/components/dashboard/StarStrip";
 import { BookTracker } from "@/lib/types";
 
@@ -101,12 +102,14 @@ export default async function DashboardPage() {
     getReaderRank(user.id),
   ]);
 
-  // Клуб жаңалықтары алдымен тұрады, жетпесе қалғаны жалпы лентадан
-  // толтырылады — сонда ешкімде бос экран қалмайды
-  const feed = [...clubFeed, ...appFeed.filter((a) => !clubFeed.some((c) => c.id === a.id))].slice(
-    0,
-    6
-  );
+  // Үшеу-үштен: соңғы 3 клуб жаңалығы және соңғы 3 жалпы жаңалық.
+  // Жалпы лентадан өз клубының оқиғалары алынып тасталады — оқырман оны
+  // жоғарыдан онсыз да көреді.
+  const clubNews = clubFeed.slice(0, 3);
+  const appNews = appFeed
+    .filter((a) => !a.clubId || !clubIds.includes(a.clubId))
+    .filter((a) => !clubNews.some((c) => c.id === a.id))
+    .slice(0, 3);
 
   // Нақты оқылып жатқан трекерлер (current_page > 0)
   const inProgressTrackers = (trackers || []).filter((t) => t.current_page > 0);
@@ -409,30 +412,9 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* Жаңалықтар. Клуб мүшесі екеуін де көреді, клубсыз оқырман тек
-          Oqyrman жаңалықтарын — бұрын ол бұл жерде ештеңе көрмейтін. */}
-      {feed.length > 0 && (
-        <section className="mt-5">
-          <div className="section-title">
-            <h2>{clubIds.length > 0 ? "Не болып жатыр" : "Oqyrman-да не болып жатыр"}</h2>
-          </div>
-          <div className="space-y-2">
-            {feed.map((item) => (
-              <Link
-                key={item.id}
-                href={item.href}
-                className="flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-primary-200 hover:shadow-sm"
-              >
-                <span className="shrink-0 text-lg leading-none">{item.icon}</span>
-                <p className="min-w-0 flex-1 text-sm leading-snug text-gray-700">
-                  <span className="font-semibold text-gray-900">{item.lead}</span>
-                  {item.rest}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Жаңалықтар легі. Клуб мүшесі екеуін де көреді, клубсыз оқырман
+          тек Oqyrman жаңалықтарын — бұрын ол бұл жерде ештеңе көрмейтін. */}
+      <NewsFeed club={clubNews} app={appNews} showAll />
     </div>
   );
 }

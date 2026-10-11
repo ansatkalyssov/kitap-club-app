@@ -23,12 +23,36 @@ export type FeedItem = {
   href: string;
   /** Сұрыптау үшін */
   at: string;
+  /**
+   * Оқиға қай клубқа қатысты. Жалпы лентадан оқырманның өз клубының
+   * жаңалығын алып тастау үшін керек — ол оны жоғарыдан онсыз да көреді.
+   */
+  clubId?: string;
 };
+
+/**
+ * «кеше», «3 күн бұрын» — оқиғаның қашан болғаны.
+ *
+ * Жазбалар UTC-мен сақталады, ал күн Алматы уақытымен ауысады. Екеуін
+ * араластырсақ, кешкі оқиға бір күн бұрынғы болып шығады — сондықтан
+ * алдымен белдеуге келтіреміз.
+ */
+export function timeAgo(iso: string): string {
+  const kz = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Almaty" });
+  const day = (s: string) => new Date(s + "T00:00:00Z").getTime();
+  const days = Math.round((day(kzDateStr()) - day(kz.format(new Date(iso)))) / 86400000);
+
+  if (days <= 0) return "бүгін";
+  if (days === 1) return "кеше";
+  if (days < 7) return `${days} күн бұрын`;
+  if (days < 30) return `${Math.floor(days / 7)} апта бұрын`;
+  return `${Math.floor(days / 30)} ай бұрын`;
+}
 
 /** Лента қанша күн артқа қарайды */
 const WINDOW = 14;
-/** Әр қайнар көзден алынатын ең көп саны */
-const LIMIT = 12;
+/** Бір сұраудан алынатын ең көп жазба */
+const LIMIT = 40;
 
 const fmtName = (p: { name?: string | null; email?: string | null } | undefined) =>
   p?.name || p?.email || "Оқырман";
@@ -225,6 +249,7 @@ export const getAppFeed = unstable_cache(
         rest: ` құрамына ${g.n} жаңа оқырман қосылды`,
         href: `/clubs/${g.club}`,
         at: g.at,
+        clubId: g.club,
       });
     });
 
@@ -237,6 +262,7 @@ export const getAppFeed = unstable_cache(
         rest: ` жүргізушісі жаңа жоспар жариялады${p.books?.title ? `: «${p.books.title}»` : ""}`,
         href: `/clubs/${p.club_id}/plan/${p.id}`,
         at: p.created_at,
+        clubId: p.club_id,
       });
     });
 
@@ -404,6 +430,10 @@ async function clubsOf(ids: string[]) {
   return new Map((data ?? []).map((c) => [c.id, { name: c.name }]));
 }
 
+/**
+ * Жаңалықтар бетіне де, басты бетке де осы тізім барады — сондықтан
+ * мұнда кең кесіп, қанша көрсетуді шақырған жер өзі шешеді.
+ */
 function sortTrim(items: FeedItem[]): FeedItem[] {
-  return items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, LIMIT);
+  return items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 40);
 }
