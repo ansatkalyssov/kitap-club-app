@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { getUser, getProfile } from "@/lib/queries";
+import { getUser } from "@/lib/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getClubFeed, getAppFeed } from "@/lib/feed";
-import { isPreviewUser } from "@/lib/preview";
 import { NewsSection } from "@/components/dashboard/NewsFeed";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +18,6 @@ export const dynamic = "force-dynamic";
 export default async function NewsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
-
-  const profile = await getProfile();
-  if (!profile || !isPreviewUser(profile.email)) redirect("/dashboard");
 
   const admin = createAdminClient();
   const { data: memberships } = await admin

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
-import { Users, Plus, MessageSquare } from "lucide-react";
+import { Users, Plus } from "lucide-react";
 import PushSubscribe from "@/components/PushSubscribe";
 import PushReminderHint from "@/components/PushReminderHint";
 import ProgressBar from "@/components/ui/ProgressBar";
@@ -11,7 +11,6 @@ import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@
 import { getUserStats, getReaderRank } from "@/lib/points";
 import { getStarWeek } from "@/lib/stars";
 import { getClubFeed, getAppFeed, pickVaried } from "@/lib/feed";
-import { isPreviewUser } from "@/lib/preview";
 import NewsFeed from "@/components/dashboard/NewsFeed";
 import StarStrip from "@/components/dashboard/StarStrip";
 import { BookTracker } from "@/lib/types";
@@ -51,9 +50,6 @@ export default async function DashboardPage() {
 
   const clubIds = memberships?.map((m) => m.club_id) || [];
 
-  // Жаңа лента әзірге тек алдын ала қарайтын аккаунтта. Қалғандарына
-  // бұрынғы пікір лентасы көрінеді.
-  const preview = isPreviewUser(profile.email);
 
   // Қалған сұраудың бәрі бір-біріне тәуелсіз, сондықтан бірге кетеді.
   // Бұрын олар кезекпен жүретін де, әрқайсысы Vercel мен Supabase
@@ -62,7 +58,6 @@ export default async function DashboardPage() {
     { data: upcomingMeetings },
     clubFeed,
     appFeed,
-    { data: recentActivity },
     stats,
     { data: goal },
     starWeek,
@@ -79,19 +74,9 @@ export default async function DashboardPage() {
           .limit(1)
       : Promise.resolve({ data: null }),
     // Клубтағы жаңалықтар — тек мүшеге. Клубсыз оқырманда бос массив.
-    preview ? getClubFeed(user.id, clubIds) : Promise.resolve([]),
+    getClubFeed(user.id, clubIds),
     // Oqyrman жаңалықтары — бәріне ортақ, сондықтан кэштен келеді
-    preview ? getAppFeed() : Promise.resolve([]),
-    // Ескі лента — жаңасы ашылғанша қалғандарға сол көрінеді
-    !preview && clubIds.length
-      ? supabase
-          .from("book_analyses")
-          .select("id, title, parent_id, club_id, club_plan_id, created_at, profiles(name), clubs(name), club_plans(books(title))")
-          .in("club_id", clubIds)
-          .neq("author_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(4)
-      : Promise.resolve({ data: null }),
+    getAppFeed(),
     getUserStats(user.id, monthBounds().start),
     supabase
       .from("reading_goals")
@@ -376,42 +361,6 @@ export default async function DashboardPage() {
             )}
           </section>
         </div>
-      )}
-
-      {/* Ескі лента — жаңасы ашылғанша қалған оқырмандарда сол тұрады */}
-      {!preview && recentActivity && recentActivity.length > 0 && (
-        <section className="mt-5">
-          <div className="section-title">
-            <h2>Клубтарда не болып жатыр</h2>
-          </div>
-          <div className="space-y-2">
-            {(recentActivity as any[]).map((a) => {
-              const isReply = Boolean(a.parent_id);
-              const bookTitle = a.club_plans?.books?.title;
-              return (
-                <Link
-                  key={a.id}
-                  href={`/analysis/${a.parent_id ?? a.id}`}
-                  className="flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-primary-200 hover:shadow-sm"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-500">
-                    <MessageSquare size={14} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-sm text-gray-900">
-                      <span className="font-semibold">{a.profiles?.name ?? "Оқырман"}</span>{" "}
-                      {isReply ? "пікір қалдырды" : `«${a.title}» талқысын ашты`}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-gray-400">
-                      {a.clubs?.name}
-                      {bookTitle && ` · ${bookTitle}`}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
       )}
 
       {/* Жаңалықтар легі. Клуб мүшесі екеуін де көреді, клубсыз оқырман
