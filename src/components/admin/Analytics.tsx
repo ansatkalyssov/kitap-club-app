@@ -104,12 +104,18 @@ function BarChart({
   color = "#16a34a",
   height = 150,
   format = fmtDay,
+  selected,
+  onSelect,
 }: {
   data: DayPoint[];
   color?: string;
   height?: number;
   /** Бағанның қолтаңбасы — күн не ай */
   format?: (date: string) => string;
+  /** Таңдалған баған (date) — астына сұр жолақ түседі */
+  selected?: string;
+  /** Бағанды басқанда — айлық көріністе карталар сол айға ауысады */
+  onSelect?: (date: string) => void;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   if (data.length === 0) {
@@ -146,10 +152,13 @@ function BarChart({
             return (
               <div
                 key={d.date}
-                className="relative h-full flex-1"
+                className={`relative h-full flex-1 rounded-sm ${onSelect ? "cursor-pointer" : ""} ${
+                  selected === d.date ? "bg-gray-100" : ""
+                }`}
                 onMouseEnter={() => setHover(i)}
                 onMouseLeave={() => setHover(null)}
                 onTouchStart={() => setHover(i)}
+                onClick={onSelect ? () => onSelect(d.date) : undefined}
                 title={`${format(d.date)} — ${d.count}${d.note ? ` (${d.note})` : ""}`}
               >
                 <div
@@ -182,7 +191,12 @@ function BarChart({
         <>
           <div className="mt-1.5 flex gap-px text-[10px] text-gray-400">
             {data.map((d) => (
-              <span key={d.date} className="flex-1 text-center">
+              <span
+                key={d.date}
+                className={`flex-1 text-center ${
+                  selected === d.date ? "font-semibold text-gray-800" : ""
+                }`}
+              >
                 {format(d.date)}
                 {d.note && "*"}
               </span>
@@ -392,22 +406,34 @@ function Monthly({ data, totalUsers }: { data: AnalyticsData["monthly"]; totalUs
     return { cur: series[i], prev: i > 0 ? series[i - 1] : undefined };
   };
 
-  // Карталар — ағымдағы ай, астында өткен ай. Ағымдағы ай әлі біткен
-  // жоқ, сондықтан өткен айдан аз болуы заңды: салыстыру үшін ғана.
-  const current = months[0];
+  // Карталар — таңдалған ай (әдепкісі ағымдағы), астында алдыңғы ай.
+  // Ағымдағы ай әлі біткен жоқ, сондықтан өткен айдан аз болуы заңды.
+  const latest = months[0];
+  const [picked, setPicked] = useState(latest);
+  // Топ ауысқанда ай тізімі өзгермейді, бірақ сақтық үшін — тізімде
+  // жоқ ай таңдалып қалса, ағымдағыға қайтамыз
+  const current = months.includes(picked) ? picked : latest;
   const tile = (key: (typeof MONTH_SERIES)[number]["key"]) => cell(key, current);
+
+  // Таңдалған айдың соңындағы тіркелгендер: кейінгі айларда
+  // тіркелгендерді жалпы саннан шегереміз
+  const signedUpLater = data.signups
+    .filter((p) => p.date > current)
+    .reduce((s, p) => s + p.count, 0);
+
   const tiles = [
     {
-      label: "Тіркелген",
-      value: totalUsers,
-      sub: `осы айда +${tile("signups").cur?.count ?? 0}`,
+      label: current === latest ? "Тіркелген" : `Тіркелген · ${fmtMonth(current)} соңы`,
+      value: totalUsers - signedUpLater,
+      sub: `айда +${tile("signups").cur?.count ?? 0}`,
       color: "text-gray-900",
     },
     ...MONTH_SERIES.filter((s) => s.key !== "visits" || data.visits.length > 0).map((s) => {
       const { cur, prev } = tile(s.key);
       return {
         label: `${s.short} · ${fmtMonth(current)}`,
-        value: cur?.count ?? 0,
+        // Кіру есебі басталмаған ай — нөл емес, дерек жоқ
+        value: cur ? `${cur.count}${cur.note ? "*" : ""}` : "—",
         sub: prev ? `${fmtMonth(prev.date)}: ${prev.count}${prev.note ? "*" : ""}` : "—",
         color: s.tile,
       };
@@ -416,6 +442,21 @@ function Monthly({ data, totalUsers }: { data: AnalyticsData["monthly"]; totalUs
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
+        <span>
+          <b className="text-gray-800">{fmtMonthFull(current)}</b> · басқа айды көру үшін
+          бағанды не кесте жолын басыңыз
+        </span>
+        {current !== latest && (
+          <button
+            onClick={() => setPicked(latest)}
+            className="shrink-0 rounded-lg px-2 py-1 font-medium text-primary-600 hover:bg-primary-50"
+          >
+            Осы айға қайту
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {tiles.map((t) => (
           <div key={t.label} className="card py-4 text-center">
@@ -431,7 +472,13 @@ function Monthly({ data, totalUsers }: { data: AnalyticsData["monthly"]; totalUs
           {s.key === "visits" && data.visits.length === 0 ? (
             <p className="py-8 text-center text-sm text-gray-400">Кіру есебі әлі басталмаған</p>
           ) : (
-            <BarChart data={data[s.key]} color={s.color} format={fmtMonth} />
+            <BarChart
+              data={data[s.key]}
+              color={s.color}
+              format={fmtMonth}
+              selected={current}
+              onSelect={setPicked}
+            />
           )}
         </Card>
       ))}
@@ -454,8 +501,20 @@ function Monthly({ data, totalUsers }: { data: AnalyticsData["monthly"]; totalUs
             </thead>
             <tbody>
               {months.map((m) => (
-                <tr key={m} className="border-b border-gray-50 last:border-0">
-                  <td className="py-2 pr-3 text-gray-700">{fmtMonthFull(m)}</td>
+                <tr
+                  key={m}
+                  onClick={() => setPicked(m)}
+                  className={`cursor-pointer border-b border-gray-50 last:border-0 ${
+                    m === current ? "bg-gray-50" : "hover:bg-gray-50"
+                  }`}
+                >
+                  <td
+                    className={`py-2 pr-3 ${
+                      m === current ? "font-semibold text-gray-900" : "text-gray-700"
+                    }`}
+                  >
+                    {fmtMonthFull(m)}
+                  </td>
                   {MONTH_SERIES.map((s) => {
                     const { cur, prev } = cell(s.key, m);
                     if (!cur) {
