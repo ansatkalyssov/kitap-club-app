@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAll } from "@/lib/supabase/fetchAll";
 import { BookOpen, Shield, LogOut } from "lucide-react";
 import AdminTabs from "@/components/admin/AdminTabs";
 import { getClubLeaderboard, levelFor } from "@/lib/points";
@@ -36,27 +37,47 @@ export default async function AdminPage() {
     { data: pushSubs },
     { data: visits },
   ] = await Promise.all([
-    adminDb.from("profiles").select("*").order("created_at", { ascending: false }),
+    // Көп жол жиналатын кестелер fetchAll арқылы оқылады — 1000 жол
+    // шегінен кейін Supabase қалғанын үнсіз тастайды. Әр сұраныс
+    // бірегей бағанмен аяқталады, беттер араласпауы үшін.
+    fetchAll(() =>
+      adminDb.from("profiles").select("*").order("created_at", { ascending: false }).order("id")
+    ),
     adminDb.from("clubs").select("*, cities(name)").order("created_at", { ascending: false }),
-    adminDb.from("book_trackers").select("id, user_id, is_completed, club_plan_id"),
-    adminDb
-      .from("book_analyses")
-      .select("id, title, parent_id, author_id, club_id, club_plan_id, created_at")
-      .order("created_at", { ascending: false }),
-    adminDb.from("club_members").select("club_id, user_id"),
+    fetchAll(() =>
+      adminDb.from("book_trackers").select("id, user_id, is_completed, club_plan_id").order("id")
+    ),
+    fetchAll(() =>
+      adminDb
+        .from("book_analyses")
+        .select("id, title, parent_id, author_id, club_id, club_plan_id, created_at")
+        .order("created_at", { ascending: false })
+        .order("id")
+    ),
+    fetchAll(() => adminDb.from("club_members").select("club_id, user_id").order("id")),
     adminDb.from("club_plans").select("id, club_id, book_id, meeting_date, books(title)"),
-    adminDb
-      .from("point_events")
-      .select("id, user_id, code, points, event_date, created_at")
-      .order("created_at", { ascending: false }),
-    adminDb.from("reading_logs").select("user_id, date, minutes_read"),
+    fetchAll(() =>
+      adminDb
+        .from("point_events")
+        .select("id, user_id, code, points, event_date, created_at")
+        .order("created_at", { ascending: false })
+        .order("id")
+    ),
+    fetchAll(() =>
+      adminDb.from("reading_logs").select("user_id, date, minutes_read").order("id")
+    ),
     getClubLeaderboard(start, end),
     // Дэшборд үшін: трекер прогресі тікелей user_id ұстамайды, трекер
     // арқылы байланады.
-    adminDb.from("reading_progress").select("date, book_trackers(user_id)"),
-    adminDb.from("reading_goals").select("user_id"),
-    adminDb.from("push_subscriptions").select("user_id"),
-    adminDb.from("user_visits").select("user_id, date").gte("date", addDays(today, -29)),
+    fetchAll(() =>
+      adminDb.from("reading_progress").select("date, book_trackers(user_id)").order("id")
+    ),
+    fetchAll(() => adminDb.from("reading_goals").select("user_id").order("id")),
+    fetchAll(() => adminDb.from("push_subscriptions").select("user_id").order("id")),
+    // Бүкіл тарих — айлық график үшін. Күндік график өзі 30 күнге кеседі.
+    fetchAll(() =>
+      adminDb.from("user_visits").select("user_id, date").order("date").order("user_id")
+    ),
   ]);
 
   // Прогресті пайдаланушыға байлап аламыз
@@ -219,6 +240,57 @@ export default async function AdminPage() {
     { label: "15 күн және одан көп", min: 15, max: 99 },
   ];
 
+  // ---------- Айлық көрініс ----------
+  // Уақыт белгісі (timestamptz) UTC-мен келеді. Айдың 1-і, таңғы 05:00-ге
+  // дейінгі жазба алдыңғы айға кетпеуі үшін Алматы күніне аударамыз.
+  const kzDay = (v: string) => (v.length === 10 ? v : kzDateStr(new Date(v)));
+
+  // Қолданба басталған күн — ең алғашқы тіркелу. Одан бұрынғы айлар
+  // бос болады, оларды көрсетудің мәні жоқ.
+  const appStart = (profiles ?? []).reduce<string>(
+    (min, p) => (p.created_at && kzDay(p.created_at) < min ? kzDay(p.created_at) : min),
+    today
+  );
+  const thisMonth = today.slice(0, 7);
+
+  const monthKeys: string[] = [];
+  for (let [y, m] = appStart.split("-").map(Number); ; ) {
+    const key = `${y}-${String(m).padStart(2, "0")}`;
+    monthKeys.push(key);
+    if (key >= thisMonth) break;
+    if (++m > 12) { m = 1; y++; }
+  }
+  // Тым ұзарып кетпесін — соңғы 12 ай жеткілікті
+  monthKeys.splice(0, Math.max(0, monthKeys.length - 12));
+
+  // Кіру есебі бүкіл қолданба бойынша бір күні басталды. Әр топқа бөлек
+  // есептесек, жүргізушілерде ол басқа күн болып шығып, адастырады.
+  const visitsStart = (visits ?? []).reduce<string | null>(
+    (min, v) => (!min || v.date < min ? v.date : min),
+    null
+  );
+
+  const shortDay = (d: string) => `${Number(d.slice(8, 10))}.${d.slice(5, 7)}`;
+
+  /**
+   * Айлық нүктелер. Толық емес айға белгі қойылады: ағымдағы ай әлі
+   * біткен жоқ, ал есеп басталған ай 1-інен басталмаған болуы мүмкін.
+   * Белгісіз бұл бағандар «құлдырау» сияқты көрінеді.
+   */
+  const toMonthly = (byMonth: Map<string, number>, from: string) =>
+    monthKeys
+      .filter((m) => m >= from.slice(0, 7))
+      .map((m) => ({
+        date: m,
+        count: byMonth.get(m) ?? 0,
+        note:
+          m === thisMonth
+            ? "ай әлі біткен жоқ"
+            : m === from.slice(0, 7) && !from.endsWith("-01")
+              ? `есеп ${shortDay(from)} басталды`
+              : undefined,
+      }));
+
   /**
    * Дэшбордты берілген адамдар тобы бойынша есептейді.
    *
@@ -338,7 +410,49 @@ export default async function AdminPage() {
     // айырмасы — сол жерде тоқтап қалғандар.
     const tourTracked = people.filter((p) => p.tour_started_at);
 
+    // Айына неше адам — оқиға саны емес. Бір адам айдың 20 күнінде
+    // белсенді болса да, бір рет саналады.
+    const usersByMonth = (rows: { u?: string | null; d?: string | null }[]) => {
+      const sets = new Map<string, Set<string>>(monthKeys.map((m) => [m, new Set<string>()]));
+      rows.forEach((r) => {
+        if (mine(r.u) && r.d) sets.get(kzDay(r.d).slice(0, 7))?.add(r.u as string);
+      });
+      return new Map(Array.from(sets, ([m, s]) => [m, s.size]));
+    };
+
+    const logRows = (logs ?? []).map((l) => ({ u: l.user_id, d: l.date }));
+    const progressRowsU = progress.map((p) => ({ u: p.userId, d: p.date }));
+
+    const signupsByMonth = new Map<string, number>();
+    people.forEach((p) => {
+      if (!p.created_at) return;
+      const m = kzDay(p.created_at).slice(0, 7);
+      signupsByMonth.set(m, (signupsByMonth.get(m) ?? 0) + 1);
+    });
+
+    const monthly = {
+      visits: visitsStart
+        ? toMonthly(usersByMonth(myVisits.map((v) => ({ u: v.user_id, d: v.date }))), visitsStart)
+        : [],
+      // Белсенділік ережесі күндік графиктегідей: club_join кірмейді
+      active: toMonthly(
+        usersByMonth([
+          ...logRows,
+          ...progressRowsU,
+          ...(events ?? [])
+            .filter((e) => e.code !== "club_join")
+            .map((e) => ({ u: e.user_id, d: e.event_date })),
+          ...(analyses ?? []).map((a) => ({ u: a.author_id, d: a.created_at })),
+        ]),
+        appStart
+      ),
+      timer: toMonthly(usersByMonth(logRows), appStart),
+      progress: toMonthly(usersByMonth(progressRowsU), appStart),
+      signups: toMonthly(signupsByMonth, appStart),
+    };
+
     return {
+      monthly,
       totalUsers: people.length,
       tour: {
         reach: TOUR_STEPS.map((s, i) => ({

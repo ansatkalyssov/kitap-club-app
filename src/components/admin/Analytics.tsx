@@ -11,9 +11,21 @@
 
 import { useState } from "react";
 
-export type DayPoint = { date: string; count: number };
+/**
+ * Бір баған. date — күн (YYYY-MM-DD) немесе ай (YYYY-MM).
+ * note бар болса, кезең толық емес: баған бозғылт сызылады.
+ */
+export type DayPoint = { date: string; count: number; note?: string };
 
 export type AnalyticsData = {
+  /** Айына неше бірегей адам — әр баған бір ай */
+  monthly: {
+    visits: DayPoint[];
+    active: DayPoint[];
+    timer: DayPoint[];
+    progress: DayPoint[];
+    signups: DayPoint[];
+  };
   totalUsers: number;
   tour: {
     reach: { label: string; count: number }[];
@@ -70,6 +82,17 @@ const fmtDay = (d: string) => {
   return `${Number(day)}.${m}`;
 };
 
+const MONTHS_SHORT = [
+  "Қаң", "Ақп", "Нау", "Сәу", "Мам", "Мау", "Шіл", "Там", "Қыр", "Қаз", "Қар", "Жел",
+];
+const MONTHS_FULL = [
+  "Қаңтар", "Ақпан", "Наурыз", "Сәуір", "Мамыр", "Маусым",
+  "Шілде", "Тамыз", "Қыркүйек", "Қазан", "Қараша", "Желтоқсан",
+];
+
+const fmtMonth = (m: string) => MONTHS_SHORT[Number(m.slice(5, 7)) - 1];
+const fmtMonthFull = (m: string) => `${MONTHS_FULL[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
+
 /**
  * Бағандық график — кітапхана қоспай, HTML мен CSS.
  *
@@ -80,16 +103,22 @@ function BarChart({
   data,
   color = "#16a34a",
   height = 150,
+  format = fmtDay,
 }: {
   data: DayPoint[];
   color?: string;
   height?: number;
+  /** Бағанның қолтаңбасы — күн не ай */
+  format?: (date: string) => string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   if (data.length === 0) {
     return <p className="py-8 text-center text-sm text-gray-400">Дерек жоқ</p>;
   }
 
+  // Баған аз болса (айлар), әрқайсысының астына қолтаңба, үстіне сан
+  // телефонда да сыяды
+  const few = data.length <= 12;
   const max = Math.max(1, ...data.map((d) => d.count));
   // Ең биік бағанның үстінде сан сыятындай орын қалдырамыз
   const SCALE = 86;
@@ -121,22 +150,23 @@ function BarChart({
                 onMouseEnter={() => setHover(i)}
                 onMouseLeave={() => setHover(null)}
                 onTouchStart={() => setHover(i)}
-                title={`${fmtDay(d.date)} — ${d.count}`}
+                title={`${format(d.date)} — ${d.count}${d.note ? ` (${d.note})` : ""}`}
               >
                 <div
                   className="absolute inset-x-px bottom-0 rounded-t-sm transition-opacity"
                   style={{
                     height: `${pct}%`,
                     background: color,
-                    opacity: dim ? 0.3 : 1,
+                    // Толық емес кезең бозғылт — салыстырғанда адастырмасын
+                    opacity: dim ? 0.3 : d.note ? 0.4 : 1,
                   }}
                 />
                 {/* Телефонда 30 сан сыймайды — ол жерде басып көру қалады */}
                 {d.count > 0 && (
                   <span
-                    className={`absolute inset-x-0 hidden text-center text-[9px] leading-none tabular-nums sm:block ${
-                      dim ? "text-gray-300" : "text-gray-500"
-                    }`}
+                    className={`absolute inset-x-0 text-center text-[9px] leading-none tabular-nums ${
+                      few ? "" : "hidden sm:block"
+                    } ${dim ? "text-gray-300" : "text-gray-500"}`}
                     style={{ bottom: `calc(${pct}% + 3px)` }}
                   >
                     {d.count}
@@ -148,15 +178,38 @@ function BarChart({
         </div>
       </div>
 
-      <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-gray-400">
-        <span>{fmtDay(data[0].date)}</span>
-        {hover !== null && (
-          <span className="font-semibold text-gray-700">
-            {fmtDay(data[hover].date)} — {data[hover].count}
-          </span>
-        )}
-        <span>{fmtDay(data[data.length - 1].date)}</span>
-      </div>
+      {few ? (
+        <>
+          <div className="mt-1.5 flex gap-px text-[10px] text-gray-400">
+            {data.map((d) => (
+              <span key={d.date} className="flex-1 text-center">
+                {format(d.date)}
+                {d.note && "*"}
+              </span>
+            ))}
+          </div>
+          <p className="mt-1 h-4 text-[10px] text-gray-500">
+            {hover !== null && (
+              <>
+                <b className="text-gray-700">
+                  {format(data[hover].date)} — {data[hover].count}
+                </b>
+                {data[hover].note && ` · ${data[hover].note}`}
+              </>
+            )}
+          </p>
+        </>
+      ) : (
+        <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-gray-400">
+          <span>{format(data[0].date)}</span>
+          {hover !== null && (
+            <span className="font-semibold text-gray-700">
+              {format(data[hover].date)} — {data[hover].count}
+            </span>
+          )}
+          <span>{format(data[data.length - 1].date)}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -220,36 +273,184 @@ const SCOPES: { key: Scope; label: string }[] = [
   { key: "hosts", label: "Жүргізуші" },
 ];
 
+type Mode = "days" | "months";
+
 export default function Analytics({ data: bundle }: { data: AnalyticsBundle }) {
   const [scope, setScope] = useState<Scope>("all");
+  const [mode, setMode] = useState<Mode>("days");
   const data = bundle[scope];
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1.5">
-        {SCOPES.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setScope(s.key)}
-            className={`rounded-xl px-3.5 py-2 text-xs font-medium transition ${
-              scope === s.key
-                ? "bg-primary-600 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            {s.label}
-            <span
-              className={`ml-1.5 tabular-nums ${
-                scope === s.key ? "text-primary-100" : "text-gray-400"
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-1.5">
+          {SCOPES.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => setScope(s.key)}
+              className={`rounded-xl px-3.5 py-2 text-xs font-medium transition ${
+                scope === s.key
+                  ? "bg-primary-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-100"
               }`}
             >
-              {bundle[s.key].totalUsers}
-            </span>
-          </button>
-        ))}
+              {s.label}
+              <span
+                className={`ml-1.5 tabular-nums ${
+                  scope === s.key ? "text-primary-100" : "text-gray-400"
+                }`}
+              >
+                {bundle[s.key].totalUsers}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex rounded-xl bg-white p-0.5">
+          {(
+            [
+              { key: "days", label: "Күндер" },
+              { key: "months", label: "Айлар" },
+            ] as const
+          ).map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setMode(m.key)}
+              className={`rounded-[10px] px-3.5 py-1.5 text-xs font-medium transition ${
+                mode === m.key ? "bg-primary-600 text-white" : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <Dashboard data={data} />
+      {mode === "days" ? <Dashboard data={data} /> : <Monthly data={data.monthly} />}
+    </div>
+  );
+}
+
+const MONTH_SERIES = [
+  {
+    key: "visits",
+    title: "Кірушілер",
+    short: "Кірді",
+    hint: "Айына қолданбаны кемінде бір рет ашқан адам саны — әрекет жасамаса да саналады.",
+    color: "#0284c7",
+  },
+  {
+    key: "active",
+    title: "Белсенділер",
+    short: "Белсенді",
+    hint: "Айына із қалдырған адам саны: таймер, трекер прогресі, ұпай немесе пікір.",
+    color: "#16a34a",
+  },
+  {
+    key: "timer",
+    title: "Оқу уақытын белгілегендер",
+    short: "Таймер",
+    hint: "Айына таймермен немесе қолмен минут енгізген адам саны.",
+    color: "#d97706",
+  },
+  {
+    key: "progress",
+    title: "Трекерге прогресс енгізгендер",
+    short: "Прогресс",
+    hint: "Айына кітаптың бетін белгілеген адам саны.",
+    color: "#7c3aed",
+  },
+  {
+    key: "signups",
+    title: "Жаңа тіркелгендер",
+    short: "Тіркелді",
+    hint: "Айына тіркелген адам саны.",
+    color: "#0ea5e9",
+  },
+] as const;
+
+/**
+ * Айлық көрініс. Әр баған — сол айда кемінде бір рет әрекет жасаған
+ * бірегей адам саны; күндік сандардың қосындысы емес.
+ */
+function Monthly({ data }: { data: AnalyticsData["monthly"] }) {
+  // Кесте жолдары — барлық айлар, жаңасы жоғарыда. Кіру есебі кешірек
+  // басталғандықтан, оның бағаны алғашқы айларда бос қалады.
+  const months = data.active.map((p) => p.date).reverse();
+  const cell = (key: (typeof MONTH_SERIES)[number]["key"], m: string) => {
+    const series: DayPoint[] = data[key];
+    const i = series.findIndex((p) => p.date === m);
+    return { cur: series[i], prev: i > 0 ? series[i - 1] : undefined };
+  };
+
+  return (
+    <div className="space-y-4">
+      {MONTH_SERIES.map((s) => (
+        <Card key={s.key} title={s.title} hint={s.hint}>
+          {s.key === "visits" && data.visits.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">Кіру есебі әлі басталмаған</p>
+          ) : (
+            <BarChart data={data[s.key]} color={s.color} format={fmtMonth} />
+          )}
+        </Card>
+      ))}
+
+      <Card
+        title="Айлар кестесі"
+        hint="Жақшадағы өзгеріс — алдыңғы аймен салыстыру. Тек екі ай да толық болғанда көрсетіледі: жартылай айды толық аймен салыстыру адастырады. * — ай толық емес."
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full whitespace-nowrap text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+                <th className="pb-2 pr-3 font-medium">Ай</th>
+                {MONTH_SERIES.map((s) => (
+                  <th key={s.key} className="px-2 pb-2 text-right font-medium last:pr-0">
+                    {s.short}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {months.map((m) => (
+                <tr key={m} className="border-b border-gray-50 last:border-0">
+                  <td className="py-2 pr-3 text-gray-700">{fmtMonthFull(m)}</td>
+                  {MONTH_SERIES.map((s) => {
+                    const { cur, prev } = cell(s.key, m);
+                    if (!cur) {
+                      return (
+                        <td key={s.key} className="px-2 py-2 text-right text-gray-300 last:pr-0">
+                          —
+                        </td>
+                      );
+                    }
+                    const diff =
+                      prev && !prev.note && !cur.note ? cur.count - prev.count : null;
+                    return (
+                      <td key={s.key} className="px-2 py-2 text-right tabular-nums last:pr-0">
+                        <span className={cur.note ? "text-gray-400" : "text-gray-900"}>
+                          {cur.count}
+                          {cur.note && "*"}
+                        </span>
+                        {diff !== null && diff !== 0 && (
+                          <span
+                            className={`ml-1.5 text-xs ${
+                              diff > 0 ? "text-primary-600" : "text-red-500"
+                            }`}
+                          >
+                            {diff > 0 ? "↑" : "↓"}
+                            {Math.abs(diff)}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }
