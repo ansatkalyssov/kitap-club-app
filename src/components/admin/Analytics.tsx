@@ -326,7 +326,11 @@ export default function Analytics({ data: bundle }: { data: AnalyticsBundle }) {
         </div>
       </div>
 
-      {mode === "days" ? <Dashboard data={data} /> : <Monthly data={data.monthly} />}
+      {mode === "days" ? (
+        <Dashboard data={data} />
+      ) : (
+        <Monthly data={data.monthly} totalUsers={data.totalUsers} />
+      )}
     </div>
   );
 }
@@ -338,6 +342,7 @@ const MONTH_SERIES = [
     short: "Кірді",
     hint: "Айына қолданбаны кемінде бір рет ашқан адам саны — әрекет жасамаса да саналады.",
     color: "#0284c7",
+    tile: "text-sky-600",
   },
   {
     key: "active",
@@ -345,6 +350,7 @@ const MONTH_SERIES = [
     short: "Белсенді",
     hint: "Айына із қалдырған адам саны: таймер, трекер прогресі, ұпай немесе пікір.",
     color: "#16a34a",
+    tile: "text-primary-600",
   },
   {
     key: "timer",
@@ -352,6 +358,7 @@ const MONTH_SERIES = [
     short: "Таймер",
     hint: "Айына таймермен немесе қолмен минут енгізген адам саны.",
     color: "#d97706",
+    tile: "text-amber-600",
   },
   {
     key: "progress",
@@ -359,6 +366,7 @@ const MONTH_SERIES = [
     short: "Прогресс",
     hint: "Айына кітаптың бетін белгілеген адам саны.",
     color: "#7c3aed",
+    tile: "text-violet-600",
   },
   {
     key: "signups",
@@ -366,6 +374,7 @@ const MONTH_SERIES = [
     short: "Тіркелді",
     hint: "Айына тіркелген адам саны.",
     color: "#0ea5e9",
+    tile: "text-sky-500",
   },
 ] as const;
 
@@ -373,7 +382,7 @@ const MONTH_SERIES = [
  * Айлық көрініс. Әр баған — сол айда кемінде бір рет әрекет жасаған
  * бірегей адам саны; күндік сандардың қосындысы емес.
  */
-function Monthly({ data }: { data: AnalyticsData["monthly"] }) {
+function Monthly({ data, totalUsers }: { data: AnalyticsData["monthly"]; totalUsers: number }) {
   // Кесте жолдары — барлық айлар, жаңасы жоғарыда. Кіру есебі кешірек
   // басталғандықтан, оның бағаны алғашқы айларда бос қалады.
   const months = data.active.map((p) => p.date).reverse();
@@ -383,8 +392,40 @@ function Monthly({ data }: { data: AnalyticsData["monthly"] }) {
     return { cur: series[i], prev: i > 0 ? series[i - 1] : undefined };
   };
 
+  // Карталар — ағымдағы ай, астында өткен ай. Ағымдағы ай әлі біткен
+  // жоқ, сондықтан өткен айдан аз болуы заңды: салыстыру үшін ғана.
+  const current = months[0];
+  const tile = (key: (typeof MONTH_SERIES)[number]["key"]) => cell(key, current);
+  const tiles = [
+    {
+      label: "Тіркелген",
+      value: totalUsers,
+      sub: `осы айда +${tile("signups").cur?.count ?? 0}`,
+      color: "text-gray-900",
+    },
+    ...MONTH_SERIES.filter((s) => s.key !== "visits" || data.visits.length > 0).map((s) => {
+      const { cur, prev } = tile(s.key);
+      return {
+        label: `${s.short} · ${fmtMonth(current)}`,
+        value: cur?.count ?? 0,
+        sub: prev ? `${fmtMonth(prev.date)}: ${prev.count}${prev.note ? "*" : ""}` : "—",
+        color: s.tile,
+      };
+    }),
+  ];
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {tiles.map((t) => (
+          <div key={t.label} className="card py-4 text-center">
+            <p className={`text-2xl font-bold tabular-nums ${t.color}`}>{t.value}</p>
+            <p className="mt-0.5 text-xs leading-tight text-gray-500">{t.label}</p>
+            <p className="mt-1 text-[11px] tabular-nums text-gray-400">{t.sub}</p>
+          </div>
+        ))}
+      </div>
+
       {MONTH_SERIES.map((s) => (
         <Card key={s.key} title={s.title} hint={s.hint}>
           {s.key === "visits" && data.visits.length === 0 ? (
