@@ -93,6 +93,21 @@ export function timeAgo(iso: string): string {
 
 /** Лента қанша күн артқа қарайды */
 const WINDOW = 14;
+
+/**
+ * Қолданбаның өз хабарламалары. Басқа оқиғалар сияқты күні бойынша
+ * сұрыпталады да, WINDOW өткен соң лентадан өзі шығады.
+ */
+const ANNOUNCEMENTS: FeedItem[] = [
+  {
+    id: "announce:freeze",
+    icon: "❄️",
+    lead: "Oqyrman.kz:",
+    rest: " енді кітапты оқымаған күннің өзінде тізбегіңіз үзілмей, бір күнге қатырылады",
+    href: "/dashboard",
+    at: "2026-11-05T19:00:00+00:00",
+  },
+];
 /** Бір сұраудан алынатын ең көп жазба */
 const LIMIT = 40;
 
@@ -316,6 +331,9 @@ export const getAppFeed = unstable_cache(
 
     // 1-3. Рейтиңдегі қозғалыс
     items.push(...(await rankMoves()));
+
+    // 8. Қолданбаның хабарламалары
+    items.push(...ANNOUNCEMENTS.filter((a) => a.at >= sinceTs));
 
     return sortTrim(items);
   },

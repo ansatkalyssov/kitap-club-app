@@ -144,7 +144,7 @@ export default function StarStrip({ points, levelName, rank, week }: Props) {
               <div key={d.date} className="flex-1 text-center">
                 <span className="relative inline-block">
                   {d.frozen ? (
-                    <FrozenStar size={26} />
+                    <FrozenStar size={30} slot={26} />
                   ) : (
                     <Star
                       size={26}
@@ -195,11 +195,12 @@ export default function StarStrip({ points, levelName, rank, week }: Props) {
  * сызылады, ал олар Safari-де басқаша шығуы мүмкін. Суретте жұлдыздың
  * айналасында қар мен сүңгіге орын қалдырылған (24 бірлік жұлдыз, 28
  * бірлік сурет), сондықтан кері шегініс жолақтағы орнын жай жұлдызбен
- * бірдей етеді.
+ * бірдей етеді. slot — жолақта алатын орны: жұлдыз одан үлкен болса да,
+ * қатар биіктемейді.
  */
-function FrozenStar({ size }: { size: number }) {
+function FrozenStar({ size, slot = size }: { size: number; slot?: number }) {
   const full = Math.round((size * 28) / 24);
-  const margin = (size - full) / 2;
+  const margin = (slot - full) / 2;
   return (
     <img
       src={frozenStar.src}
