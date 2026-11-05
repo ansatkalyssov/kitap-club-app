@@ -17,6 +17,8 @@ import { kzDateStr, addDays } from "@/lib/utils";
  *      енгізілсе — күн есептеледі.
  *   3. Бүгінгі күн тізбекті үзбейді: із әлі қалмаса, санақ кешеден
  *      жүреді. Күн бітпейінше үлгеруге болады.
+ *   4. Өткізіп алған күнді қордағы қатыру жабады: тізбек үзілмейді, бірақ
+ *      саны да өспейді — оқылмаған күнге ұпай берілмеуі керек.
  */
 
 export type StarDay = {
@@ -24,12 +26,16 @@ export type StarDay = {
   /** Апта күнінің қысқа аты: Дс, Сс, … */
   label: string;
   lit: boolean;
+  /** Оқылмаған, бірақ қатыру жапқан күн */
+  frozen: boolean;
   isToday: boolean;
 };
 
 export type StarWeek = {
   days: StarDay[];
   streak: number;
+  /** Қордағы қатыру саны */
+  freezes: number;
   /** Мақсат қойылған ба — қойылмаса жұлдыз мүлдем жанбайды */
   hasGoal: boolean;
   /** Бұрын бірде-бір жұлдыз жаққан ба — жаңа оқырманға бөлек сөз үшін */
@@ -102,15 +108,78 @@ export const getGoalMinutes = cache(async (userId: string): Promise<number> => {
   return data?.daily_minutes ?? 0;
 });
 
-/** Қатарынан неше күн — бүгіннен, із жоқ болса кешеден кері санайды */
-export function streakFrom(days: Set<string>, today: string): number {
-  let cursor = days.has(today) ? today : addDays(today, -1);
+/**
+ * Қатыру іске қосылған күн. Одан бұрынғы үзілістер жабылмайды: ескі
+ * тізбектер қалпына келсе, адамдар 30, 100 күндік ұпайды кенеттен алып,
+ * рейтиң өзгеріп кетер еді.
+ */
+const FREEZE_START = "2026-11-05";
+/** Іске қосылғанда әр оқырманға берілетін сыйлық */
+const FREEZE_GIFT = 1;
+/** Қорда тұратын ең көп қатыру */
+const FREEZE_MAX = 2;
+/** Неше күн оқығанда бір қатыру беріледі */
+const FREEZE_EVERY = 7;
+
+/**
+ * Тізбекті, қатырылған күндерді және қорды белсенді күндерден есептейді.
+ *
+ * Ештеңе сақталмайды: FREEZE_START-тан бастап күн-күнмен қайта жүріп
+ * шығамыз, сондықтан жаңа кесте де, түнгі тапсырма да керек емес.
+ *
+ * Үзіліс қордағы қатырудан ұзын болса, ештеңе жұмсалмайды: әйтпесе
+ * тізбек бәрібір үзіліп, оқырман қатыруынан да айырылар еді. Сол себепті
+ * үзіліс ұзарған сайын кешегі қатырылған күн қайта жай күнге айналуы мүмкін.
+ */
+export function resolveStreak(
+  days: Set<string>,
+  today: string
+): { streak: number; frozen: Set<string>; freezes: number } {
+  // Іске қосылғанға дейін жиналған тізбек сақталады
   let streak = 0;
+  let cursor = addDays(FREEZE_START, -1);
   while (days.has(cursor)) {
     streak++;
     cursor = addDays(cursor, -1);
   }
-  return streak;
+
+  const frozen = new Set<string>();
+  let freezes = FREEZE_GIFT;
+  let sinceEarned = 0;
+
+  for (let d = FREEZE_START; d <= today; d = addDays(d, 1)) {
+    if (days.has(d)) {
+      streak++;
+      if (++sinceEarned === FREEZE_EVERY) {
+        sinceEarned = 0;
+        freezes = Math.min(FREEZE_MAX, freezes + 1);
+      }
+      continue;
+    }
+
+    // Бүгін әлі бітпеді — үлгеруге болады
+    if (d === today) break;
+
+    // Үзілістің басы. Бүкіл ұзындығын бірден табамыз, бүгін оған кірмейді.
+    const gap: string[] = [];
+    for (let g = d; g < today && !days.has(g); g = addDays(g, 1)) gap.push(g);
+
+    if (streak > 0 && gap.length <= freezes) {
+      freezes -= gap.length;
+      gap.forEach((g) => frozen.add(g));
+    } else {
+      streak = 0;
+      sinceEarned = 0;
+    }
+    d = gap[gap.length - 1];
+  }
+
+  return { streak, frozen, freezes };
+}
+
+/** Қатарынан неше күн — бүгіннен, із жоқ болса кешеден кері санайды */
+export function streakFrom(days: Set<string>, today: string): number {
+  return resolveStreak(days, today).streak;
 }
 
 export async function getStarWeek(userId: string): Promise<StarWeek> {
@@ -121,13 +190,21 @@ export async function getStarWeek(userId: string): Promise<StarWeek> {
   // мақсат қоюға шақыру көрсетіледі — сол себепті бөлек белгі керек.
   // Сұрау қайталанбайды: cache() жоғарыдағы шақырудың жауабын береді.
   const goal = await getGoalMinutes(userId);
+  const { streak, frozen, freezes } = resolveStreak(days, today);
 
   return {
     days: Array.from({ length: 7 }, (_, i) => {
       const date = addDays(today, i - 6);
-      return { date, label: labelFor(date), lit: days.has(date), isToday: date === today };
+      return {
+        date,
+        label: labelFor(date),
+        lit: days.has(date),
+        frozen: frozen.has(date),
+        isToday: date === today,
+      };
     }),
-    streak: streakFrom(days, today),
+    streak,
+    freezes,
     hasGoal: goal > 0,
     everLit: days.size > 0,
   };

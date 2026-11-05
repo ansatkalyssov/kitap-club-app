@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Star, Trophy, Target } from "lucide-react";
 import type { StarWeek } from "@/lib/stars";
+import frozenStar from "./frozen-star.png";
 
 /**
  * Басты беттегі тұрақтылық блогы.
@@ -41,7 +42,7 @@ interface Props {
 }
 
 export default function StarStrip({ points, levelName, rank, week }: Props) {
-  const { days, streak, hasGoal, everLit } = week;
+  const { days, streak, freezes, hasGoal, everLit } = week;
   const today = days[days.length - 1];
 
   const [waveAt, setWaveAt] = useState(0);
@@ -84,11 +85,13 @@ export default function StarStrip({ points, levelName, rank, week }: Props) {
     ? "Жұлдызыңыз жануы үшін күнделікті мақсатыңызды қойып, оқу прогресіңізді енгізіңіз"
     : today.lit
       ? "Бүгінгі жұлдызыңыз жанды 👏"
-      : streak > 0
-        ? `${streak} күндік тізбегіңіз үзілмеуі үшін бүгін де оқыңыз`
-        : !everLit
-          ? "Бірінші жұлдызыңызды жағыңыз — оқып, прогресіңізді енгізіңіз"
-          : "Бүгінгі жұлдызыңызды жағыңыз — оқып, прогресіңізді енгізіңіз";
+      : days[days.length - 2].frozen
+        ? "Кешегі жұлдызыңыз қатырылды, тізбегіңіз үзілген жоқ. Бүгін оқып, жалғастырыңыз"
+        : streak > 0
+          ? `${streak} күндік тізбегіңіз үзілмеуі үшін бүгін де оқыңыз`
+          : !everLit
+            ? "Бірінші жұлдызыңызды жағыңыз — оқып, прогресіңізді енгізіңіз"
+            : "Бүгінгі жұлдызыңызды жағыңыз — оқып, прогресіңізді енгізіңіз";
 
   return (
     <div className="card mb-6">
@@ -114,15 +117,23 @@ export default function StarStrip({ points, levelName, rank, week }: Props) {
       </div>
 
       <div className="mt-4 border-t border-gray-100 pt-3">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-1.5">
           <span className="text-xs text-gray-500">Соңғы 7 күн</span>
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] ${
-              streak > 0 ? "bg-amber-50 text-amber-800" : "bg-gray-100 text-gray-500"
-            }`}
-          >
-            <Star size={12} fill={streak > 0 ? GOLD : "#b4b2a9"} stroke="none" />
-            {streak > 0 ? `${streak} күн қатарынан` : "жұлдыз жоқ"}
+          <span className="flex flex-wrap items-center justify-end gap-1.5">
+            {hasGoal && freezes > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-800">
+                <FrozenStar size={13} />
+                {freezes} қатыру
+              </span>
+            )}
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] ${
+                streak > 0 ? "bg-amber-50 text-amber-800" : "bg-gray-100 text-gray-500"
+              }`}
+            >
+              <Star size={12} fill={streak > 0 ? GOLD : "#b4b2a9"} stroke="none" />
+              {streak > 0 ? `${streak} күн қатарынан` : "жұлдыз жоқ"}
+            </span>
           </span>
         </div>
 
@@ -132,22 +143,26 @@ export default function StarStrip({ points, levelName, rank, week }: Props) {
             return (
               <div key={d.date} className="flex-1 text-center">
                 <span className="relative inline-block">
-                  <Star
-                    size={26}
-                    // Бүгінгі жұлдыз — қуыс, шеті алтын: орны бос, бірақ
-                    // сұр емес, жануға дайын
-                    fill={d.lit ? GOLD : pending ? "none" : GREY}
-                    stroke={d.lit ? GOLD : pending ? GOLD : GREY}
-                    strokeWidth={pending ? 2 : 1.5}
-                    className={[
-                      "oq-star",
-                      d.lit ? "oq-wave" : "",
-                      pending ? "oq-beat" : "",
-                      d.isToday && celebrating ? "oq-pop" : "",
-                    ].join(" ")}
-                    style={{ animationDelay: d.lit ? `${i * 0.07}s` : undefined }}
-                    key={`${d.date}-${waveAt}-${celebrating}`}
-                  />
+                  {d.frozen ? (
+                    <FrozenStar size={26} />
+                  ) : (
+                    <Star
+                      size={26}
+                      // Бүгінгі жұлдыз — қуыс, шеті алтын: орны бос, бірақ
+                      // сұр емес, жануға дайын
+                      fill={d.lit ? GOLD : pending ? "none" : GREY}
+                      stroke={d.lit ? GOLD : pending ? GOLD : GREY}
+                      strokeWidth={pending ? 2 : 1.5}
+                      className={[
+                        "oq-star",
+                        d.lit ? "oq-wave" : "",
+                        pending ? "oq-beat" : "",
+                        d.isToday && celebrating ? "oq-pop" : "",
+                      ].join(" ")}
+                      style={{ animationDelay: d.lit ? `${i * 0.07}s` : undefined }}
+                      key={`${d.date}-${waveAt}-${celebrating}`}
+                    />
+                  )}
                   {d.isToday && celebrating && <Sparkles />}
                 </span>
                 <p
@@ -170,6 +185,30 @@ export default function StarStrip({ points, levelName, rank, week }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Мұздан құйылған жұлдыз: үстінде қар, астында сүңгілер.
+ *
+ * SVG емес, дайын сурет: мұздың жарқылы мен қардың көлемі SVG сүзгілерімен
+ * сызылады, ал олар Safari-де басқаша шығуы мүмкін. Суретте жұлдыздың
+ * айналасында қар мен сүңгіге орын қалдырылған (24 бірлік жұлдыз, 28
+ * бірлік сурет), сондықтан кері шегініс жолақтағы орнын жай жұлдызбен
+ * бірдей етеді.
+ */
+function FrozenStar({ size }: { size: number }) {
+  const full = Math.round((size * 28) / 24);
+  const margin = (size - full) / 2;
+  return (
+    <img
+      src={frozenStar.src}
+      alt="Қатырылған жұлдыз"
+      width={full}
+      height={full}
+      className="oq-star max-w-none"
+      style={{ margin }}
+    />
   );
 }
 
