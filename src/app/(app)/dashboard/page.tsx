@@ -10,7 +10,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import { calcProgress, daysUntil, formatDateKz, kzDateStr, monthBounds } from "@/lib/utils";
 import { getUserStats, getReaderRank } from "@/lib/points";
 import { getStarWeek } from "@/lib/stars";
-import { getClubFeed, getAppFeed, pickVaried } from "@/lib/feed";
+import { getClubFeed, getAppFeed, mergeFeeds } from "@/lib/feed";
 import NewsFeed from "@/components/dashboard/NewsFeed";
 import StarStrip from "@/components/dashboard/StarStrip";
 import { BookTracker } from "@/lib/types";
@@ -87,16 +87,8 @@ export default async function DashboardPage() {
     getReaderRank(user.id),
   ]);
 
-  // Бесеу-бестен. Жалпы лентадан өз клубының оқиғалары алынып тасталады —
-  // оқырман оны жоғарыдан онсыз да көреді. Қалғанынан әр түрлі клубтың,
-  // әр түрлі оқиғасы таңдалады.
-  const clubNews = clubFeed.slice(0, 5);
-  const appNews = pickVaried(
-    appFeed
-      .filter((a) => !a.clubId || !clubIds.includes(a.clubId))
-      .filter((a) => !clubNews.some((c) => c.id === a.id)),
-    5
-  );
+  // Клубқа бөлмей, ең соңғы бес жаңалық. Қалғаны /news бетінде.
+  const news = mergeFeeds(clubFeed, appFeed, clubIds).slice(0, 5);
 
   // Нақты оқылып жатқан трекерлер (current_page > 0)
   const inProgressTrackers = (trackers || []).filter((t) => t.current_page > 0);
@@ -365,7 +357,7 @@ export default async function DashboardPage() {
 
       {/* Жаңалықтар легі. Клуб мүшесі екеуін де көреді, клубсыз оқырман
           тек Oqyrman жаңалықтарын — бұрын ол бұл жерде ештеңе көрмейтін. */}
-      <NewsFeed club={clubNews} app={appNews} showAll />
+      <NewsFeed items={news} showAll />
     </div>
   );
 }

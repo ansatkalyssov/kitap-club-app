@@ -5,30 +5,14 @@ import { timeAgo, type FeedItem } from "@/lib/feed";
 /**
  * Жаңалықтар легі.
  *
- * Газет стилінде: карточка емес, жіңішке сызықтармен бөлінген жолдар,
- * бөлімнің аты ұсақ әріппен жазылып, бойлық сызықпен созылады. Сондықтан
- * лента беттің қалған бөлігінен ажырап тұрады да, «оқылатын» нәрсе болып
- * көрінеді.
+ * Газет стилінде: карточка емес, жіңішке сызықтармен бөлінген жолдар.
+ * Сондықтан лента беттің қалған бөлігінен ажырап тұрады да, «оқылатын»
+ * нәрсе болып көрінеді.
  */
 
-export function NewsSection({
-  label,
-  items,
-}: {
-  label: string;
-  items: FeedItem[];
-}) {
-  if (items.length === 0) return null;
-
+export function NewsList({ items }: { items: FeedItem[] }) {
   return (
-    <div className="mb-5 last:mb-0">
-      <div className="mb-1 flex items-center gap-3">
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">
-          {label}
-        </span>
-        <span className="h-px flex-1 bg-gray-200" />
-      </div>
-
+    <div>
       {items.map((item) => (
         <Link
           key={item.id}
@@ -52,16 +36,14 @@ export function NewsSection({
 }
 
 export default function NewsFeed({
-  club,
-  app,
+  items,
   showAll,
 }: {
-  club: FeedItem[];
-  app: FeedItem[];
+  items: FeedItem[];
   /** Басты бетте — барлық жаңалықтарға сілтеме, жаңалықтар бетінде керек емес */
   showAll?: boolean;
 }) {
-  if (club.length === 0 && app.length === 0) return null;
+  if (items.length === 0) return null;
 
   return (
     <section className="card mt-6">
@@ -71,8 +53,7 @@ export default function NewsFeed({
         </h2>
       </div>
 
-      <NewsSection label="Клубта" items={club} />
-      <NewsSection label="Oqyrman-да" items={app} />
+      <NewsList items={items} />
 
       {showAll && (
         <Link

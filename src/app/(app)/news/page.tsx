@@ -3,17 +3,16 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getUser } from "@/lib/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getClubFeed, getAppFeed } from "@/lib/feed";
-import { NewsSection } from "@/components/dashboard/NewsFeed";
+import { getClubFeed, getAppFeed, mergeFeeds } from "@/lib/feed";
+import { NewsList } from "@/components/dashboard/NewsFeed";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Барлық жаңалықтар.
  *
- * Басты беттегі лента үшеу-үштен ғана көрсетеді, ал мұнда екі ленталың
- * толық тізімі тұрады. Бөлінуі де сол — алдымен өз клубыңдағы оқиғалар,
- * содан кейін қолданбадағы қалған жаңалықтар.
+ * Басты бетте соңғы бесеуі ғана тұрады, ал мұнда екі лента біріккен
+ * толық тізім — басты беттегідей ең жаңасы жоғарыда.
  */
 export default async function NewsPage() {
   const user = await getUser();
@@ -32,11 +31,7 @@ export default async function NewsPage() {
     getAppFeed(),
   ]);
 
-  const appNews = appFeed
-    .filter((a) => !a.clubId || !clubIds.includes(a.clubId))
-    .filter((a) => !clubFeed.some((c) => c.id === a.id));
-
-  const empty = clubFeed.length === 0 && appNews.length === 0;
+  const news = mergeFeeds(clubFeed, appFeed, clubIds);
 
   return (
     <div className="page-container max-w-xl">
@@ -55,13 +50,10 @@ export default async function NewsPage() {
         <p className="mt-0.5 text-sm text-gray-500">Соңғы екі аптадағы оқиғалар</p>
       </div>
 
-      {empty ? (
+      {news.length === 0 ? (
         <p className="py-10 text-center text-sm text-gray-400">Әзірге жаңалық жоқ</p>
       ) : (
-        <>
-          <NewsSection label="Клубта" items={clubFeed} />
-          <NewsSection label="Oqyrman-да" items={appNews} />
-        </>
+        <NewsList items={news} />
       )}
     </div>
   );
