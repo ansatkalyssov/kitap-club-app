@@ -413,8 +413,9 @@ async function pointNews(): Promise<FeedItem[]> {
     items.push({
       id: `weekly-top:${cutoff.slice(0, 10)}`,
       icon: "🏆",
-      lead: "Апталық рейтиң:",
-      rest: ` ${top.map((r, i) => `${MEDALS[i]} ${fmtName(names.get(r.id))}`).join(" · ")}`,
+      lead: "Үздік oqyrman-дар:",
+      // Әр адам бөлек жолда, бір tab шегініспен — NewsList екеуін де сақтайды
+      rest: `${top.map((r, i) => `\n\t${MEDALS[i]} ${fmtName(names.get(r.id))}`).join("")}..`,
       href: "/rating",
       at: cutoff,
     });

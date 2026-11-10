@@ -21,7 +21,9 @@ export function NewsList({ items }: { items: FeedItem[] }) {
         >
           <span className="mt-0.5 shrink-0 text-base leading-none">{item.icon}</span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm leading-snug text-gray-700">
+            {/* pre-wrap: тізім түріндегі жаңалықтың жолдары мен tab шегінісі
+                сақталсын. Tab әдепкіде 8 әріптей — телефонға тым кең. */}
+            <p className="whitespace-pre-wrap text-sm leading-snug text-gray-700 [tab-size:4]">
               <span className="font-semibold text-gray-900">{item.lead}</span>
               {item.rest}
             </p>
