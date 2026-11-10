@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kzDateStr, addDays } from "@/lib/utils";
 import { levelFor } from "@/lib/points";
+import { fetchAll } from "@/lib/supabase/fetchAll";
 
 /**
  * Басты беттегі жаңалықтар лентасы.
@@ -329,8 +330,8 @@ export const getAppFeed = unstable_cache(
       });
     }
 
-    // 1-3. Рейтиңдегі қозғалыс
-    items.push(...(await rankMoves()));
+    // 1-3. Апталық рейтиң мен деңгей көтерілу
+    items.push(...(await pointNews()));
 
     // 8. Қолданбаның хабарламалары
     items.push(...ANNOUNCEMENTS.filter((a) => a.at >= sinceTs));
@@ -341,128 +342,99 @@ export const getAppFeed = unstable_cache(
   { revalidate: 300 }
 );
 
+/** Апталық рейтиң жарияланатын сәт: жұма (getUTCDay бойынша 5), 15:00 */
+const WEEKLY_DAY = 5;
+const WEEKLY_HOUR = 15;
+/** Алматы — UTC+5, жазғы уақыт жоқ */
+const KZ_OFFSET = 5;
+
+const MEDALS = ["🥇", "🥈", "🥉"];
+
 /**
- * Рейтиңдегі қозғалыс пен деңгей көтерілу.
- *
- * Орындардың да, деңгейлердің де тарихы сақталмайды, бірақ оның қажеті
- * жоқ: ұпай журналы толықтай сақтаулы әрі әр жазбаның күні бар. Сондықтан
- * екі апта бұрынғы ұпайды қосып, сол кездегі орын мен деңгейді есептеп
- * шығарамыз — айырмасы болса, бұл шынымен болған оқиға.
+ * Ең соңғы өткен жұма, 15:00 (Алматы) — UTC уақыт белгісімен. Жұманың
+ * өзінде 15:00-ге дейін алдыңғы жұма қайтады.
  */
-async function rankMoves(): Promise<FeedItem[]> {
+export function lastWeeklyCutoff(now: Date = new Date()): string {
+  const kz = new Date(now.getTime() + KZ_OFFSET * 3_600_000);
+  let back = (kz.getUTCDay() - WEEKLY_DAY + 7) % 7;
+  if (back === 0 && kz.getUTCHours() < WEEKLY_HOUR) back = 7;
+  const day = addDays(kz.toISOString().slice(0, 10), -back);
+  const hour = String(WEEKLY_HOUR - KZ_OFFSET).padStart(2, "0");
+  return `${day}T${hour}:00:00.000Z`;
+}
+
+/**
+ * Апталық рейтиң мен деңгей көтерілу.
+ *
+ * Рейтиң аптасына бір рет — жұма, 15:00-де жаңалыққа шығады: сол сәтке
+ * дейін жазылған ұпай бойынша алғашқы үшеуі. Бұрын көшбасшының әр
+ * ауысуын іздейтінбіз, бірақ ауысу жиі болғанда лента бір хабармен
+ * толатын, сирек болғанда ескі күнімен төменге түсіп жоғалатын.
+ *
+ * Деңгейлердің тарихы сақталмайды, бірақ оның қажеті жоқ: ұпай журналы
+ * толық сақтаулы. Екі апта бұрынғы ұпайдан бастап адамның өз жазбаларын
+ * ретімен қосып шығамыз — деңгей ауысса, бұл шынымен болған оқиға.
+ *
+ * Журнал fetchAll арқылы түгел оқылады: 1000 жолдан кейін Supabase
+ * қалғанын үнсіз тастайды, ал жартылай журналдан рейтиң қате шығады.
+ */
+async function pointNews(): Promise<FeedItem[]> {
   const admin = createAdminClient();
-  const today = kzDateStr();
-  const windowDays = Array.from({ length: WINDOW + 1 }, (_, i) => addDays(today, i - WINDOW));
+  const windowStart = addDays(kzDateStr(), -WINDOW);
+  const cutoff = lastWeeklyCutoff();
+  const cutoffMs = Date.parse(cutoff);
 
   const [{ data: events }, { data: profiles }] = await Promise.all([
-    admin.from("point_events").select("user_id, points, event_date"),
-    admin.from("profiles").select("id, name, email"),
+    fetchAll<{ user_id: string; points: number; event_date: string; created_at: string }>(() =>
+      admin.from("point_events").select("user_id, points, event_date, created_at").order("id")
+    ),
+    fetchAll<{ id: string; name: string | null; email: string | null }>(() =>
+      admin.from("profiles").select("id, name, email").order("id")
+    ),
   ]);
 
-  const names = new Map((profiles ?? []).map((p) => [p.id, p]));
-
-  // Журналды алдын ала күн бойынша да, адам бойынша да бөліп аламыз —
-  // әйтпесе әр оқырман үшін бүкіл тізімді қайта сүзіп шығар едік
-  const byDay = new Map<string, { user_id: string; points: number }[]>();
-  const byUser = new Map<string, { event_date: string; points: number }[]>();
-  (events ?? []).forEach((e) => {
-    if (!byDay.has(e.event_date)) byDay.set(e.event_date, []);
-    byDay.get(e.event_date)!.push(e);
-    if (!byUser.has(e.user_id)) byUser.set(e.user_id, []);
-    byUser.get(e.user_id)!.push(e);
-  });
-
-  const rank = (totals: Map<string, number>) => {
-    const sorted = (profiles ?? [])
-      .map((p) => ({ id: p.id, name: p.name ?? "", pts: totals.get(p.id) ?? 0 }))
-      .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name));
-    return new Map(sorted.map((r, i) => [r.id, i + 1]));
-  };
-
-  // Күн-күнмен бүкіл тарихты шолып өтеміз. Терезедегі күндердің ретін
-  // сақтаймыз (кім қашан үштікке кіргенін табу үшін), ал көшбасшының
-  // ауысуын одан да әріден іздейміз: ол терезеден бұрын да басталуы
-  // мүмкін, бірақ «қашаннан бері» деген сұрақтың жауабы керек.
-  const allDays = Array.from(byDay.keys()).sort();
-  const start = allDays[0] ?? windowDays[0];
-  const snapFrom = addDays(windowDays[0], -1);
-
-  const totals = new Map<string, number>();
-  const snaps: { date: string; totals: Map<string, number>; rank: Map<string, number> }[] = [];
-  let leaderId: string | null = null;
-  let leaderSince: string | null = null;
-
-  for (let d = start; d <= kzDateStr(); d = addDays(d, 1)) {
-    (byDay.get(d) ?? []).forEach((e) =>
-      totals.set(e.user_id, (totals.get(e.user_id) ?? 0) + e.points)
-    );
-
-    // Көшбасшы — ең көп ұпайлы адам. Тең болса, аты бойынша: рейтиң
-    // бетіндегі ретпен бірдей болуы керек.
-    let top: { id: string; pts: number; name: string } | null = null;
-    for (const p of profiles ?? []) {
-      const pts = totals.get(p.id) ?? 0;
-      const name = p.name ?? "";
-      if (!top || pts > top.pts || (pts === top.pts && name.localeCompare(top.name) < 0)) {
-        top = { id: p.id, pts, name };
-      }
-    }
-    if (top && top.pts > 0 && top.id !== leaderId) {
-      leaderId = top.id;
-      leaderSince = d;
-    }
-
-    if (d >= snapFrom) snaps.push({ date: d, totals: new Map(totals), rank: rank(totals) });
-  }
-
-  const last = snaps[snaps.length - 1];
+  const names = new Map(profiles.map((p) => [p.id, p]));
   const items: FeedItem[] = [];
 
-  for (const p of profiles ?? []) {
-    const id = p.id;
-    const name = fmtName(names.get(id));
-
-    // Көш бастау. Мәтіні осы шақта тұр, ал күні — қашан бастағаны.
-    if (last.rank.get(id) === 1) {
-      items.push({
-        id: `rank-lead:${id}`,
-        icon: "💯",
-        lead: name,
-        rest: " әлемдік рейтиңде көш бастап келе жатыр!",
-        href: "/rating",
-        at: `${leaderSince ?? today}T12:00:00`,
-      });
+  // Апталық топ-3. Реті рейтиң бетіндегідей: ұпай, тең болса аты.
+  const weekly = new Map<string, number>();
+  events.forEach((e) => {
+    if (Date.parse(e.created_at) <= cutoffMs) {
+      weekly.set(e.user_id, (weekly.get(e.user_id) ?? 0) + e.points);
     }
+  });
+  const top = profiles
+    .map((p) => ({ id: p.id, name: p.name ?? "", pts: weekly.get(p.id) ?? 0 }))
+    .filter((r) => r.pts > 0)
+    .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name))
+    .slice(0, 3);
 
-    // Үштікке, ондыққа кіру — нақты қай күні болғанын табамыз
-    for (const [limit, icon, label] of [
-      [3, "💥", "үздік үштікке"],
-      [10, "🎆", "үздік ондыққа"],
-    ] as const) {
-      for (let i = 1; i < snaps.length; i++) {
-        const now = snaps[i].rank.get(id) ?? Infinity;
-        const prev = snaps[i - 1].rank.get(id) ?? Infinity;
-        if (now <= limit && prev > limit) {
-          items.push({
-            id: `rank:${id}:${limit}`,
-            icon,
-            lead: name,
-            rest: ` әлемдік рейтиңде ${label} кірді!`,
-            href: "/rating",
-            at: `${snaps[i].date}T12:00:00`,
-          });
-          break;
-        }
-      }
+  if (top.length > 0) {
+    items.push({
+      id: `weekly-top:${cutoff.slice(0, 10)}`,
+      icon: "🏆",
+      lead: "Апталық рейтиң:",
+      rest: ` ${top.map((r, i) => `${MEDALS[i]} ${fmtName(names.get(r.id))}`).join(" · ")}`,
+      href: "/rating",
+      at: cutoff,
+    });
+  }
+
+  // Деңгей көтерілу
+  const before = new Map<string, number>();
+  const recent = new Map<string, { event_date: string; points: number }[]>();
+  events.forEach((e) => {
+    if (e.event_date < windowStart) {
+      before.set(e.user_id, (before.get(e.user_id) ?? 0) + e.points);
+    } else {
+      if (!recent.has(e.user_id)) recent.set(e.user_id, []);
+      recent.get(e.user_id)!.push(e);
     }
+  });
 
-    // Деңгей көтерілу — адамның өз журналы бойынша, қай жазбада асып
-    // түскені нақты белгілі
-    let run = snaps[0].totals.get(id) ?? 0;
-    const own = (byUser.get(id) ?? [])
-      .filter((e) => e.event_date >= windowDays[0])
-      .sort((a, b) => a.event_date.localeCompare(b.event_date));
-
+  recent.forEach((own, id) => {
+    let run = before.get(id) ?? 0;
+    own.sort((a, b) => a.event_date.localeCompare(b.event_date));
     for (const e of own) {
       const was = levelFor(run).current.name;
       run += e.points;
@@ -471,14 +443,14 @@ async function rankMoves(): Promise<FeedItem[]> {
         items.push({
           id: `level:${id}:${became}`,
           icon: "🔥",
-          lead: name,
+          lead: fmtName(names.get(id)),
           rest: ` ${run} ұпай жинап «${became}» деңгейіне өтті`,
           href: `/readers/${id}`,
           at: `${e.event_date}T12:00:00`,
         });
       }
     }
-  }
+  });
 
   return items;
 }
