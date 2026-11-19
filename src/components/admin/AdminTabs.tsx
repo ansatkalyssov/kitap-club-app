@@ -11,6 +11,7 @@ import { formatDateKz } from "@/lib/utils";
 const POINT_LABELS: Record<string, string> = {
   daily_goal: "Күндік мақсат",
   tracker_progress: "Трекер прогресі",
+  reading_time: "Оқу уақыты",
   progress_note: "Ойазық жазды",
   analysis_write: "Талдау жазды",
   // Ескі жазбалар үшін қалдырылды — ұпай енді берілмейді

@@ -29,6 +29,11 @@ export const POINT_RULES = {
   // Күнделікті — күніне 150-мен шектелген
   daily_goal: { points: 10, capped: true, countsForClub: true, limit: { count: 1, period: "day" } },
   tracker_progress: { points: 2, capped: true, countsForClub: true, limit: { count: 3, period: "day" } },
+  // Оқу уақытын белгілеу — прогресс енгізумен тең. Бұрын таймермен оқыған
+  // адам мақсатқа жетпесе мүлдем ұпай алмайтын, ал бір бет белгілеген
+  // адам 2 ұпай алатын. Таймер мен қолмен енгізілген минут бір кестеде
+  // сақталады, сондықтан екеуіне де беріледі.
+  reading_time: { points: 2, capped: true, countsForClub: true, limit: { count: 1, period: "day" } },
   // Ойазық — прогресс белгілеудің үстіндегі ерікті әрекет. Күніне бір
   // рет: әйтпесе бірнеше трекері бар адам бірдей жазып, ұпай жинар еді.
   progress_note: { points: 3, capped: true, countsForClub: true, limit: { count: 1, period: "day" } },
@@ -70,6 +75,7 @@ export type PointCode = keyof typeof POINT_RULES;
 export const POINT_LABELS: Record<string, string> = {
   daily_goal: "Күндік мақсатты орындадыңыз",
   tracker_progress: "Трекерге прогресс енгіздіңіз",
+  reading_time: "Оқу уақытын белгіледіңіз",
   progress_note: "Ойазық жаздыңыз",
   analysis_write: "Талқыға пікір жаздыңыз",
   analysis_reply: "Пікірге жауап бердіңіз",
@@ -199,7 +205,7 @@ async function sumCappedToday(userId: string, today: string): Promise<number> {
 // Оқиға деңгейіндегі функциялар
 // =============================================
 
-/** Күндік мақсат орындалды ма — тексеріп, орындалса ұпай береді */
+/** Оқу уақыты жазылды: оқу уақытына ұпай, мақсат орындалса күндік ұпай */
 export async function onReadingLogged(userId: string): Promise<number> {
   const admin = createAdminClient();
   const today = kzDateStr();
@@ -209,14 +215,19 @@ export async function onReadingLogged(userId: string): Promise<number> {
     admin.from("reading_logs").select("minutes_read").eq("user_id", userId).eq("date", today).maybeSingle(),
   ]);
 
+  const minutes = log?.minutes_read ?? 0;
+
+  // Оқу уақытына — мақсатқа қарамай, прогресс енгізгендей. Мақсат қойылмаса
+  // да беріледі: трекерге прогресс енгізуге де мақсат керек емес.
+  let earned = minutes > 0 ? await awardPoints(userId, "reading_time", today) : 0;
+
   const target = goal?.daily_minutes ?? 0;
-  if (!target) return 0;
+  if (!target) return earned;
 
   // Күндік ұпай тек мақсат орындалғанда беріледі. Ал тізбек одан бөлек:
   // оған сол күні оқығанының ізі қалса жеткілікті, сондықтан мақсатқа
   // жетпесе де тексереміз.
-  const earned =
-    log && log.minutes_read >= target ? await awardPoints(userId, "daily_goal", today) : 0;
+  if (minutes >= target) earned += await awardPoints(userId, "daily_goal", today);
 
   return earned + (await syncStreak(userId));
 }
