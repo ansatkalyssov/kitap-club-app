@@ -43,7 +43,10 @@ export default function LogProgressForm({
     : currentPage;
 
   const [reachedPage, setReachedPage] = useState(initialPage.toString());
-  const [note, setNote] = useState(todayProgress?.note || "");
+  // Әр ашқанда бос: бұрын бүгінгі ойазық осы жерде тұра беретін де, жаңа
+  // ой жазу үшін алдымен ескісін өшіру керек болатын. Ескісі жоғалмайды —
+  // сақтағанда жаңасы оның соңына қосылады (noteToSave-ті қараңыз).
+  const [note, setNote] = useState("");
   // Әдейі бос: әр сақтауда қосылады, сондықтан алдын ала толтырсақ
   // прогресті екінші рет түзеткенде уақыт қайта қосылып кетер еді.
   const [minutes, setMinutes] = useState("");
@@ -75,18 +78,25 @@ export default function LogProgressForm({
     setLoading(true);
     const isCompleted = parsed >= totalPages;
 
+    // Өріс бос болса — бүгінгі ойазық сол күйінде қалады; жаңа ой жазылса —
+    // бүгінгісінің астына қосылады. Бір күнге бір жазба, сондықтан
+    // ауыстырсақ, таңертеңгі ой кешкімен өшіп кетер еді.
+    const fresh = note.trim();
+    const earlier = todayProgress?.note?.trim() || "";
+    const noteToSave = [earlier, fresh].filter(Boolean).join("\n") || null;
+
     // reading_progress жазбасын жаңарту немесе жасау
     if (todayProgress) {
       const { error } = await supabase
         .from("reading_progress")
-        .update({ pages_read: pagesReadToday, note: note.trim() || null })
+        .update({ pages_read: pagesReadToday, note: noteToSave })
         .eq("id", todayProgress.id);
       if (error) { toast.error("Сақталмады"); setLoading(false); return; }
     } else {
       const today = kzDateStr();
       const { error } = await supabase
         .from("reading_progress")
-        .insert({ tracker_id: trackerId, date: today, pages_read: pagesReadToday, note: note.trim() || null });
+        .insert({ tracker_id: trackerId, date: today, pages_read: pagesReadToday, note: noteToSave });
       if (error) { toast.error("Сақталмады"); setLoading(false); return; }
     }
 

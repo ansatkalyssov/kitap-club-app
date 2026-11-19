@@ -152,7 +152,7 @@ export default async function TrackerDetailPage({
                 <div key={p.id} className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{formatDateKz(p.date)}</p>
-                    {p.note && <p className="text-xs text-gray-500 mt-0.5">{p.note}</p>}
+                    {p.note && <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-line">{p.note}</p>}
                   </div>
                   <span className="badge-green">+{p.pages_read} бет</span>
                 </div>
