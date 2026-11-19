@@ -29,7 +29,7 @@ export async function syncPlanTrackers(planId: string): Promise<number> {
 
   const { data: plan } = await admin
     .from("club_plans")
-    .select("id, club_id, end_date, book_id, books(title, author, page_count)")
+    .select("id, club_id, end_date, meeting_date, book_id, books(title, author, page_count)")
     .eq("id", planId)
     .single();
   if (!plan) throw new Error("Жоспар табылмады");
@@ -50,9 +50,15 @@ export async function syncPlanTrackers(planId: string): Promise<number> {
   } | null;
 
   const patch: Record<string, unknown> = {};
-  // Жоспарда күн бос болса, трекердегі күнді жоймаймыз — оқырманда
-  // мерзімсіз трекер қалып қояр еді.
-  if (plan.end_date) patch.deadline = plan.end_date;
+  // Трекер жасалғандағы ереже: «Аяқталуы», ол бос болса — «Талқы күні»
+  // (AddPlanForm, JoinClubButton). Бұрын мұнда тек «Аяқталуы» қаралатын,
+  // сондықтан тек талқы күні бар жоспарда күнді жылжытса, трекерде ескі
+  // күн қалып қоятын.
+  //
+  // Екеуі де бос болса, трекердегі күнді жоймаймыз — оқырманда мерзімсіз
+  // трекер қалып қояр еді.
+  const deadline = plan.end_date || plan.meeting_date;
+  if (deadline) patch.deadline = deadline;
   if (book) {
     patch.book_title = book.title;
     patch.book_author = book.author;
