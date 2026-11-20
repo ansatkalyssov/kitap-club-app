@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Calendar, BookOpen, TrendingUp } from "lucide-react";
 import ProgressBar from "@/components/ui/ProgressBar";
+import RankFlip from "@/components/clubs/RankFlip";
 import { calcProgress, formatDateKz, kzDateStr } from "@/lib/utils";
 
 export default async function ClubProgressPage({
@@ -145,13 +146,19 @@ export default async function ClubProgressPage({
         )}
 
         {/* Оқырмандар тізімі */}
-        <div className="space-y-3">
+        <RankFlip
+          className="space-y-3"
+          planId={nearestPlan?.id ?? "none"}
+          myId={user.id}
+          order={sorted.map((m) => m.user_id)}
+          started={sorted.filter((m) => m.currentPage > 0).map((m) => m.user_id)}
+        >
           {withTracker.map((m: any) => {
             const initials = (m.profiles?.name || m.profiles?.email || "?")
               .charAt(0)
               .toUpperCase();
             return (
-              <div key={m.user_id} className="card">
+              <div key={m.user_id} data-uid={m.user_id} className="card">
                 <div className="flex items-center gap-3">
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-semibold overflow-hidden">
                     {m.profiles?.avatar_url ? (
@@ -216,7 +223,7 @@ export default async function ClubProgressPage({
               Клубта оқырман жоқ
             </div>
           )}
-        </div>
+        </RankFlip>
       </div>
   );
 }

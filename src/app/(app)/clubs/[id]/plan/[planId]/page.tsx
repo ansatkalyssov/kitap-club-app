@@ -7,6 +7,7 @@ import Image from "next/image";
 import { ArrowLeft, Calendar, MapPin, BookOpen, Pencil, TrendingUp, MessageSquare } from "lucide-react";
 import ThreadList from "@/components/analysis/ThreadList";
 import ProgressBar from "@/components/ui/ProgressBar";
+import RankFlip from "@/components/clubs/RankFlip";
 import { formatDateKz, formatMonthKz, kzDateStr, calcProgress } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -221,9 +222,15 @@ export default async function PlanDiscussionPage({
       )}
 
       {membersWithProgress.length > 0 ? (
-        <div className="card mb-6 space-y-3">
+        <RankFlip
+          className="card mb-6 space-y-3"
+          planId={planId}
+          myId={user.id}
+          order={membersWithProgress.map((m) => m.user_id)}
+          started={membersWithProgress.filter((m) => m.currentPage > 0).map((m) => m.user_id)}
+        >
           {topReaders.map((m: any) => (
-            <div key={m.user_id} className="flex items-center gap-3">
+            <div key={m.user_id} data-uid={m.user_id} className="flex items-center gap-3">
               <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
                 {m.profiles?.avatar_url ? (
                   <Image
@@ -263,7 +270,7 @@ export default async function PlanDiscussionPage({
               Тағы {restCount} оқырман →
             </Link>
           )}
-        </div>
+        </RankFlip>
       ) : (
         <div className="card mb-6 py-6 text-center text-sm text-gray-500">Оқырман жоқ</div>
       )}

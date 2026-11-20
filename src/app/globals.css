@@ -166,3 +166,40 @@
   }
   .oq-spark { opacity: 0 !important; }
 }
+
+/* Үлгерім тізімінде біреуді басып озған оқырманның жолы (RankFlip) */
+.oq-overtake {
+  position: relative;
+  z-index: 1;
+  border-radius: 12px;
+  animation: oq-overtake-glow 2.6s ease-out 0.35s backwards;
+}
+.oq-overtake::after {
+  content: attr(data-up);
+  position: absolute;
+  right: -6px;
+  top: -9px;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  pointer-events: none;
+  animation: oq-overtake-badge 4.5s ease-out 0.8s both;
+}
+@keyframes oq-overtake-glow {
+  0%, 55% { background-color: #dcfce7; box-shadow: 0 0 0 6px #dcfce7; }
+  100% { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes oq-overtake-badge {
+  0% { opacity: 0; transform: scale(0.4); }
+  8% { opacity: 1; transform: scale(1.15); }
+  14%, 80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oq-overtake::after { animation: none; }
+}

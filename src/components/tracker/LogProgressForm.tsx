@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { RefreshCw, BookOpen } from "lucide-react";
@@ -10,6 +11,23 @@ import { kzDateStr } from "@/lib/utils";
 import { syncTrackerProgressPoints, syncBookCompletedPoints } from "@/app/actions/points";
 import { addReadingMinutes } from "@/app/actions/reading";
 import { toastPoints } from "@/lib/pointsToast";
+import { getPlanStanding, type Standing } from "@/app/actions/standing";
+
+/** Алдағы адамға дейін осыдан аз бет қалса — хабарлаймыз */
+const NEAR_GAP = 20;
+
+/** «Прогрес сақталды» хабарламасының екінші жолы — үлгерімдегі орын, есімсіз */
+function standingLine(s: Standing | null, completed: boolean): string | null {
+  if (!s) return null;
+  // Бірінші орынға шығу — басып озудан да үлкен жаңалық, сондықтан алдымен
+  if (s.first) return "👑 Оқу үлгерімі бойынша бірінші орынға шықтыңыз";
+  if (s.overtaken > 0) return `🚀 ${s.overtaken} оқырманнан оздыңыз`;
+  if (completed) return null;
+  if (s.next && s.next.gap < NEAR_GAP) {
+    return `📖 Алдыңыздағы оқырманға жету үшін ${s.next.gap} бет қалды`;
+  }
+  return null;
+}
 
 /** Ойазықтың ең үлкен ұзындығы. Дерекқорда шектеу жоқ (TEXT). */
 const NOTE_MAX = 500;
@@ -109,7 +127,41 @@ export default function LogProgressForm({
     setLoading(false);
     if (trackerError) { toast.error("Трекер жаңартылмады"); return; }
 
-    toast.success(isCompleted ? "Кітапты аяқтадыңыз! 🎉" : "Прогрес сақталды!");
+    // Үлгерімдегі орын бөлек хабарлама емес, осының екінші жолы: сақтағанда
+    // жоғарыда онсыз да ұпай мен минут туралы бірнеше хабарлама шығады.
+    let standing: Standing | null = null;
+    try {
+      standing = await getPlanStanding(trackerId, currentPage);
+    } catch {}
+    const line = standingLine(standing, isCompleted);
+    const overtook = Boolean(standing?.overtaken);
+
+    toast.success(
+      (t) => (
+        <span>
+          {isCompleted ? "Кітапты аяқтадыңыз! 🎉" : "Прогрес сақталды!"}
+          {line && (
+            <>
+              <br />
+              {line}
+            </>
+          )}
+          {overtook && standing && (
+            <>
+              <br />
+              <Link
+                href={standing.planUrl}
+                onClick={() => toast.dismiss(t.id)}
+                className="font-semibold underline underline-offset-2"
+              >
+                Үлгерімді көру
+              </Link>
+            </>
+          )}
+        </span>
+      ),
+      { duration: line ? 7000 : undefined }
+    );
 
     let earned = await syncTrackerProgressPoints(trackerId);
 
